@@ -1,0 +1,134 @@
+{
+  "id": "forest_random",
+  "name": "Forest Random Encounters",
+  "difficulty": 1,
+  "entries": [
+    {
+      "id": "forest_goblins",
+      "weight": 0.4,
+      "encounter": {
+        "id": "forest_goblins",
+        "type": "random",
+        "name": "Goblin Scouts",
+        "description": "A small band of goblins emerges from the trees!",
+        "outcome": "combat",
+        "triggerChance": 0.35,
+        "combat": {
+          "enemies": [
+            {
+              "id": "goblin_scout",
+              "name": "Goblin Scout",
+              "hp": 15,
+              "baseStrength": 5,
+              "baseDefense": 2,
+              "baseSpeed": 7,
+              "loot": [
+                {
+                  "id": "copper_coin",
+                  "weight": 0.8
+                },
+                {
+                  "id": "tattered_rags",
+                  "weight": 0.3
+                }
+              ],
+              "minCount": 2,
+              "maxCount": 4
+            }
+          ],
+          "scaling": 0.3
+        }
+      }
+    },
+    {
+      "id": "forest_wolves",
+      "weight": 0.35,
+      "encounter": {
+        "id": "forest_wolves",
+        "type": "random",
+        "name": "Wolf Pack",
+        "description": "Hungry wolves circle you menacingly.",
+        "outcome": "combat",
+        "triggerChance": 0.3,
+        "combat": {
+          "enemies": [
+            {
+              "id": "forest_wolf",
+              "name": "Forest Wolf",
+              "hp": 20,
+              "baseStrength": 7,
+              "baseDefense": 3,
+              "baseSpeed": 9,
+              "loot": [
+                {
+                  "id": "wolf_fang",
+                  "weight": 0.6
+                },
+                {
+                  "id": "wolf_hide",
+                  "weight": 0.4
+                }
+              ],
+              "minCount": 1,
+              "maxCount": 3
+            }
+          ],
+          "scaling": 0.4
+        }
+      }
+    },
+    {
+      "id": "forest_treasure",
+      "weight": 0.15,
+      "encounter": {
+        "id": "forest_treasure",
+        "type": "random",
+        "name": "Abandoned Chest",
+        "description": "You discover an old, weathered chest hidden beneath the roots of an ancient tree.",
+        "outcome": "loot",
+        "triggerChance": 0.2,
+        "loot": {
+          "items": [
+            {
+              "id": "health_potion",
+              "weight": 0.7
+            },
+            {
+              "id": "mana_potion",
+              "weight": 0.5
+            },
+            {
+              "id": "iron_ore",
+              "weight": 0.6
+            },
+            {
+              "id": "map_fragment",
+              "weight": 0.2
+            }
+          ],
+          "gold": 25,
+          "minItems": 1,
+          "maxItems": 3
+        }
+      }
+    },
+    {
+      "id": "forest_trap",
+      "weight": 0.1,
+      "encounter": {
+        "id": "forest_trap",
+        "type": "random",
+        "name": "Hidden Trap",
+        "description": "You accidentally trigger an old, forgotten trap!",
+        "outcome": "status_effect",
+        "triggerChance": 0.15,
+        "statusEffect": {
+          "effect": "poison",
+          "severity": 2,
+          "description": "You've been poisoned! You lose 1 HP each turn.",
+          "duration": 5
+        }
+      }
+    }
+  ]
+}

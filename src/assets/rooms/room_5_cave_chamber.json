@@ -1,0 +1,154 @@
+{
+  "id": "room_5_cave_chamber",
+  "type": "static",
+  "name": "Crystal Chamber",
+  "description": "The cave opens into a vast chamber filled with glowing crystals. Their ethereal light illuminates the entire space, casting dancing shadows on the walls. The air hums with an otherworldly energy.",
+  "picture": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80",
+  "difficulty": 3,
+  "exits": [
+    {
+      "direction": "south",
+      "targetRoomId": "room_4_cave_entrance"
+    },
+    {
+      "direction": "east",
+      "targetRoomId": "room_6_cave_deep"
+    }
+  ],
+  "encounters": [
+    {
+      "id": "encounter_crystal_guardian",
+      "type": "random",
+      "triggerChance": 0.35,
+      "enemies": [
+        {
+          "id": "crystal_guardian_1",
+          "name": "Crystal Guardian",
+          "hp": 35,
+          "maxHp": 35,
+          "level": 3,
+          "stats": {
+            "strength": 8,
+            "defense": 4,
+            "speed": 5
+          },
+          "xpReward": 80,
+          "loot": [
+            {
+              "id": "crystal_shard",
+              "type": "consumable",
+              "name": "Crystal Shard",
+              "quantity": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "encounter_cave_troll",
+      "type": "random",
+      "triggerChance": 0.25,
+      "enemies": [
+        {
+          "id": "cave_troll_1",
+          "name": "Cave Troll",
+          "hp": 45,
+          "maxHp": 45,
+          "level": 3,
+          "stats": {
+            "strength": 10,
+            "defense": 3,
+            "speed": 3
+          },
+          "xpReward": 100,
+          "loot": [
+            {
+              "id": "troll_hide",
+              "type": "consumable",
+              "name": "Troll Hide",
+              "quantity": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "encounter_crystal_golems",
+      "type": "random",
+      "triggerChance": 0.2,
+      "enemies": [
+        {
+          "id": "crystal_golem_1",
+          "name": "Crystal Golem",
+          "hp": 40,
+          "maxHp": 40,
+          "level": 3,
+          "stats": {
+            "strength": 9,
+            "defense": 6,
+            "speed": 3
+          },
+          "xpReward": 90,
+          "loot": [
+            {
+              "id": "crystal_core",
+              "type": "consumable",
+              "name": "Crystal Core",
+              "quantity": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "encounter_cave_bats_swarm",
+      "type": "random",
+      "triggerChance": 0.3,
+      "enemies": [
+        {
+          "id": "cave_bat_swarm_1",
+          "name": "Cave Bat",
+          "hp": 18,
+          "maxHp": 18,
+          "level": 1,
+          "stats": {
+            "strength": 4,
+            "defense": 1,
+            "speed": 9
+          },
+          "xpReward": 30
+        },
+        {
+          "id": "cave_bat_swarm_2",
+          "name": "Cave Bat",
+          "hp": 18,
+          "maxHp": 18,
+          "level": 1,
+          "stats": {
+            "strength": 4,
+            "defense": 1,
+            "speed": 9
+          },
+          "xpReward": 30
+        },
+        {
+          "id": "cave_bat_swarm_3",
+          "name": "Cave Bat",
+          "hp": 18,
+          "maxHp": 18,
+          "level": 1,
+          "stats": {
+            "strength": 4,
+            "defense": 1,
+            "speed": 9
+          },
+          "xpReward": 30
+        }
+      ]
+    }
+  ],
+  "flavor": {
+    "onEnter": "The crystals pulse with an inner light. You feel watched.",
+    "atmosphere": "magical, dangerous"
+  }
+}

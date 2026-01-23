@@ -1,0 +1,14 @@
+{
+  "id": "leather_armor",
+  "name": "Leather Armor",
+  "description": "Light protective gear. Increases defense by 3.",
+  "type": "armor",
+  "rarity": "common",
+  "stackable": false,
+  "weight": 2.0,
+  "slot": "body",
+  "defenseBonus": 3,
+  "statBonus": {
+    "defense": 2
+  }
+}

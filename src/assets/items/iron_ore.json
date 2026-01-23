@@ -1,0 +1,10 @@
+{
+  "id": "iron_ore",
+  "name": "Iron Ore",
+  "description": "Raw material for crafting. Used to forge weapons.",
+  "type": "crafting",
+  "rarity": "common",
+  "stackable": true,
+  "maxStackSize": 20,
+  "weight": 0.3
+}

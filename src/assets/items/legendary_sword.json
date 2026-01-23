@@ -1,0 +1,13 @@
+{
+  "id": "legendary_sword",
+  "name": "Legendary Sword",
+  "description": "An ancient, powerful blade imbued with magic. Increases damage by 15.",
+  "type": "weapon",
+  "rarity": "legendary",
+  "stackable": false,
+  "weight": 2.0,
+  "damageBonus": 15,
+  "statBonus": {
+    "strength": 5
+  }
+}

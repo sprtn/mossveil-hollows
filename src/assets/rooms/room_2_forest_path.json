@@ -1,0 +1,139 @@
+{
+  "id": "room_2_forest_path",
+  "type": "static",
+  "name": "Forest Path",
+  "description": "The path widens into a small clearing. Sunlight filters through the canopy above, creating dappled shadows on the mossy ground. You notice animal tracks crisscrossing the path.",
+  "picture": "https://images.unsplash.com/photo-1511497584788-876760111969?w=800&q=80",
+  "difficulty": 2,
+  "exits": [
+    {
+      "direction": "south",
+      "targetRoomId": "room_1_forest_entrance"
+    },
+    {
+      "direction": "north",
+      "targetRoomId": "room_3_forest_ambush"
+    },
+    {
+      "direction": "east",
+      "targetRoomId": "room_4_cave_entrance",
+      "hidden": true
+    }
+  ],
+  "encounters": [
+    {
+      "id": "encounter_forest_path_wolves",
+      "type": "random",
+      "triggerChance": 0.35,
+      "enemies": [
+        {
+          "id": "forest_wolf_1",
+          "name": "Grey Wolf",
+          "hp": 25,
+          "maxHp": 25,
+          "level": 2,
+          "stats": {
+            "strength": 6,
+            "defense": 2,
+            "speed": 8
+          },
+          "xpReward": 50,
+          "loot": [
+            {
+              "id": "wolf_hide",
+              "type": "consumable",
+              "name": "Wolf Hide",
+              "quantity": 1
+            }
+          ]
+        },
+        {
+          "id": "forest_wolf_2",
+          "name": "Grey Wolf",
+          "hp": 25,
+          "maxHp": 25,
+          "level": 2,
+          "stats": {
+            "strength": 6,
+            "defense": 2,
+            "speed": 8
+          },
+          "xpReward": 50
+        }
+      ]
+    },
+    {
+      "id": "encounter_forest_path_bear",
+      "type": "random",
+      "triggerChance": 0.2,
+      "enemies": [
+        {
+          "id": "forest_bear_1",
+          "name": "Wild Bear",
+          "hp": 40,
+          "maxHp": 40,
+          "level": 2,
+          "stats": {
+            "strength": 9,
+            "defense": 4,
+            "speed": 4
+          },
+          "xpReward": 80,
+          "loot": [
+            {
+              "id": "bear_fur",
+              "type": "consumable",
+              "name": "Bear Fur",
+              "quantity": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "encounter_forest_path_spiders",
+      "type": "random",
+      "triggerChance": 0.25,
+      "enemies": [
+        {
+          "id": "forest_spider_1",
+          "name": "Forest Spider",
+          "hp": 18,
+          "maxHp": 18,
+          "level": 2,
+          "stats": {
+            "strength": 5,
+            "defense": 2,
+            "speed": 9
+          },
+          "xpReward": 40,
+          "loot": [
+            {
+              "id": "spider_silk",
+              "type": "consumable",
+              "name": "Spider Silk",
+              "quantity": 1
+            }
+          ]
+        },
+        {
+          "id": "forest_spider_2",
+          "name": "Forest Spider",
+          "hp": 18,
+          "maxHp": 18,
+          "level": 2,
+          "stats": {
+            "strength": 5,
+            "defense": 2,
+            "speed": 9
+          },
+          "xpReward": 40
+        }
+      ]
+    }
+  ],
+  "flavor": {
+    "onEnter": "The forest becomes denser. You hear distant animal calls echoing between the trees.",
+    "atmosphere": "tense, primal"
+  }
+}

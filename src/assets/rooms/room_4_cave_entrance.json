@@ -1,0 +1,134 @@
+{
+  "id": "room_4_cave_entrance",
+  "type": "static",
+  "name": "Cave Entrance",
+  "description": "A dark opening in the rocky hillside reveals a cave entrance. Stalactites hang from the ceiling like fangs, and the air grows colder as you peer inside. Strange sounds echo from the depths.",
+  "picture": "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=800&q=80",
+  "difficulty": 2,
+  "exits": [
+    {
+      "direction": "south",
+      "targetRoomId": "room_2_forest_path"
+    },
+    {
+      "direction": "north",
+      "targetRoomId": "room_5_cave_chamber"
+    }
+  ],
+  "encounters": [
+    {
+      "id": "encounter_cave_entrance_bats",
+      "type": "random",
+      "triggerChance": 0.3,
+      "enemies": [
+        {
+          "id": "cave_bat_1",
+          "name": "Cave Bat",
+          "hp": 18,
+          "maxHp": 18,
+          "level": 1,
+          "stats": {
+            "strength": 4,
+            "defense": 1,
+            "speed": 9
+          },
+          "xpReward": 30,
+          "loot": [
+            {
+              "id": "bat_wing",
+              "type": "consumable",
+              "name": "Bat Wing",
+              "quantity": 1
+            }
+          ]
+        },
+        {
+          "id": "cave_bat_2",
+          "name": "Cave Bat",
+          "hp": 18,
+          "maxHp": 18,
+          "level": 1,
+          "stats": {
+            "strength": 4,
+            "defense": 1,
+            "speed": 9
+          },
+          "xpReward": 30
+        }
+      ]
+    },
+    {
+      "id": "encounter_cave_entrance_rats",
+      "type": "random",
+      "triggerChance": 0.25,
+      "enemies": [
+        {
+          "id": "cave_rat_1",
+          "name": "Giant Cave Rat",
+          "hp": 22,
+          "maxHp": 22,
+          "level": 2,
+          "stats": {
+            "strength": 5,
+            "defense": 2,
+            "speed": 7
+          },
+          "xpReward": 40,
+          "loot": [
+            {
+              "id": "rat_tail",
+              "type": "consumable",
+              "name": "Rat Tail",
+              "quantity": 1
+            }
+          ]
+        },
+        {
+          "id": "cave_rat_2",
+          "name": "Giant Cave Rat",
+          "hp": 22,
+          "maxHp": 22,
+          "level": 2,
+          "stats": {
+            "strength": 5,
+            "defense": 2,
+            "speed": 7
+          },
+          "xpReward": 40
+        }
+      ]
+    },
+    {
+      "id": "encounter_cave_entrance_slime",
+      "type": "random",
+      "triggerChance": 0.2,
+      "enemies": [
+        {
+          "id": "cave_slime_1",
+          "name": "Cave Slime",
+          "hp": 30,
+          "maxHp": 30,
+          "level": 2,
+          "stats": {
+            "strength": 4,
+            "defense": 3,
+            "speed": 2
+          },
+          "xpReward": 45,
+          "loot": [
+            {
+              "id": "slime_goo",
+              "type": "consumable",
+              "name": "Slime Goo",
+              "quantity": 1
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "flavor": {
+    "onEnter": "You step into the darkness. Your footsteps echo off the stone walls.",
+    "atmosphere": "dark, mysterious"
+  }
+}

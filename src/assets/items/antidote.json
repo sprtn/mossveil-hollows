@@ -1,0 +1,13 @@
+{
+  "id": "antidote",
+  "name": "Antidote",
+  "description": "Cures poison immediately. Essential for toxic encounters.",
+  "type": "consumable",
+  "rarity": "uncommon",
+  "stackable": true,
+  "maxStackSize": 5,
+  "weight": 0.1,
+  "effect": "remove_poison",
+  "power": 1,
+  "duration": null
+}

@@ -1,0 +1,13 @@
+{
+  "id": "health_potion",
+  "name": "Health Potion",
+  "description": "Restores 30 HP when consumed. Common remedy for wounds.",
+  "type": "consumable",
+  "rarity": "common",
+  "stackable": true,
+  "maxStackSize": 10,
+  "weight": 0.2,
+  "effect": "heal_health",
+  "power": 30,
+  "duration": null
+}

@@ -1,0 +1,13 @@
+{
+  "id": "iron_sword",
+  "name": "Iron Sword",
+  "description": "A sturdy iron blade. Increases damage by 5.",
+  "type": "weapon",
+  "rarity": "common",
+  "stackable": false,
+  "weight": 1.5,
+  "damageBonus": 5,
+  "statBonus": {
+    "strength": 2
+  }
+}
