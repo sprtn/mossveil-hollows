@@ -36,11 +36,17 @@
           },
           "archetype": "attacker",
           "xpReward": 30,
-          "goldReward": 4,
+          "goldReward": 0,
           "loot": [
             {
               "templateId": "wolf_pelt",
-              "quantity": 1
+              "quantity": 1,
+              "chance": 0.7
+            },
+            {
+              "templateId": "canine_tooth",
+              "quantity": 1,
+              "chance": 0.12
             }
           ]
         }
@@ -65,11 +71,17 @@
           },
           "archetype": "caster",
           "xpReward": 28,
-          "goldReward": 3,
+          "goldReward": 0,
           "loot": [
             {
               "templateId": "spider_silk",
-              "quantity": 1
+              "quantity": 1,
+              "chance": 0.75
+            },
+            {
+              "templateId": "spider_fang",
+              "quantity": 1,
+              "chance": 0.12
             }
           ]
         }

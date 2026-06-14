@@ -24,8 +24,15 @@ import hideJerkin from '../assets/items/hide_jerkin.json'
 import wolfCloak from '../assets/items/wolf_cloak.json'
 import woodenStake from '../assets/items/wooden_stake.json'
 import wolfPelt from '../assets/items/wolf_pelt.json'
+import canineTooth from '../assets/items/canine_tooth.json'
 import boarHide from '../assets/items/boar_hide.json'
+import boarTusk from '../assets/items/boar_tusk.json'
 import spiderSilk from '../assets/items/spider_silk.json'
+import spiderFang from '../assets/items/spider_fang.json'
+import batWing from '../assets/items/bat_wing.json'
+import crystalSliver from '../assets/items/crystal_sliver.json'
+import trollTusk from '../assets/items/troll_tusk.json'
+import tarnishedCoin from '../assets/items/tarnished_coin.json'
 import oakWood from '../assets/items/oak_wood.json'
 import corruptedSap from '../assets/items/corrupted_sap.json'
 import clothScrap from '../assets/items/cloth_scrap.json'
@@ -52,8 +59,15 @@ const RAW_ITEMS: ItemTemplate[] = [
   wolfCloak as ItemTemplate,
   woodenStake as ItemTemplate,
   wolfPelt as ItemTemplate,
+  canineTooth as ItemTemplate,
   boarHide as ItemTemplate,
+  boarTusk as ItemTemplate,
   spiderSilk as ItemTemplate,
+  spiderFang as ItemTemplate,
+  batWing as ItemTemplate,
+  crystalSliver as ItemTemplate,
+  trollTusk as ItemTemplate,
+  tarnishedCoin as ItemTemplate,
   oakWood as ItemTemplate,
   corruptedSap as ItemTemplate,
   clothScrap as ItemTemplate,

@@ -119,6 +119,8 @@ export interface Player {
 export interface LootDrop {
   templateId: string
   quantity: number
+  /** Drop probability 0–1. Defaults to 1 (guaranteed). */
+  chance?: number
 }
 
 export interface Enemy {

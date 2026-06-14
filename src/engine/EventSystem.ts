@@ -38,7 +38,10 @@ const ENCOUNTER_TEMPLATES: Record<string, Enemy[]> = {
       archetype: 'attacker',
       xpReward: 40,
       goldReward: 8,
-      loot: [{ templateId: 'cloth_scrap', quantity: 1 }],
+      loot: [
+        { templateId: 'cloth_scrap', quantity: 1, chance: 0.65 },
+        { templateId: 'rusty_shortsword', quantity: 1, chance: 0.06 },
+      ],
     },
   ],
 }

@@ -33,7 +33,7 @@
           "archetype": "defender",
           "isBoss": true,
           "xpReward": 180,
-          "goldReward": 60,
+          "goldReward": 0,
           "loot": [
             {
               "templateId": "iron_plate_armor",

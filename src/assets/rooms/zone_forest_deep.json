@@ -44,7 +44,13 @@
           "loot": [
             {
               "templateId": "cloth_scrap",
-              "quantity": 1
+              "quantity": 1,
+              "chance": 0.65
+            },
+            {
+              "templateId": "rusty_shortsword",
+              "quantity": 1,
+              "chance": 0.06
             }
           ]
         }
@@ -69,11 +75,17 @@
           },
           "archetype": "defender",
           "xpReward": 45,
-          "goldReward": 6,
+          "goldReward": 0,
           "loot": [
             {
               "templateId": "boar_hide",
-              "quantity": 1
+              "quantity": 1,
+              "chance": 0.65
+            },
+            {
+              "templateId": "boar_tusk",
+              "quantity": 1,
+              "chance": 0.1
             }
           ]
         }

@@ -40,7 +40,13 @@
           "loot": [
             {
               "templateId": "steel_sword",
-              "quantity": 1
+              "quantity": 1,
+              "chance": 0.25
+            },
+            {
+              "templateId": "tarnished_coin",
+              "quantity": 4,
+              "chance": 0.5
             }
           ]
         }
@@ -69,7 +75,8 @@
           "loot": [
             {
               "templateId": "mana_potion",
-              "quantity": 2
+              "quantity": 2,
+              "chance": 0.55
             }
           ]
         }

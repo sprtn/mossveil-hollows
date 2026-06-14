@@ -32,7 +32,7 @@ const forestWolf: Enemy = {
   stats: { strength: 11, defense: 2, constitution: 6, dexterity: 5, agility: 6 },
   archetype: 'attacker',
   xpReward: 30,
-  goldReward: 4,
+  goldReward: 0,
 }
 
 const forestGuardian: Enemy = {
@@ -45,7 +45,7 @@ const forestGuardian: Enemy = {
   archetype: 'defender',
   isBoss: true,
   xpReward: 200,
-  goldReward: 40,
+  goldReward: 0,
 }
 
 interface SimResult {

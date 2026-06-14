@@ -32,15 +32,22 @@
           },
           "archetype": "caster",
           "xpReward": 28,
-          "goldReward": 3,
+          "goldReward": 0,
           "loot": [
             {
               "templateId": "spider_silk",
-              "quantity": 1
+              "quantity": 1,
+              "chance": 0.8
+            },
+            {
+              "templateId": "spider_fang",
+              "quantity": 1,
+              "chance": 0.14
             },
             {
               "templateId": "corrupted_sap",
-              "quantity": 2
+              "quantity": 2,
+              "chance": 0.55
             }
           ]
         }

@@ -1,0 +1,10 @@
+{
+  "id": "spider_fang",
+  "name": "Spider Fang",
+  "description": "A venomous fang from a giant spider. Collectors pay handsomely.",
+  "type": "crafting",
+  "rarity": "uncommon",
+  "stackable": true,
+  "maxStackSize": 20,
+  "sellPrice": 12
+}

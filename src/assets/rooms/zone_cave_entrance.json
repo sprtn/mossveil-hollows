@@ -36,7 +36,14 @@
           },
           "archetype": "attacker",
           "xpReward": 20,
-          "goldReward": 5
+          "goldReward": 0,
+          "loot": [
+            {
+              "templateId": "bat_wing",
+              "quantity": 1,
+              "chance": 0.55
+            }
+          ]
         },
         {
           "id": "cave_bat_swarm_2",
@@ -52,7 +59,14 @@
           },
           "archetype": "attacker",
           "xpReward": 20,
-          "goldReward": 5
+          "goldReward": 0,
+          "loot": [
+            {
+              "templateId": "bat_wing",
+              "quantity": 1,
+              "chance": 0.55
+            }
+          ]
         }
       ]
     },
@@ -75,11 +89,17 @@
           },
           "archetype": "defender",
           "xpReward": 40,
-          "goldReward": 12,
+          "goldReward": 0,
           "loot": [
             {
               "templateId": "antidote",
-              "quantity": 1
+              "quantity": 1,
+              "chance": 0.35
+            },
+            {
+              "templateId": "crystal_sliver",
+              "quantity": 1,
+              "chance": 0.12
             }
           ]
         }

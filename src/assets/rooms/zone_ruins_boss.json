@@ -33,7 +33,7 @@
           "archetype": "caster",
           "isBoss": true,
           "xpReward": 220,
-          "goldReward": 75,
+          "goldReward": 0,
           "loot": [
             {
               "templateId": "legendary_sword",

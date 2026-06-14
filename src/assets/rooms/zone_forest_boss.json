@@ -33,7 +33,7 @@
           "archetype": "defender",
           "isBoss": true,
           "xpReward": 200,
-          "goldReward": 40,
+          "goldReward": 0,
           "loot": [
             {
               "templateId": "forest_shard",

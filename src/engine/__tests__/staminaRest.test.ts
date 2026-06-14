@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { initGame, enterRoom, exploreRoom, gatherMaterials } from '../GameLoop'
+import { initGame, enterRoom, exploreRoom, gatherMaterials, returnToHub } from '../GameLoop'
 import { createDefaultPlayer } from '../CombatEngine'
 import { restAtHub, useHealer } from '../HubActions'
 import type { Room } from '../GameLoopDesign'
@@ -24,6 +24,15 @@ const forestRoom: Room = {
   zoneId: 'forest',
   encounters: [],
   exits: [{ direction: 'south', targetRoomId: 'town_hub' }],
+}
+
+const deepForestRoom: Room = {
+  id: 'zone_forest_deep',
+  name: 'Deep Forest',
+  description: 'Deeper woods',
+  zoneId: 'forest',
+  encounters: [],
+  exits: [{ direction: 'south', targetRoomId: 'zone_forest_entrance' }],
 }
 
 describe('Stamina and Rest', () => {
@@ -79,5 +88,16 @@ describe('Stamina and Rest', () => {
     state = gatherMaterials(state)
     expect(state.player.materials?.oak_wood).toBeGreaterThan(0)
     expect(state.player.stamina).toBeLessThan(staminaBefore)
+  })
+
+  it('returnToHub works at 0 stamina from deep zone without a hub exit', async () => {
+    const player = createDefaultPlayer({ stamina: 0 })
+    let state = initGame(player, deepForestRoom)
+    state = enterRoom(state, deepForestRoom)
+    state = await returnToHub(state)
+    expect(state.currentRoom.id).toBe('town_hub')
+    expect(state.currentRoom.isHub).toBe(true)
+    expect(state.player.stamina).toBe(0)
+    expect(state.statusMessage).toContain('Mossveil Hollow')
   })
 })

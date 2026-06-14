@@ -36,7 +36,14 @@
           },
           "archetype": "attacker",
           "xpReward": 60,
-          "goldReward": 18
+          "goldReward": 0,
+          "loot": [
+            {
+              "templateId": "troll_tusk",
+              "quantity": 1,
+              "chance": 0.15
+            }
+          ]
         }
       ]
     },
@@ -63,7 +70,8 @@
           "loot": [
             {
               "templateId": "mana_potion",
-              "quantity": 1
+              "quantity": 1,
+              "chance": 0.5
             }
           ]
         }

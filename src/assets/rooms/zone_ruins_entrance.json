@@ -36,7 +36,14 @@
           },
           "archetype": "attacker",
           "xpReward": 35,
-          "goldReward": 10
+          "goldReward": 0,
+          "loot": [
+            {
+              "templateId": "tarnished_coin",
+              "quantity": 3,
+              "chance": 0.7
+            }
+          ]
         },
         {
           "id": "ruins_skeleton_2",
@@ -52,7 +59,14 @@
           },
           "archetype": "attacker",
           "xpReward": 35,
-          "goldReward": 10
+          "goldReward": 0,
+          "loot": [
+            {
+              "templateId": "tarnished_coin",
+              "quantity": 3,
+              "chance": 0.7
+            }
+          ]
         }
       ]
     },
@@ -75,7 +89,7 @@
           },
           "archetype": "caster",
           "xpReward": 50,
-          "goldReward": 14
+          "goldReward": 0
         }
       ]
     }

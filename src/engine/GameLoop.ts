@@ -53,6 +53,7 @@ import {
   STAMINA_PER_MOVE,
   ENERGY_PER_WIN,
   EVENT_CHANCE_ON_EXPLORE,
+  START_ROOM_ID,
   type ZoneId,
 } from './gameConfig'
 import { saveGame, clearSave } from './saveGame'
@@ -298,6 +299,27 @@ export async function goBack(state: GameState): Promise<GameState> {
     return enterRoom(state, previousRoom, state.currentRoom.id)
   } catch (error) {
     console.error(`Failed to load previous room:`, error)
+    return state
+  }
+}
+
+/** Emergency return to town — always available while exploring, even at 0 stamina. */
+export async function returnToHub(state: GameState): Promise<GameState> {
+  if (state.phase !== 'room_exploring') return state
+  if (state.currentRoom.isHub) return state
+
+  try {
+    const hubRoom = await loadRoom(START_ROOM_ID)
+    const exhausted = state.player.stamina <= 0
+    const result = enterRoom(state, hubRoom, state.currentRoom.id)
+    return {
+      ...result,
+      statusMessage: exhausted
+        ? 'Exhausted, you limp back to Mossveil Hollow.'
+        : 'You return to Mossveil Hollow.',
+    }
+  } catch (error) {
+    console.error('Failed to return to hub:', error)
     return state
   }
 }
@@ -588,6 +610,21 @@ function detectZoneBossDefeated(enemies: Enemy[], zoneId?: string): ZoneId | nul
   return null
 }
 
+function resolveEnemyLoot(
+  enemy: Enemy,
+  rng: SeededRandom
+): Array<{ templateId: string; quantity: number }> {
+  if (!enemy.loot?.length) return []
+  const drops: Array<{ templateId: string; quantity: number }> = []
+  for (const drop of enemy.loot) {
+    const chance = drop.chance ?? 1
+    if (rng.next() < chance) {
+      drops.push({ templateId: drop.templateId, quantity: drop.quantity })
+    }
+  }
+  return drops
+}
+
 export function endEncounter(
   state: GameState,
   result: EncounterResult,
@@ -610,14 +647,13 @@ export function endEncounter(
   let phase: GameState['phase'] = result === 'loss' ? 'game_over' : 'combat_results'
 
   if (result === 'win') {
+    const lootRng = new SeededRandom(
+      generateCombatSeed(state, state.turnCount) ^ state.currentEncounter.enemies.length
+    )
     for (const enemy of state.currentEncounter.enemies) {
       totalXp += enemy.xpReward || 0
-      totalGold += enemy.goldReward || Math.floor((enemy.level || 1) * 5 + 5)
-      if (enemy.loot) {
-        for (const drop of enemy.loot) {
-          totalLoot.push({ templateId: drop.templateId, quantity: drop.quantity })
-        }
-      }
+      totalGold += enemy.goldReward ?? 0
+      totalLoot.push(...resolveEnemyLoot(enemy, lootRng))
       flags[`defeated_${enemy.id}`] = true
     }
 

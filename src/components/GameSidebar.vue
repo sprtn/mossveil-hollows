@@ -78,6 +78,7 @@ import { Teleport } from 'vue'
 import type { Ref } from 'vue'
 import type { GameState, PlayerStatKey } from '@/engine/GameLoopDesign'
 import { allocateAttributePoint, goToRoom } from '@/engine/GameLoop'
+import { START_ROOM_ID } from '@/engine/gameConfig'
 import { loadRoom } from '@/engine/RoomManager'
 import { getEffectiveStats } from '@/engine/ItemDatabase'
 import { statIcons, statDescriptions, resourceIcons } from '@/utils/icons'
@@ -201,6 +202,7 @@ const visibleRooms = computed(() => {
   for (const exit of exits) {
     // Only show non-hidden exits
     if (exit.hidden) continue
+    if (!currentRoom.isHub && exit.targetRoomId === START_ROOM_ID) continue
     
     // Check if locked exit requires item
     if (exit.locked) {

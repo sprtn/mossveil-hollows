@@ -1,0 +1,10 @@
+{
+  "id": "tarnished_coin",
+  "name": "Tarnished Coin",
+  "description": "Ancient coins clutched in a skeleton's grasp.",
+  "type": "crafting",
+  "rarity": "common",
+  "stackable": true,
+  "maxStackSize": 99,
+  "sellPrice": 4
+}
