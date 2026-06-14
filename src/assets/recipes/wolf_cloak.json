@@ -1,0 +1,1 @@
+{"id":"wolf_cloak","name":"Wolf Pelt Cloak","station":"workbench","npcId":"garrick_smith","requires":{"materials":{"wolf_pelt":2,"cloth_scrap":1},"gold":8},"output":{"itemId":"wolf_cloak","qty":1},"unlockedBy":{"building":"workbench","buildingLevel":1}}

@@ -1,0 +1,79 @@
+{
+  "id": "zone_ruins_deep",
+  "type": "static",
+  "name": "Throne of Ash",
+  "description": "A shattered throne room stretches before you. Arcane symbols glow faintly on the floor. Something powerful slumbers at the far end.",
+  "picture": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&q=80",
+  "zoneId": "ruins",
+  "difficulty": 4,
+  "exits": [
+    {
+      "direction": "south",
+      "targetRoomId": "zone_ruins_entrance"
+    },
+    {
+      "direction": "north",
+      "targetRoomId": "zone_ruins_boss"
+    }
+  ],
+  "encounters": [
+    {
+      "id": "ruins_knight",
+      "type": "random",
+      "triggerChance": 0.45,
+      "enemies": [
+        {
+          "id": "ruins_knight_1",
+          "name": "Fallen Knight",
+          "hp": 45,
+          "maxHp": 45,
+          "level": 4,
+          "stats": {
+            "strength": 10,
+            "defense": 7,
+            "agility": 5,
+            "dexterity": 4
+          },
+          "archetype": "defender",
+          "xpReward": 65,
+          "goldReward": 20,
+          "loot": [
+            {
+              "templateId": "steel_sword",
+              "quantity": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ruins_mage",
+      "type": "random",
+      "triggerChance": 0.4,
+      "enemies": [
+        {
+          "id": "ruins_mage_1",
+          "name": "Corrupted Mage",
+          "hp": 38,
+          "maxHp": 38,
+          "level": 4,
+          "stats": {
+            "strength": 8,
+            "defense": 4,
+            "agility": 7,
+            "dexterity": 6
+          },
+          "archetype": "caster",
+          "xpReward": 70,
+          "goldReward": 22,
+          "loot": [
+            {
+              "templateId": "mana_potion",
+              "quantity": 2
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

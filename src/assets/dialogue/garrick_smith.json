@@ -1,0 +1,63 @@
+{
+  "id": "garrick_smith_dialogue",
+  "npcId": "garrick_smith",
+  "nodes": [
+    {
+      "id": "start",
+      "text": "Garrick hammers at his anvil. 'Need gear? Build a workbench and commission what you need.'",
+      "responses": [
+        {
+          "text": "Why is iron gear so costly here?",
+          "requires": [{ "kind": "market_supply_below", "category": "iron", "value": 5 }],
+          "next": "iron_scarce"
+        },
+        {
+          "text": "Iron prices seem to be dropping.",
+          "requires": [{ "kind": "market_supply_at_least", "category": "iron", "value": 5 }],
+          "next": "iron_plenty"
+        },
+        {
+          "text": "What do I need for a workbench?",
+          "requires": [{ "kind": "building_below", "building": "workbench", "level": 1 }],
+          "next": "craft_info"
+        },
+        {
+          "text": "I'd like to commission gear.",
+          "requires": [{ "kind": "building_level", "building": "workbench", "level": 1 }],
+          "next": "commission"
+        },
+        {
+          "text": "How are my orders coming along?",
+          "requires": [{ "kind": "has_craft_orders", "npcId": "garrick_smith" }],
+          "next": "orders_status"
+        },
+        { "text": "Farewell.", "outcomes": [] }
+      ]
+    },
+    {
+      "id": "iron_scarce",
+      "text": "'No ore in Mossveil Hollow yet — every blade and nail is freighted in. Sell iron here and prices will ease as the town learns to smith locally.'",
+      "responses": [{ "text": "Understood.", "next": "start" }]
+    },
+    {
+      "id": "iron_plenty",
+      "text": "'The market's glutted with iron. My commissions and Sera's freighted blades both come cheaper now.'",
+      "responses": [{ "text": "Good to hear.", "next": "start" }]
+    },
+    {
+      "id": "craft_info",
+      "text": "'Upgrade the workbench in town — oak wood and gold. Once it's built, use the Craft panel to place orders. I work one piece a day.'",
+      "responses": [{ "text": "Understood.", "next": "start" }]
+    },
+    {
+      "id": "commission",
+      "text": "'Open my Craft panel in Services — pick a recipe and place an order. Pay materials and gold up front; I deliver after a day's work. Upgrade the workbench and I can finish two orders per rest day.'",
+      "responses": [{ "text": "Got it.", "next": "start" }]
+    },
+    {
+      "id": "orders_status",
+      "text": "'Still at the forge. Rest, sleep, or stay at the inn — finished work arrives when the day turns.'",
+      "responses": [{ "text": "Back", "next": "start" }]
+    }
+  ]
+}

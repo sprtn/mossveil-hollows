@@ -29,78 +29,33 @@
     <div class="sidebar-section">
       <h3 class="sidebar-title">Stats</h3>
       <div class="stats-list">
-        <div 
-          class="stat-entry" 
-          @mouseenter="showTooltip($event, 'strength')" 
+        <div
+          v-for="stat in statKeys"
+          :key="stat"
+          class="stat-entry"
+          @mouseenter="showTooltip($event, stat)"
           @mouseleave="hideTooltip"
         >
           <div class="stat-entry-header">
-            <span class="stat-name">
-              Attack:
-              <span class="tooltip-trigger">ℹ️</span>
-            </span>
-            <button
-              v-if="unallocatedPoints > 0"
-              @click="allocatePoint('strength')"
-              class="allocate-button"
-              title="Allocate 1 attribute point to Attack"
-            >
-              +
-            </button>
+            <span class="stat-name">{{ statIcons[stat] }} {{ statLabel(stat) }}</span>
+            <button v-if="unallocatedPoints > 0" @click="allocatePoint(stat)" class="allocate-button">+</button>
           </div>
-          <span class="stat-value">{{ player.stats.strength }}</span>
-        </div>
-        <div 
-          class="stat-entry" 
-          @mouseenter="showTooltip($event, 'defense')" 
-          @mouseleave="hideTooltip"
-        >
-          <div class="stat-entry-header">
-            <span class="stat-name">
-              Defense:
-              <span class="tooltip-trigger">ℹ️</span>
-            </span>
-            <button
-              v-if="unallocatedPoints > 0"
-              @click="allocatePoint('defense')"
-              class="allocate-button"
-              title="Allocate 1 attribute point to Defense"
-            >
-              +
-            </button>
-          </div>
-          <span class="stat-value">{{ player.stats.defense }}</span>
-        </div>
-        <div 
-          class="stat-entry" 
-          @mouseenter="showTooltip($event, 'speed')" 
-          @mouseleave="hideTooltip"
-        >
-          <div class="stat-entry-header">
-            <span class="stat-name">
-              Speed:
-              <span class="tooltip-trigger">ℹ️</span>
-            </span>
-            <button
-              v-if="unallocatedPoints > 0"
-              @click="allocatePoint('speed')"
-              class="allocate-button"
-              title="Allocate 1 attribute point to Speed"
-            >
-              +
-            </button>
-          </div>
-          <span class="stat-value">{{ player.stats.speed }}</span>
+          <span class="stat-value">
+            {{ effectiveStats[stat] }}
+            <span v-if="statModifier(stat) !== 0" class="stat-modifier">({{ formatModifier(statModifier(stat)) }})</span>
+          </span>
+          <span v-if="derived(stat)" class="stat-derived">{{ derived(stat) }}</span>
         </div>
         <div class="stat-entry">
-          <span class="stat-name">Level:</span>
-          <span class="stat-value">{{ player.level }}</span>
-        </div>
-        <div class="stat-entry">
-          <span class="stat-name">HP:</span>
+          <span class="stat-name">{{ resourceIcons.hp }} HP</span>
           <span class="stat-value">{{ player.hp }}/{{ player.maxHp }}</span>
         </div>
       </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3 class="sidebar-title">Resources</h3>
+      <ResourceList />
     </div>
     
     <!-- Tooltip rendered outside sidebar bounds -->
@@ -121,14 +76,21 @@
 import { inject, computed, ref } from 'vue'
 import { Teleport } from 'vue'
 import type { Ref } from 'vue'
-import type { GameState } from '@/engine/GameLoopDesign'
+import type { GameState, PlayerStatKey } from '@/engine/GameLoopDesign'
 import { allocateAttributePoint, goToRoom } from '@/engine/GameLoop'
 import { loadRoom } from '@/engine/RoomManager'
+import { getEffectiveStats } from '@/engine/ItemDatabase'
+import { statIcons, statDescriptions, resourceIcons } from '@/utils/icons'
+import { derivedStatText, derivedStatProjection } from '@/engine/statDisplay'
+import ResourceList from './ResourceList.vue'
+
+const statKeys: PlayerStatKey[] = ['strength', 'constitution', 'dexterity', 'agility', 'defense']
 
 const gameState = inject<Ref<GameState>>('gameState')!
 const dispatch = inject<(state: GameState) => void>('dispatch')!
 
 const player = computed(() => gameState.value.player)
+const effectiveStats = computed(() => getEffectiveStats(player.value))
 const currentRoomId = computed(() => gameState.value.currentRoom.id)
 const roomHistory = computed(() => gameState.value.roomHistory || [])
 
@@ -138,14 +100,31 @@ const tooltipVisible = ref(false)
 const tooltipText = ref('')
 const tooltipStyle = ref({ top: '0px', left: '0px' })
 
-const tooltipDescriptions: Record<string, string> = {
-  strength: 'Increases damage dealt when attacking enemies. Each point adds 1 to your base attack damage.',
-  defense: 'Reduces damage taken from enemy attacks. Each point reduces incoming damage by 1.',
-  speed: 'Reserved for future turn order mechanics. Currently has no effect in combat.',
+function statLabel(stat: PlayerStatKey): string {
+  return stat.charAt(0).toUpperCase() + stat.slice(1)
 }
 
-function showTooltip(event: MouseEvent, stat: string) {
-  tooltipText.value = tooltipDescriptions[stat] || ''
+function statModifier(stat: PlayerStatKey): number {
+  return effectiveStats.value[stat] - player.value.stats[stat]
+}
+
+function formatModifier(modifier: number): string {
+  return modifier > 0 ? `+${modifier}` : `${modifier}`
+}
+
+function derived(stat: PlayerStatKey): string {
+  return derivedStatText(stat, effectiveStats.value[stat])
+}
+
+function showTooltip(event: MouseEvent, stat: PlayerStatKey) {
+  const base = player.value.stats[stat]
+  const modifier = statModifier(stat)
+  const total = effectiveStats.value[stat]
+  const modifierText = modifier === 0 ? 'no gear bonus' : `gear ${formatModifier(modifier)}`
+  const projection = derivedStatProjection(stat, total)
+  tooltipText.value =
+    `${statDescriptions[stat]} Base ${base}, ${modifierText}, total ${total}.` +
+    (projection ? `\n${projection}` : '')
   const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
   const tooltipWidth = 250
   const tooltipHeight = 60 // Approximate height
@@ -178,7 +157,7 @@ function hideTooltip() {
   tooltipVisible.value = false
 }
 
-function allocatePoint(stat: 'strength' | 'defense' | 'speed') {
+function allocatePoint(stat: PlayerStatKey) {
   const newState = allocateAttributePoint(gameState.value, stat)
   dispatch(newState)
 }
@@ -217,15 +196,21 @@ const visibleRooms = computed(() => {
   // Add connected rooms (from exits)
   const currentRoom = gameState.value.currentRoom
   const exits = currentRoom.exits || []
-  const inventoryIds = gameState.value.player.inventory.map((item) => item.id)
+  const inventoryIds = gameState.value.player.inventory.map((item) => item.templateId)
   
   for (const exit of exits) {
     // Only show non-hidden exits
     if (exit.hidden) continue
     
     // Check if locked exit requires item
-    if (exit.locked && exit.requiresItem) {
-      if (!inventoryIds.includes(exit.requiresItem)) continue
+    if (exit.locked) {
+      if (exit.requiresItems?.length) {
+        if (!exit.requiresItems.every((id) => inventoryIds.includes(id))) continue
+      } else if (exit.requiresItem) {
+        if (!inventoryIds.includes(exit.requiresItem)) continue
+      } else {
+        continue
+      }
     }
     
     if (!seen.has(exit.targetRoomId)) {
@@ -280,8 +265,8 @@ const isNavigating = ref(false)
 <style scoped>
 .game-sidebar {
   width: 220px;
-  background-color: #1a1a1a;
-  border-right: 2px solid #444;
+  background-color: var(--color-panel);
+  border-right: 1px solid var(--color-border);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -300,10 +285,11 @@ const isNavigating = ref(false)
   margin: 0;
   font-size: 14px;
   font-weight: 700;
-  color: #4caf50;
+  color: var(--color-accent);
+  font-family: var(--font-display);
   text-transform: uppercase;
   letter-spacing: 1px;
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid var(--color-border);
   padding-bottom: 8px;
 }
 
@@ -315,16 +301,16 @@ const isNavigating = ref(false)
 
 .room-node {
   padding: 8px 12px;
-  background-color: #2a2a2a;
-  border: 1px solid #444;
-  border-radius: 4px;
+  background-color: var(--color-panel-inset);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   transition: all 0.2s;
 }
 
 .room-node.current {
-  background-color: #2a4a2a;
-  border-color: #4caf50;
-  box-shadow: 0 0 8px rgba(76, 175, 80, 0.3);
+  background-color: rgba(107, 155, 90, 0.15);
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-glow);
 }
 
 .room-node.connected {
@@ -388,9 +374,9 @@ const isNavigating = ref(false)
   flex-direction: column;
   gap: 4px;
   padding: 8px 12px;
-  background-color: #2a2a2a;
-  border-radius: 4px;
-  border-left: 3px solid #444;
+  background-color: var(--color-panel-inset);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--color-border);
   cursor: help;
   position: relative;
 }
@@ -426,6 +412,20 @@ const isNavigating = ref(false)
   font-size: 14px;
   color: #ffffff;
   font-weight: 700;
+}
+
+.stat-modifier {
+  color: var(--color-accent-bright);
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.stat-derived {
+  font-size: 10px;
+  color: var(--color-accent);
+  font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
 .allocate-button {
@@ -464,7 +464,7 @@ const isNavigating = ref(false)
   border-radius: 4px;
   max-width: 250px;
   width: max-content;
-  white-space: normal;
+  white-space: pre-line;
   z-index: 10000;
   pointer-events: none;
   transition: opacity 0.2s;

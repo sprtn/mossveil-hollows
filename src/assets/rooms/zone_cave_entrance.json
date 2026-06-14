@@ -1,0 +1,89 @@
+{
+  "id": "zone_cave_entrance",
+  "type": "static",
+  "name": "Cave Mouth",
+  "description": "Cold air flows from a jagged opening in the hillside. Stalactites drip steadily. Your torch flickers against damp stone walls.",
+  "picture": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80",
+  "zoneId": "cave",
+  "difficulty": 2,
+  "exits": [
+    {
+      "direction": "west",
+      "targetRoomId": "town_hub"
+    },
+    {
+      "direction": "north",
+      "targetRoomId": "zone_cave_deep"
+    }
+  ],
+  "encounters": [
+    {
+      "id": "cave_bats",
+      "type": "random",
+      "triggerChance": 0.4,
+      "enemies": [
+        {
+          "id": "cave_bat_swarm",
+          "name": "Cave Bat",
+          "hp": 12,
+          "maxHp": 12,
+          "level": 2,
+          "stats": {
+            "strength": 4,
+            "defense": 1,
+            "agility": 11,
+            "dexterity": 10
+          },
+          "archetype": "attacker",
+          "xpReward": 20,
+          "goldReward": 5
+        },
+        {
+          "id": "cave_bat_swarm_2",
+          "name": "Cave Bat",
+          "hp": 12,
+          "maxHp": 12,
+          "level": 2,
+          "stats": {
+            "strength": 4,
+            "defense": 1,
+            "agility": 11,
+            "dexterity": 10
+          },
+          "archetype": "attacker",
+          "xpReward": 20,
+          "goldReward": 5
+        }
+      ]
+    },
+    {
+      "id": "cave_slime",
+      "type": "random",
+      "triggerChance": 0.45,
+      "enemies": [
+        {
+          "id": "cave_slime_1",
+          "name": "Cave Slime",
+          "hp": 30,
+          "maxHp": 30,
+          "level": 2,
+          "stats": {
+            "strength": 6,
+            "defense": 5,
+            "agility": 3,
+            "dexterity": 4
+          },
+          "archetype": "defender",
+          "xpReward": 40,
+          "goldReward": 12,
+          "loot": [
+            {
+              "templateId": "antidote",
+              "quantity": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

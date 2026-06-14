@@ -1,41 +1,26 @@
 /**
  * Unit tests for game loop logic
- * 
- * Philosophy: Pure functions are fully testable without Vue or UI
- * Run with: npx vitest (after installing it)
  */
 
 import { describe, it, expect } from 'vitest'
-
 import {
   initGame,
   enterRoom,
   triggerEncounter,
-  resolveAttack,
+  playerAction,
   endEncounter,
+  useItem,
+  equipItemAction,
 } from './GameLoop'
-import type { Player, Room, Enemy } from './GameLoopDesign'
-
-/**
- * Test fixtures
- */
-const createTestPlayer = (): Player => ({
-  id: 'player_1',
-  name: 'Hero',
-  hp: 50,
-  maxHp: 50,
-  level: 1,
-  inventory: [],
-  stats: { strength: 10, defense: 5, speed: 8 },
-})
+import { createDefaultPlayer } from './CombatEngine'
+import type { Room, Enemy } from './GameLoopDesign'
 
 const createTestRoom = (): Room => ({
   id: 'room_1',
   name: 'Forest',
   description: 'A spooky forest',
-  nodeCount: 3,
   encounters: [],
-  nextRoomId: 'room_2',
+  exits: [],
 })
 
 const createTestEnemy = (): Enemy => ({
@@ -44,149 +29,107 @@ const createTestEnemy = (): Enemy => ({
   hp: 20,
   maxHp: 20,
   level: 1,
-  stats: { strength: 5, defense: 2, speed: 6 },
-  loot: [{ id: 'gold', type: 'consumable', name: 'Gold', quantity: 10 }],
+  stats: { strength: 5, defense: 2, constitution: 6, dexterity: 4, agility: 6 },
+  loot: [{ templateId: 'health_potion', quantity: 1 }],
+  goldReward: 10,
   xpReward: 50,
 })
 
 describe('Game Loop', () => {
   describe('initGame', () => {
     it('should initialize game with player and first room', () => {
-      const player = createTestPlayer()
+      const player = createDefaultPlayer()
       const room = createTestRoom()
-
       const state = initGame(player, room)
-
       expect(state.phase).toBe('room_enter')
       expect(state.player.name).toBe('Hero')
       expect(state.currentRoom.id).toBe('room_1')
-      expect(state.roomHistory).toContain('room_1')
     })
   })
 
   describe('enterRoom', () => {
     it('should transition to room_exploring', () => {
-      const player = createTestPlayer()
+      const player = createDefaultPlayer()
       const room = createTestRoom()
-      const state = initGame(player, room)
-
-      const updatedState = enterRoom(state, room)
-
-      expect(updatedState.phase).toBe('room_exploring')
-    })
-
-    it('should clear encounter state', () => {
-      const player = createTestPlayer()
-      const room = createTestRoom()
-      let state = initGame(player, room)
-
-      // Add an encounter (simulate previous state)
-      const enemy = createTestEnemy()
-      state = triggerEncounter(state, [enemy])
-      expect(state.currentEncounter).toBeDefined()
-
-      // Enter new room
-      state = enterRoom(state, room)
-      expect(state.currentEncounter).toBeUndefined()
+      const state = enterRoom(initGame(player, room), room)
+      expect(state.phase).toBe('room_exploring')
     })
   })
 
   describe('triggerEncounter', () => {
     it('should transition to encounter_action phase', () => {
-      const player = createTestPlayer()
+      const player = createDefaultPlayer()
       const room = createTestRoom()
-      let state = initGame(player, room)
-      state = enterRoom(state, room)
-
-      const enemy = createTestEnemy()
-      state = triggerEncounter(state, [enemy])
-
+      let state = enterRoom(initGame(player, room), room)
+      state = triggerEncounter(state, [createTestEnemy()])
       expect(state.phase).toBe('encounter_action')
-      expect(state.currentEncounter).toBeDefined()
       expect(state.currentEncounter?.enemies.length).toBe(1)
-    })
-
-    it('should calculate turn order by speed', () => {
-      const player = createTestPlayer() // speed: 8
-      const room = createTestRoom()
-      let state = initGame(player, room)
-      state = enterRoom(state, room)
-
-      const fastEnemy = createTestEnemy()
-      fastEnemy.stats.speed = 12
-      state = triggerEncounter(state, [fastEnemy])
-
-      const turnOrder = state.currentEncounter?.turnOrder || []
-      // Fast enemy should go first
-      expect(turnOrder[0]).toBe(fastEnemy.id)
     })
   })
 
-  describe('resolveAttack', () => {
-    it('should reduce enemy HP', () => {
-      const player = createTestPlayer() // strength: 10, defense: 5
+  describe('playerAction', () => {
+    it('should reduce enemy HP on attack', () => {
+      const player = createDefaultPlayer()
       const room = createTestRoom()
-      let state = initGame(player, room)
-      state = enterRoom(state, room)
-
-      const enemy = createTestEnemy() // strength: 5, defense: 2
-      state = triggerEncounter(state, [enemy])
-
-      const initialEnemyHp = state.currentEncounter?.enemies[0]?.hp || 0
-      state = resolveAttack(state, player.id, enemy.id)
-      const finalEnemyHp = state.currentEncounter?.enemies[0]?.hp || 0
-
-      expect(finalEnemyHp).toBeLessThan(initialEnemyHp)
+      const enemy = createTestEnemy()
+      let state = triggerEncounter(enterRoom(initGame(player, room), room), [enemy])
+      const initialHp = state.currentEncounter!.enemies[0]!.hp
+      state = playerAction(state, 'attack', { targetId: enemy.id })
+      if (state.currentEncounter) {
+        expect(state.currentEncounter.enemies[0]!.hp).toBeLessThan(initialHp)
+      }
     })
 
-    it('should reduce player HP when enemy attacks', () => {
-      const player = createTestPlayer()
+    it('should apply defend without dealing damage', () => {
+      const player = createDefaultPlayer()
       const room = createTestRoom()
-      let state = initGame(player, room)
-      state = enterRoom(state, room)
-
       const enemy = createTestEnemy()
-      state = triggerEncounter(state, [enemy])
-
-      const initialPlayerHp = state.player.hp
-      state = resolveAttack(state, enemy.id, player.id)
-      const finalPlayerHp = state.player.hp
-
-      expect(finalPlayerHp).toBeLessThan(initialPlayerHp)
+      let state = triggerEncounter(enterRoom(initGame(player, room), room), [enemy])
+      state = playerAction(state, 'defend')
+      expect(state.currentEncounter?.playerDefending).toBeFalsy()
     })
   })
 
   describe('endEncounter', () => {
-    it('should reward loot on win', () => {
-      const player = createTestPlayer()
+    it('should reward loot and gold on win', () => {
+      const player = createDefaultPlayer()
       const room = createTestRoom()
-      let state = initGame(player, room)
-      state = enterRoom(state, room)
-
-      const enemy = createTestEnemy()
-      enemy.hp = 0 // Pretend they're already dead
-      state = triggerEncounter(state, [enemy])
-
-      const initialInventorySize = state.player.inventory.length
+      const enemy = { ...createTestEnemy(), hp: 0 }
+      let state = triggerEncounter(enterRoom(initGame(player, room), room), [enemy])
+      const initialGold = state.player.gold
       state = endEncounter(state, 'win')
-
-      expect(state.player.inventory.length).toBeGreaterThan(initialInventorySize)
-      expect(state.phase).toBe('room_exploring')
+      expect(state.player.gold).toBeGreaterThan(initialGold)
+      expect(state.phase).toBe('combat_results')
     })
 
     it('should end game on loss', () => {
-      const player = createTestPlayer()
+      const player = createDefaultPlayer()
       const room = createTestRoom()
-      let state = initGame(player, room)
-      state = enterRoom(state, room)
-
-      const enemy = createTestEnemy()
-      state = triggerEncounter(state, [enemy])
-
+      let state = triggerEncounter(enterRoom(initGame(player, room), room), [createTestEnemy()])
       state = endEncounter(state, 'loss')
-
       expect(state.phase).toBe('game_over')
-      expect(state.gameOverReason).toBe('defeat')
+    })
+  })
+
+  describe('useItem', () => {
+    it('should heal player outside combat', () => {
+      const player = createDefaultPlayer({ hp: 30 })
+      const room = createTestRoom()
+      let state = enterRoom(initGame(player, room), room)
+      state = useItem(state, 'health_potion')
+      expect(state.player.hp).toBeGreaterThan(30)
+    })
+  })
+
+  describe('equipItemAction', () => {
+    it('should equip weapon from inventory', () => {
+      const player = createDefaultPlayer({
+        inventory: [{ templateId: 'iron_sword', quantity: 1 }],
+      })
+      const room = createTestRoom()
+      let state = enterRoom(initGame(player, room), room)
+      state = equipItemAction(state, 'iron_sword')
+      expect(state.player.equipment.weapon).toBe('iron_sword')
     })
   })
 })

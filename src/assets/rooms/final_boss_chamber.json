@@ -1,0 +1,47 @@
+{
+  "id": "final_boss_chamber",
+  "type": "static",
+  "name": "Chamber of the Shadow Lord",
+  "description": "You descend into a vast underground throne room. The Shadow Lord sits upon a throne of darkness, the source of corruption spreading through the three realms. This ends here.",
+  "picture": "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&q=80",
+  "isFinalBoss": true,
+  "difficulty": 6,
+  "exits": [
+    {
+      "direction": "up",
+      "targetRoomId": "final_gate"
+    }
+  ],
+  "encounters": [
+    {
+      "id": "final_boss_encounter",
+      "type": "fixed",
+      "onTrigger": "auto",
+      "enemies": [
+        {
+          "id": "shadow_lord",
+          "name": "Shadow Lord",
+          "hp": 150,
+          "maxHp": 150,
+          "level": 6,
+          "stats": {
+            "strength": 18,
+            "defense": 10,
+            "agility": 8,
+            "dexterity": 7
+          },
+          "archetype": "caster",
+          "isBoss": true,
+          "xpReward": 500,
+          "goldReward": 200,
+          "loot": [
+            {
+              "templateId": "legendary_sword",
+              "quantity": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

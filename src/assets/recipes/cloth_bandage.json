@@ -1,0 +1,1 @@
+{"id":"cloth_bandage","name":"Cloth Bandage","station":"alchemy","npcId":"maren_healer","requires":{"materials":{"cloth_scrap":3},"gold":3},"output":{"itemId":"health_potion","qty":1}}

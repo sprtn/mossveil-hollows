@@ -1,0 +1,83 @@
+{
+  "id": "zone_ruins_entrance",
+  "type": "static",
+  "name": "Fallen Gate",
+  "description": "Crumbling stone pillars frame the entrance to ancient ruins. Faded murals depict a forgotten kingdom. The air tastes of dust and magic.",
+  "picture": "https://images.unsplash.com/photo-1518173944277-3d9b4b0e8f3e?w=800&q=80",
+  "zoneId": "ruins",
+  "difficulty": 3,
+  "exits": [
+    {
+      "direction": "east",
+      "targetRoomId": "town_hub"
+    },
+    {
+      "direction": "north",
+      "targetRoomId": "zone_ruins_deep"
+    }
+  ],
+  "encounters": [
+    {
+      "id": "ruins_skeletons",
+      "type": "random",
+      "triggerChance": 0.5,
+      "enemies": [
+        {
+          "id": "ruins_skeleton_1",
+          "name": "Restless Skeleton",
+          "hp": 25,
+          "maxHp": 25,
+          "level": 3,
+          "stats": {
+            "strength": 7,
+            "defense": 3,
+            "agility": 5,
+            "dexterity": 4
+          },
+          "archetype": "attacker",
+          "xpReward": 35,
+          "goldReward": 10
+        },
+        {
+          "id": "ruins_skeleton_2",
+          "name": "Restless Skeleton",
+          "hp": 25,
+          "maxHp": 25,
+          "level": 3,
+          "stats": {
+            "strength": 7,
+            "defense": 3,
+            "agility": 5,
+            "dexterity": 4
+          },
+          "archetype": "attacker",
+          "xpReward": 35,
+          "goldReward": 10
+        }
+      ]
+    },
+    {
+      "id": "ruins_wraith",
+      "type": "random",
+      "triggerChance": 0.35,
+      "enemies": [
+        {
+          "id": "ruins_wraith_1",
+          "name": "Bound Wraith",
+          "hp": 32,
+          "maxHp": 32,
+          "level": 3,
+          "stats": {
+            "strength": 6,
+            "defense": 2,
+            "agility": 8,
+            "dexterity": 7
+          },
+          "archetype": "caster",
+          "xpReward": 50,
+          "goldReward": 14
+        }
+      ]
+    }
+  ]
+}

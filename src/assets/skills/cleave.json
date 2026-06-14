@@ -1,0 +1,1 @@
+{"id":"skill_cleave","name":"Cleave","branch":"might","description":"Sweep all enemies.","requires":["skill_power_strike"],"cost":2,"energyCost":3,"action":"skill_cleave"}

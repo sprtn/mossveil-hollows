@@ -1,0 +1,94 @@
+{
+  "id": "captain_bryn_dialogue",
+  "npcId": "captain_bryn",
+  "nodes": [
+    {
+      "id": "start",
+      "text": "Captain Bryn studies a map. 'The forest grows darker each day.'",
+      "responses": [
+        {
+          "text": "What can I do?",
+          "requires": [{ "kind": "not_has_quest", "questId": "tainted_grove" }],
+          "next": "quest_offer"
+        },
+        {
+          "text": "What was it you needed from me?",
+          "requires": [{ "kind": "has_active_quest", "questId": "tainted_grove" }],
+          "next": "quest_reminder"
+        },
+        {
+          "text": "The grove is cleansed.",
+          "requires": [{ "kind": "quest_completed", "questId": "tainted_grove" }],
+          "next": "quest_done"
+        },
+        { "text": "Train me.", "next": "training_intro" },
+        { "text": "Farewell.", "outcomes": [] }
+      ]
+    },
+    {
+      "id": "quest_offer",
+      "text": "'Gather corrupted sap, craft a Cleansing Draught, and destroy the Guardian.'",
+      "responses": [
+        {
+          "text": "I'll handle it.",
+          "outcomes": [
+            { "kind": "set_flag", "flag": "forest_quest_started", "value": true },
+            { "kind": "start_quest", "questId": "tainted_grove" }
+          ],
+          "next": "start"
+        },
+        { "text": "Not yet.", "next": "start" }
+      ]
+    },
+    {
+      "id": "quest_reminder",
+      "text": "'Purify the Tainted Grove — gather corrupted sap, have Garrick brew a Cleansing Draught, then slay the Forest Guardian. Return when it's done.'",
+      "responses": [{ "text": "Understood.", "next": "start" }]
+    },
+    {
+      "id": "quest_done",
+      "text": "'You did well. The forest breathes easier. Keep sharpening your skills — darker threats wait beyond the cave.'",
+      "responses": [{ "text": "Thank you.", "next": "start" }]
+    },
+    {
+      "id": "training_intro",
+      "text": "'Discipline wins wars. Pay fifteen gold for a skill point, then pick a technique from my regimen. I don't let green recruits waste coin.'",
+      "responses": [
+        {
+          "text": "Pay for a skill point (15g).",
+          "requires": [{ "kind": "gold_at_least", "amount": 15 }],
+          "outcomes": [
+            { "kind": "take_gold", "amount": 15 },
+            { "kind": "give_skill_point", "amount": 1 }
+          ],
+          "next": "training_success"
+        },
+        {
+          "text": "Show me the full training regimen.",
+          "outcomes": [{ "kind": "open_hub_panel", "panel": "train", "npcId": "captain_bryn" }]
+        },
+        { "text": "Back", "next": "start" }
+      ]
+    },
+    {
+      "id": "training_success",
+      "text": "'That's the discipline I expect. You've earned a skill point — spend it on a technique that'll keep you alive out there.'",
+      "responses": [
+        {
+          "text": "Train again (15g).",
+          "requires": [{ "kind": "gold_at_least", "amount": 15 }],
+          "outcomes": [
+            { "kind": "take_gold", "amount": 15 },
+            { "kind": "give_skill_point", "amount": 1 }
+          ],
+          "next": "training_success"
+        },
+        {
+          "text": "Show me the techniques.",
+          "outcomes": [{ "kind": "open_hub_panel", "panel": "train", "npcId": "captain_bryn" }]
+        },
+        { "text": "Back", "next": "start" }
+      ]
+    }
+  ]
+}

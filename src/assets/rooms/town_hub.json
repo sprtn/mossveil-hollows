@@ -1,0 +1,35 @@
+{
+  "id": "town_hub",
+  "type": "static",
+  "name": "Mossveil Hollow",
+  "description": "A sheltered hollow at the mossy forest edge. Merchants, healers, and adventurers gather here. Captain Bryn coordinates defense against the spreading corruption.",
+  "picture": "https://images.unsplash.com/photo-1763439307951-6a0b5d2ab95b?w=800&q=80",
+  "isHub": true,
+  "difficulty": 0,
+  "exits": [
+    { "direction": "north", "targetRoomId": "zone_forest_entrance" },
+    {
+      "direction": "east",
+      "targetRoomId": "zone_cave_entrance",
+      "locked": true,
+      "requiresItem": "forest_shard"
+    },
+    {
+      "direction": "west",
+      "targetRoomId": "zone_ruins_entrance",
+      "locked": true,
+      "requiresItem": "cave_shard"
+    },
+    {
+      "direction": "south",
+      "targetRoomId": "final_gate",
+      "locked": true,
+      "requiresItems": ["forest_shard", "cave_shard", "ruins_shard"]
+    }
+  ],
+  "encounters": [],
+  "flavor": {
+    "onEnter": "The warmth of the hearth welcomes you back.",
+    "atmosphere": "safe, bustling"
+  }
+}

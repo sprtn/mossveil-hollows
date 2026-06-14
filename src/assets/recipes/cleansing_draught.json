@@ -1,0 +1,1 @@
+{"id":"cleansing_draught","name":"Cleansing Draught","station":"alchemy","npcId":"maren_healer","requires":{"materials":{"corrupted_sap":5},"gold":0},"output":{"itemId":"cleansing_draught","qty":1},"unlockedBy":{"flag":"forest_quest_started"}}

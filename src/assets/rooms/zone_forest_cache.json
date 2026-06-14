@@ -1,0 +1,50 @@
+{
+  "id": "zone_forest_cache",
+  "type": "static",
+  "name": "Hidden Glade",
+  "description": "A secluded glade where corrupted sap pools among fallen leaves. Valuable for the Cleansing Draught.",
+  "picture": "https://images.unsplash.com/photo-1448375244129-9c16e9cc1d9f?w=800&q=80",
+  "zoneId": "forest",
+  "difficulty": 2,
+  "exits": [
+    {
+      "direction": "west",
+      "targetRoomId": "zone_forest_deep"
+    }
+  ],
+  "encounters": [
+    {
+      "id": "forest_cache_spider",
+      "type": "random",
+      "triggerChance": 0.5,
+      "enemies": [
+        {
+          "id": "cache_spider",
+          "name": "Giant Spider",
+          "hp": 16,
+          "maxHp": 16,
+          "level": 2,
+          "stats": {
+            "strength": 9,
+            "defense": 1,
+            "agility": 9,
+            "dexterity": 8
+          },
+          "archetype": "caster",
+          "xpReward": 28,
+          "goldReward": 3,
+          "loot": [
+            {
+              "templateId": "spider_silk",
+              "quantity": 1
+            },
+            {
+              "templateId": "corrupted_sap",
+              "quantity": 2
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

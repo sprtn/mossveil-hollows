@@ -1,0 +1,24 @@
+{
+  "id": "wounded_traveler",
+  "title": "Wounded Traveler",
+  "text": "A wounded traveler leans against a tree, clutching a satchel.",
+  "zone": "forest",
+  "weight": 2,
+  "once": true,
+  "choices": [
+    {
+      "text": "Help them (give 5 gold)",
+      "requires": [{ "kind": "gold_at_least", "amount": 5 }],
+      "outcomes": [
+        { "kind": "take_gold", "amount": 5 },
+        { "kind": "give_material", "materialId": "corrupted_sap", "qty": 1 }
+      ],
+      "resultText": "You give 5 gold. Grateful, they share a vial of corrupted sap from the deep woods."
+    },
+    {
+      "text": "Demand their satchel",
+      "outcomes": [{ "kind": "start_combat", "encounterId": "forest_ambush" }],
+      "resultText": "They weren't as helpless as they seemed..."
+    }
+  ]
+}

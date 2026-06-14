@@ -1,0 +1,17 @@
+{
+  "id": "workbench",
+  "name": "Workbench",
+  "description": "Garrick's crafting station for wooden gear and stakes.",
+  "levels": [
+    {
+      "cost": { "gold": 30, "materials": { "oak_wood": 3 } },
+      "unlocksText": "Unlocks basic weapon and armor recipes at Garrick's forge.",
+      "effects": [{ "kind": "set_flag", "flag": "workbench_built", "value": true }]
+    },
+    {
+      "cost": { "gold": 60, "materials": { "oak_wood": 8, "boar_hide": 2 } },
+      "unlocksText": "Garrick completes 2 craft orders per rest day.",
+      "effects": []
+    }
+  ]
+}

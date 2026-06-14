@@ -1,0 +1,1 @@
+{"id":"ambush","title":"Ambush!","text":"Bandits leap from the underbrush!","zone":"forest","weight":2,"choices":[{"text":"Fight!","outcomes":[{"kind":"start_combat","encounterId":"forest_ambush"}],"resultText":"Steel clashes in the forest."}]}

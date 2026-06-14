@@ -1,0 +1,20 @@
+{
+  "id": "logging_camp",
+  "name": "Logging Camp",
+  "description": "Organized woodcutting — gather more oak in the forest.",
+  "production": {
+    "outputMaterialId": "oak_wood",
+    "outputPerDay": 2,
+    "labourGoldPerDay": 5,
+    "fairWageGold": 5,
+    "maxLabourGold": 10,
+    "minLevel": 1
+  },
+  "levels": [
+    {
+      "cost": { "gold": 50, "materials": { "oak_wood": 5 } },
+      "unlocksText": "+1 oak wood per Gather action in the forest.",
+      "effects": [{ "kind": "set_flag", "flag": "logging_camp_built", "value": true }]
+    }
+  ]
+}

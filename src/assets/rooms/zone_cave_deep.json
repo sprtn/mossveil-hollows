@@ -1,0 +1,73 @@
+{
+  "id": "zone_cave_deep",
+  "type": "static",
+  "name": "Crystal Caverns",
+  "description": "Luminescent crystals line the walls, casting eerie blue light. The passage opens into a vast underground chamber.",
+  "picture": "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&q=80",
+  "zoneId": "cave",
+  "difficulty": 3,
+  "exits": [
+    {
+      "direction": "south",
+      "targetRoomId": "zone_cave_entrance"
+    },
+    {
+      "direction": "north",
+      "targetRoomId": "zone_cave_boss"
+    }
+  ],
+  "encounters": [
+    {
+      "id": "cave_troll",
+      "type": "random",
+      "triggerChance": 0.45,
+      "enemies": [
+        {
+          "id": "cave_troll_1",
+          "name": "Cave Troll",
+          "hp": 50,
+          "maxHp": 50,
+          "level": 3,
+          "stats": {
+            "strength": 11,
+            "defense": 5,
+            "agility": 4,
+            "dexterity": 4
+          },
+          "archetype": "attacker",
+          "xpReward": 60,
+          "goldReward": 18
+        }
+      ]
+    },
+    {
+      "id": "cave_witch",
+      "type": "random",
+      "triggerChance": 0.35,
+      "enemies": [
+        {
+          "id": "cave_witch_1",
+          "name": "Cave Witch",
+          "hp": 35,
+          "maxHp": 35,
+          "level": 3,
+          "stats": {
+            "strength": 5,
+            "defense": 3,
+            "agility": 6,
+            "dexterity": 5
+          },
+          "archetype": "caster",
+          "xpReward": 55,
+          "goldReward": 15,
+          "loot": [
+            {
+              "templateId": "mana_potion",
+              "quantity": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

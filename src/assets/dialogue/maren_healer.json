@@ -1,0 +1,53 @@
+{
+  "id": "maren_healer_dialogue",
+  "npcId": "maren_healer",
+  "nodes": [
+    {
+      "id": "start",
+      "text": "Maren tends her herbs. 'Spider silk makes the best antidotes.'",
+      "responses": [
+        {
+          "text": "Deliver the 3 spider silk.",
+          "requires": [
+            { "kind": "quest_stage", "questId": "silk_supply", "stageId": "deliver" },
+            { "kind": "has_material", "materialId": "spider_silk", "qty": 3 }
+          ],
+          "outcomes": [{ "kind": "set_flag", "flag": "silk_supply_delivered", "value": true }]
+        },
+        {
+          "text": "I can gather silk.",
+          "requires": [{ "kind": "not_has_quest", "questId": "silk_supply" }],
+          "outcomes": [{ "kind": "start_quest", "questId": "silk_supply" }],
+          "next": "start"
+        },
+        {
+          "text": "What was it you needed?",
+          "requires": [{ "kind": "has_active_quest", "questId": "silk_supply" }],
+          "next": "quest_reminder"
+        },
+        {
+          "text": "Silk delivered.",
+          "requires": [{ "kind": "quest_completed", "questId": "silk_supply" }],
+          "next": "quest_done"
+        },
+        { "text": "About the corruption.", "next": "lore" },
+        { "text": "Farewell.", "outcomes": [] }
+      ]
+    },
+    {
+      "id": "quest_reminder",
+      "text": "'Three bundles of spider silk from the deep forest. I'll pay well once you deliver.'",
+      "responses": [{ "text": "Understood.", "next": "start" }]
+    },
+    {
+      "id": "quest_done",
+      "text": "'This silk will last me a while. Thank you.'",
+      "responses": [{ "text": "Back", "next": "start" }]
+    },
+    {
+      "id": "lore",
+      "text": "'Corrupted sap pools where the Guardian once stood. Purge it and the woods may heal.'",
+      "responses": [{ "text": "Thank you.", "next": "start" }]
+    }
+  ]
+}

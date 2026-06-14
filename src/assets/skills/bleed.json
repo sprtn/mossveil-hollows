@@ -1,0 +1,1 @@
+{"id":"skill_bleed","name":"Bleed","branch":"hunter","description":"Apply stacking bleed damage.","requires":["skill_precise_shot"],"cost":2,"energyCost":3,"action":"skill_bleed"}

@@ -1,0 +1,1 @@
+{"id":"skill_bandage","name":"Bandage","branch":"survival","description":"Heal yourself in combat.","requires":[],"cost":1,"energyCost":2,"action":"skill_bandage"}

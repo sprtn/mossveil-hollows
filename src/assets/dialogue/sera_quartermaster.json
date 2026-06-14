@@ -1,0 +1,44 @@
+{
+  "id": "sera_quartermaster_dialogue",
+  "npcId": "sera_quartermaster",
+  "nodes": [
+    {
+      "id": "start",
+      "text": "Sera counts her wares. 'Raw pelts and timber go through the Market board — that's where caravans trade. My stall downstairs is for finished goods.'",
+      "responses": [
+        {
+          "text": "You know me well enough to deal straight.",
+          "requires": [{ "kind": "vendor_tier_at_least", "vendorId": "sera_quartermaster", "tier": 2 }],
+          "next": "trusted"
+        },
+        {
+          "text": "Where do I sell wolf pelts?",
+          "requires": [{ "kind": "not_has_flag", "flag": "sera_supply_intro" }],
+          "next": "supply_intro"
+        },
+        {
+          "text": "Remind me about the market.",
+          "requires": [{ "kind": "has_flag", "flag": "sera_supply_intro" }],
+          "next": "supply_intro"
+        },
+        { "text": "Farewell.", "outcomes": [] }
+      ]
+    },
+    {
+      "id": "trusted",
+      "text": "'You've traded enough that I save the good bundles for you. Prices at my finished-goods stall should reflect that — pelts and ore still go on the Market board.'",
+      "responses": [{ "text": "Back", "next": "start" }]
+    },
+    {
+      "id": "supply_intro",
+      "text": "'Open the Market tab in town. Sell what you carry — it goes into local stock at live prices. Need oak or cloth? Buy it back from the board if traders have listed any. I don't take pelts hand-to-hand anymore.'",
+      "responses": [
+        {
+          "text": "Got it — Market tab.",
+          "outcomes": [{ "kind": "set_flag", "flag": "sera_supply_intro", "value": true }],
+          "next": "start"
+        }
+      ]
+    }
+  ]
+}

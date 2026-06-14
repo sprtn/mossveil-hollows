@@ -9,5 +9,7 @@
   "weight": 0.2,
   "effect": "heal_health",
   "power": 30,
-  "duration": null
+  "duration": null,
+  "buyPrice": 20,
+  "sellPrice": 10
 }

@@ -1,0 +1,21 @@
+{
+  "id": "silk_supply",
+  "name": "Silk Supply",
+  "stages": [
+    {
+      "id": "collect_silk",
+      "description": "Gather 3 spider silk for Maren's remedies.",
+      "objective": { "type": "collect_material", "target": "spider_silk", "count": 3 },
+      "rewards": []
+    },
+    {
+      "id": "deliver",
+      "description": "Deliver the spider silk to Maren.",
+      "objective": { "type": "set_flag", "target": "silk_supply_delivered" },
+      "rewards": [
+        { "kind": "take_material", "materialId": "spider_silk", "qty": 3 },
+        { "kind": "give_gold", "amount": 15 }
+      ]
+    }
+  ]
+}

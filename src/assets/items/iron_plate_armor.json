@@ -1,7 +1,7 @@
 {
   "id": "iron_plate_armor",
   "name": "Iron Plate Armor",
-  "description": "Heavy protective gear. Increases defense by 6.",
+  "description": "Heavy protective gear. Increases defense by 10.",
   "type": "armor",
   "rarity": "uncommon",
   "stackable": false,
@@ -10,5 +10,7 @@
   "defenseBonus": 6,
   "statBonus": {
     "defense": 4
-  }
+  },
+  "buyPrice": 70,
+  "sellPrice": 35
 }

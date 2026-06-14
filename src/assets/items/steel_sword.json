@@ -1,7 +1,7 @@
 {
   "id": "steel_sword",
   "name": "Steel Sword",
-  "description": "A well-crafted steel blade. Increases damage by 8.",
+  "description": "A well-crafted steel blade. Increases attack by 11.",
   "type": "weapon",
   "rarity": "uncommon",
   "stackable": false,
@@ -9,5 +9,7 @@
   "damageBonus": 8,
   "statBonus": {
     "strength": 3
-  }
+  },
+  "buyPrice": 80,
+  "sellPrice": 40
 }

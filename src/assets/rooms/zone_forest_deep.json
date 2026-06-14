@@ -1,0 +1,83 @@
+{
+  "id": "zone_forest_deep",
+  "type": "static",
+  "name": "Tainted Depths",
+  "description": "The air grows thick. Dark sap oozes from wounded trees. Corruption spreads through the undergrowth.",
+  "picture": "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?w=800&q=80",
+  "zoneId": "forest",
+  "difficulty": 2,
+  "exits": [
+    {
+      "direction": "south",
+      "targetRoomId": "zone_forest_entrance"
+    },
+    {
+      "direction": "east",
+      "targetRoomId": "zone_forest_cache"
+    },
+    {
+      "direction": "north",
+      "targetRoomId": "zone_forest_boss"
+    }
+  ],
+  "encounters": [
+    {
+      "id": "forest_bandits",
+      "type": "random",
+      "triggerChance": 0.4,
+      "enemies": [
+        {
+          "id": "bandit_scout_1",
+          "name": "Bandit Scout",
+          "hp": 26,
+          "maxHp": 26,
+          "level": 2,
+          "stats": {
+            "strength": 13,
+            "defense": 3,
+            "agility": 7,
+            "dexterity": 6
+          },
+          "archetype": "attacker",
+          "xpReward": 40,
+          "goldReward": 8,
+          "loot": [
+            {
+              "templateId": "cloth_scrap",
+              "quantity": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "forest_boar",
+      "type": "random",
+      "triggerChance": 0.35,
+      "enemies": [
+        {
+          "id": "forest_boar_1",
+          "name": "Forest Boar",
+          "hp": 34,
+          "maxHp": 34,
+          "level": 2,
+          "stats": {
+            "strength": 12,
+            "defense": 5,
+            "agility": 4,
+            "dexterity": 4
+          },
+          "archetype": "defender",
+          "xpReward": 45,
+          "goldReward": 6,
+          "loot": [
+            {
+              "templateId": "boar_hide",
+              "quantity": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

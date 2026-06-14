@@ -1,76 +1,84 @@
 <template>
   <div class="encounter-screen">
     <div class="encounter-header">
-      <h1>⚔️ ENCOUNTER</h1>
+      <h1>ENCOUNTER</h1>
+      <div v-if="playerPoisoned" class="status-badge poison">Poisoned</div>
+      <div v-if="playerStunned" class="status-badge stun">Stunned</div>
     </div>
-    
+
+    <div class="player-combat-bar">
+      <span>{{ player.name }}</span>
+      <div class="hp-bar">
+        <div class="hp-fill player-hp" :style="{ width: `${playerHpPct}%` }"></div>
+      </div>
+      <span>{{ player.hp }}/{{ player.maxHp }}</span>
+      <span class="energy-text">⚡{{ player.energy }}/{{ player.maxEnergy }}</span>
+    </div>
+
     <div class="enemy-list">
-      <div 
-        v-for="enemy in aliveEnemies" 
+      <div
+        v-for="enemy in aliveEnemies"
         :key="enemy.id"
-        :class="['enemy-card', { 'selected-target': selectedTarget === enemy.id, 'clickable': !isEnemyTurn && aliveEnemies.length > 1 }]"
+        :class="['enemy-card', { 'selected-target': selectedTarget === enemy.id, clickable: !isBusy && aliveEnemies.length > 1 }]"
         @click="selectEnemyTarget(enemy.id)"
       >
         <div class="enemy-name">
           {{ enemy.name }}
-          <span v-if="selectedTarget === enemy.id" class="target-icon">⚔️</span>
+          <span v-if="enemy.isBoss" class="boss-tag">BOSS</span>
+          <span v-if="selectedTarget === enemy.id" class="target-icon">⚔</span>
         </div>
         <div class="enemy-hp">
           <div class="hp-bar">
-            <div 
-              class="hp-fill" 
-              :style="{ width: `${(enemy.hp / enemy.maxHp) * 100}%` }"
-            ></div>
+            <div class="hp-fill enemy-hp" :style="{ width: `${(enemy.hp / enemy.maxHp) * 100}%` }"></div>
           </div>
-          <span class="hp-text">{{ enemy.hp }}/{{ enemy.maxHp }} HP</span>
+          <span class="hp-text">{{ enemy.hp }}/{{ enemy.maxHp }}</span>
         </div>
+        <div v-if="hasPoison(enemy)" class="enemy-status">☠ Poison</div>
       </div>
     </div>
-    
+
     <div class="combat-actions">
-      <div v-if="aliveEnemies.length > 1 && !selectedTarget && !isEnemyTurn" class="target-hint">
-        Click on an enemy to select target, then click Attack
-      </div>
-      
       <div class="action-buttons">
-        <button 
-          @click="handleAttack" 
-          class="action-button primary"
-          :disabled="isEnemyTurn || (aliveEnemies.length > 1 && !selectedTarget)"
-        >
-          {{ isEnemyTurn ? 'Enemy turn...' : (selectedTarget ? `Attack ${getEnemyName(selectedTarget)}` : (aliveEnemies.length === 1 ? 'Attack' : 'Select target first')) }}
+        <button @click="handleAttack" class="action-button primary" :disabled="isBusy || !canAttack">
+          {{ attackLabel }}
         </button>
-        <button 
-          @click="handleDefend" 
-          class="action-button"
-          :disabled="isEnemyTurn"
-        >
-          Defend
-        </button>
-        <button 
-          @click="handleFlee" 
-          class="action-button danger"
-          :disabled="isEnemyTurn"
-        >
-          Flee
-        </button>
+        <button @click="handleDefend" class="action-button" :disabled="isBusy">Defend</button>
+        <button @click="handleFlee" class="action-button danger" :disabled="isBusy">Flee</button>
+      </div>
+
+      <div class="skill-buttons">
         <button
-          v-if="selectedTarget"
-          @click="cancelTargetSelection"
-          class="action-button"
+          v-for="skill in skills"
+          :key="skill.action"
+          @click="handleSkill(skill.action)"
+          class="action-button skill"
+          :disabled="isBusy || player.energy < skill.cost"
+          :title="skill.description"
         >
-          Clear Target
+          {{ skill.label }} ({{ skill.cost }}⚡)
+        </button>
+      </div>
+
+      <div v-if="consumables.length > 0" class="item-buttons">
+        <button
+          v-for="item in consumables"
+          :key="item.templateId"
+          @click="handleUseItem(item.templateId)"
+          class="action-button item-btn"
+          :disabled="isBusy"
+        >
+          {{ getItemName(item.templateId) }} (x{{ item.quantity }})
         </button>
       </div>
     </div>
-    
+
     <div v-if="actionLog.length > 0" class="action-log">
-      <div 
-        v-for="(action, index) in actionLog" 
+      <div
+        v-for="(entry, index) in actionLog"
         :key="index"
-        :class="['action-log-entry', action.type]"
+        :class="['action-log-entry', entry.type, { crit: entry.crit }]"
       >
-        {{ action.message }}
+        {{ entry.message }}
       </div>
     </div>
   </div>
@@ -79,347 +87,154 @@
 <script setup lang="ts">
 import { inject, computed, ref, watch } from 'vue'
 import type { Ref } from 'vue'
-import type { GameState } from '@/engine/GameLoopDesign'
+import type { GameState, PlayerAction, CombatEvent, Enemy } from '@/engine/GameLoopDesign'
 import { playerAction } from '@/engine/GameLoop'
+import { getItemName, getItemTemplate } from '@/engine/ItemDatabase'
+import { getAllSkills } from '@/engine/SkillSystem'
 
 const gameState = inject<Ref<GameState>>('gameState')!
 const dispatch = inject<(state: GameState) => void>('dispatch')!
 
 const encounter = computed(() => gameState.value.currentEncounter)
+const player = computed(() => gameState.value.player)
 const enemies = computed(() => encounter.value?.enemies || [])
-const aliveEnemies = computed(() => enemies.value.filter(e => e.hp > 0))
+const aliveEnemies = computed(() => enemies.value.filter((e) => e.hp > 0))
+const playerHpPct = computed(() => (player.value.hp / player.value.maxHp) * 100)
+const playerPoisoned = computed(() => player.value.statusEffects?.some((s) => s.type === 'poison'))
+const playerStunned = computed(() => player.value.statusEffects?.some((s) => s.type === 'stun'))
 
-// Clear target selection if selected enemy dies
-watch(() => aliveEnemies.value.map(e => e.id), (aliveIds) => {
-  if (selectedTarget.value && !aliveIds.includes(selectedTarget.value)) {
-    selectedTarget.value = null
-    // Auto-select if only one enemy remains
-    if (aliveIds.length === 1 && aliveIds[0]) {
-      selectedTarget.value = aliveIds[0]
-    }
-  } else if (!selectedTarget.value && aliveIds.length === 1 && aliveIds[0]) {
-    // Auto-select if only one enemy
-    selectedTarget.value = aliveIds[0]
-  }
-})
-
-interface ActionLogEntry {
+interface LogEntry {
   message: string
-  type: 'player' | 'enemy'
+  type: 'player' | 'enemy' | 'system'
+  crit?: boolean
 }
 
-const actionLog = ref<ActionLogEntry[]>([])
-const isEnemyTurn = ref(false)
-const actionQueue = ref<Array<{ message: string; type: 'player' | 'enemy'; delay: number }>>([])
+const actionLog = ref<LogEntry[]>([])
+const isBusy = ref(false)
 const selectedTarget = ref<string | null>(null)
-let isProcessingQueue = false
 
-// Track previous state to detect changes
-const previousPlayerHp = ref(gameState.value.player.hp)
-const previousEnemyHps = ref<Map<string, number>>(new Map())
+const knownSkillIds = computed(() => new Set(player.value.knownSkills ?? []))
 
-// Initialize enemy HP tracking when encounter starts
-watch(() => encounter.value?.id, (newEncounterId) => {
-  if (newEncounterId && encounter.value) {
-    previousEnemyHps.value.clear()
-    encounter.value.enemies.forEach((enemy) => {
-      previousEnemyHps.value.set(enemy.id, enemy.hp)
-    })
-    previousPlayerHp.value = gameState.value.player.hp
-    actionLog.value = [] // Clear log on new encounter
-    actionQueue.value = [] // Clear queue
-    isEnemyTurn.value = false // Reset enemy turn state
-    isProcessingQueue = false
-    selectedTarget.value = null // Clear target selection
-    
-    // Auto-select target if only one enemy
-    const alive = encounter.value.enemies.filter(e => e.hp > 0)
-    if (alive.length === 1 && alive[0]) {
-      selectedTarget.value = alive[0].id
-    }
+const skills = computed(() =>
+  getAllSkills()
+    .filter((s) => s.action && knownSkillIds.value.has(s.id))
+    .map((s) => ({
+      action: s.action as PlayerAction,
+      label: s.name,
+      cost: s.energyCost,
+      description: s.description,
+    }))
+)
+
+const consumables = computed(() =>
+  player.value.inventory.filter((i) => {
+    const t = getItemTemplate(i.templateId)
+    return t?.type === 'consumable' && i.quantity > 0
+  })
+)
+
+const canAttack = computed(() => {
+  if (aliveEnemies.value.length === 0) return false
+  if (aliveEnemies.value.length === 1) return true
+  return !!selectedTarget.value
+})
+
+const attackLabel = computed(() => {
+  if (isBusy.value) return 'Resolving...'
+  if (aliveEnemies.value.length === 1) return 'Attack'
+  if (selectedTarget.value) {
+    const name = enemies.value.find((e) => e.id === selectedTarget.value)?.name
+    return `Attack ${name}`
+  }
+  return 'Select target'
+})
+
+watch(() => encounter.value?.id, () => {
+  actionLog.value = []
+  isBusy.value = false
+  selectedTarget.value = null
+  if (aliveEnemies.value.length === 1 && aliveEnemies.value[0]) {
+    selectedTarget.value = aliveEnemies.value[0].id
   }
 }, { immediate: true })
 
-// Watch is mainly for initialization, actual action tracking happens in handlers
-
-function addActionLog(message: string, type: 'player' | 'enemy', delay: number = 0) {
-  const addToLog = (msg: string, t: 'player' | 'enemy') => {
-    actionLog.value.unshift({ message: msg, type: t })
-    // Keep only last 10 entries
-    if (actionLog.value.length > 10) {
-      actionLog.value = actionLog.value.slice(0, 10)
-    }
-    
-    // Also store in encounter for results screen
-    // Read from current gameState to get latest encounter state
-    const currentEncounter = gameState.value.currentEncounter
-    if (currentEncounter) {
-      const currentLog = currentEncounter.combatLog || []
-      const updatedLog = [msg, ...currentLog].slice(0, 50) // Keep last 50 for results
-      // Update encounter in gameState
-      const updatedEncounter = {
-        ...currentEncounter,
-        combatLog: updatedLog,
-      }
-      const newState = {
-        ...gameState.value,
-        currentEncounter: updatedEncounter,
-      }
-      dispatch(newState)
-    }
-  }
-  
-  if (delay > 0) {
-    // Add to queue with delay
-    actionQueue.value.push({ message, type, delay })
-    processActionQueue()
-  } else {
-    // Add immediately
-    addToLog(message, type)
-  }
-}
-
-function processActionQueue() {
-  if (isProcessingQueue || actionQueue.value.length === 0) return
-  
-  isProcessingQueue = true
-  const nextAction = actionQueue.value.shift()
-  if (!nextAction) {
-    isProcessingQueue = false
-    return
-  }
-  
-  setTimeout(() => {
-    // Add to log (this will also store in encounter)
-    const addToLog = (msg: string, t: 'player' | 'enemy') => {
-      actionLog.value.unshift({ message: msg, type: t })
-      // Keep only last 10 entries
-      if (actionLog.value.length > 10) {
-        actionLog.value = actionLog.value.slice(0, 10)
-      }
-      
-      // Also store in encounter for results screen
-      // Read from current gameState to get latest encounter state
-      const currentEncounter = gameState.value.currentEncounter
-      if (currentEncounter) {
-        const currentLog = currentEncounter.combatLog || []
-        const updatedLog = [msg, ...currentLog].slice(0, 50) // Keep more entries for results
-        const updatedEncounter = {
-          ...currentEncounter,
-          combatLog: updatedLog,
-        }
-        const newState = {
-          ...gameState.value,
-          currentEncounter: updatedEncounter,
-        }
-        dispatch(newState)
-      }
-    }
-    
-    addToLog(nextAction.message, nextAction.type)
-    
-    isProcessingQueue = false
-    
-    // Process next item in queue
-    if (actionQueue.value.length > 0) {
-      processActionQueue()
-    } else {
-      // Queue is empty, re-enable player actions
-      isEnemyTurn.value = false
-    }
-  }, nextAction.delay)
-}
-
-function getEnemyName(enemyId: string): string {
-  return encounter.value?.enemies.find(e => e.id === enemyId)?.name || 'Enemy'
+function hasPoison(enemy: Enemy) {
+  return enemy.statusEffects?.some((s) => s.type === 'poison')
 }
 
 function selectEnemyTarget(enemyId: string) {
-  // Only allow targeting if multiple enemies and not during enemy turn
-  if (isEnemyTurn.value || aliveEnemies.value.length <= 1) return
-  
-  // Toggle selection - clicking same enemy deselects
-  if (selectedTarget.value === enemyId) {
-    selectedTarget.value = null
-  } else {
-    selectedTarget.value = enemyId
-  }
+  if (isBusy.value || aliveEnemies.value.length <= 1) return
+  selectedTarget.value = selectedTarget.value === enemyId ? null : enemyId
 }
 
-function cancelTargetSelection() {
+function classifyEvent(event: CombatEvent): LogEntry['type'] {
+  if (event.source === player.value.id) return 'player'
+  if (event.source === 'status') return 'system'
+  return 'enemy'
+}
+
+function displayEvents(events: CombatEvent[], delay = 0) {
+  events.forEach((event, i) => {
+    setTimeout(() => {
+      actionLog.value.unshift({
+        message: event.message,
+        type: classifyEvent(event),
+        crit: event.crit,
+      })
+      if (actionLog.value.length > 12) actionLog.value = actionLog.value.slice(0, 12)
+      if (i === events.length - 1) {
+        setTimeout(() => { isBusy.value = false }, 200)
+      }
+    }, delay + i * 300)
+  })
+  if (events.length === 0) isBusy.value = false
+}
+
+function runAction(action: PlayerAction, options: { targetId?: string; itemId?: string } = {}) {
+  if (isBusy.value) return
+  isBusy.value = true
+
+  const prevPhase = gameState.value.phase
+  const newState = playerAction(gameState.value, action, options)
+
+  const events = newState.combatResults?.events ?? newState.currentEncounter?.lastEvents ?? []
+
+  if (newState.phase !== prevPhase) {
+    dispatch(newState)
+    if (events.length) displayEvents(events)
+    else isBusy.value = false
+    return
+  }
+
+  dispatch(newState)
+  displayEvents(events)
   selectedTarget.value = null
+  if (aliveEnemies.value.length === 1 && aliveEnemies.value[0]) {
+    selectedTarget.value = aliveEnemies.value[0].id
+  }
 }
 
 function handleAttack() {
-  if (aliveEnemies.value.length === 0 || isEnemyTurn.value) return
-  
-  // Require target selection if multiple enemies
-  if (!selectedTarget.value && aliveEnemies.value.length > 1) {
-    return // Don't attack, user needs to select target
-  }
-  
-  // Use selected target or first enemy if only one
-  const targetId = selectedTarget.value || aliveEnemies.value[0]?.id || ''
-  if (!targetId) {
-    return
-  }
-  
-  // Auto-select if only one enemy
-  if (aliveEnemies.value.length === 1) {
-    selectedTarget.value = targetId
-  }
-  
-  // Disable buttons during enemy turn
-  isEnemyTurn.value = true
-  
-  const targetEnemy = encounter.value?.enemies.find(e => e.id === targetId)
-  
-  // Store state before action
-  const prevEnemyHps = new Map<string, number>()
-  encounter.value?.enemies.forEach((e) => {
-    prevEnemyHps.set(e.id, e.hp)
-  })
-  
-  // Store the log BEFORE player action (to compare with log after enemy turns)
-  const logBeforeAction = encounter.value?.combatLog || []
-  
-  const newState = playerAction(gameState.value, 'attack', targetId)
-  
-  // Store the log AFTER enemy turns but BEFORE we add player attack message
-  // This allows us to detect enemy attacks separately
-  const logAfterEnemyTurns = newState.currentEncounter?.combatLog || []
-  
-  // Get current log from encounter (preserved through playerAction)
-  const currentLog = logAfterEnemyTurns
-  
-  // Detect player attack and add to log
-  if (targetEnemy && newState.currentEncounter) {
-    const prevEnemyHp = prevEnemyHps.get(targetId) || targetEnemy.maxHp
-    const newEnemy = newState.currentEncounter.enemies.find(e => e.id === targetId)
-    if (newEnemy) {
-      const damage = prevEnemyHp - newEnemy.hp
-      if (damage > 0) {
-        let playerMessage = ''
-        if (newEnemy.hp <= 0) {
-          playerMessage = `You defeat ${targetEnemy.name}!`
-        } else {
-          playerMessage = `You attack ${targetEnemy.name} for ${damage} damage!`
-        }
-        // Add player action to log in the new state
-        const updatedLog = [playerMessage, ...currentLog].slice(0, 50)
-        newState.currentEncounter.combatLog = updatedLog
-        // Also update UI log for immediate display
-        actionLog.value.unshift({ message: playerMessage, type: 'player' })
-        if (actionLog.value.length > 10) {
-          actionLog.value = actionLog.value.slice(0, 10)
-        }
-      }
-    }
-  }
-  
-  // Update tracked state
-  previousPlayerHp.value = newState.player.hp
-  newState.currentEncounter?.enemies.forEach((e) => {
-    previousEnemyHps.value.set(e.id, e.hp)
-  })
-  
-  // Clear target selection after attack
-  selectedTarget.value = null
-  
-  dispatch(newState)
-  
-  // Enemy attacks are now logged in executeEnemyTurns, so we just need to display them
-  // Check if combat log was updated with enemy attacks
-  const aliveEnemiesAfter = newState.currentEncounter?.enemies.filter(e => e.hp > 0) || []
-  
-  // Check if enemies attacked (they should attack if they're alive)
-  if (aliveEnemiesAfter.length > 0) {
-    // Get the new log entries (enemy attacks) that were added by executeEnemyTurns
-    // Compare logAfterEnemyTurns (after enemy turns) with logBeforeAction (before player action)
-    const newEntries = logAfterEnemyTurns.slice(0, logAfterEnemyTurns.length - logBeforeAction.length)
-    
-    // Add enemy attack messages to UI log with delays
-    newEntries.forEach((entry, index) => {
-      if (entry.includes('attacks you')) {
-        addActionLog(entry, 'enemy', 400 + (index * 100))
-      }
-    })
-  } else {
-    // No enemies alive, re-enable buttons
-    isEnemyTurn.value = false
-  }
+  const targetId = selectedTarget.value || aliveEnemies.value[0]?.id
+  if (!targetId) return
+  runAction('attack', { targetId })
 }
 
 function handleDefend() {
-  if (isEnemyTurn.value) return
-  
-  // Disable buttons during enemy turn
-  isEnemyTurn.value = true
-  
-  // Store state before action
-  const prevPlayerHp = gameState.value.player.hp
-  const currentLog = encounter.value?.combatLog || []
-  
-  const newState = playerAction(gameState.value, 'defend')
-  
-  // Add player defend action to log
-  const defendMessage = 'You take a defensive stance.'
-  const updatedLog = [defendMessage, ...currentLog].slice(0, 50)
-  if (newState.currentEncounter) {
-    newState.currentEncounter.combatLog = updatedLog
-  }
-  // Also update UI log for immediate display
-  actionLog.value.unshift({ message: defendMessage, type: 'player' })
-  if (actionLog.value.length > 10) {
-    actionLog.value = actionLog.value.slice(0, 10)
-  }
-  
-  previousPlayerHp.value = newState.player.hp
-  
-  dispatch(newState)
-  
-  // Enemy attacks are now logged in executeEnemyTurns, so we just need to display them
-  const newPlayerHp = newState.player.hp
-  if (newPlayerHp < prevPlayerHp && newState.currentEncounter?.combatLog) {
-    // Get the new log entries (enemy attacks) that were added
-    const oldLog = encounter.value?.combatLog || []
-    const newLog = newState.currentEncounter.combatLog
-    const newEntries = newLog.slice(0, newLog.length - oldLog.length)
-    
-    // Add enemy attack messages to UI log with delays
-    newEntries.forEach((entry, index) => {
-      if (entry.includes('attacks you')) {
-        addActionLog(entry, 'enemy', 400 + (index * 100))
-      }
-    })
-  } else {
-    // No enemy attacks, re-enable buttons
-    isEnemyTurn.value = false
-  }
+  runAction('defend')
 }
 
 function handleFlee() {
-  if (isEnemyTurn.value) return
-  
-  const currentLog = encounter.value?.combatLog || []
-  const fleeMessage = 'You attempt to flee...'
-  
-  const newState = playerAction(gameState.value, 'flee')
-  
-  // Add flee action to log if encounter still exists
-  if (newState.currentEncounter) {
-    const updatedLog = [fleeMessage, ...currentLog].slice(0, 50)
-    newState.currentEncounter.combatLog = updatedLog
-  }
-  
-  // Also update UI log for immediate display
-  actionLog.value.unshift({ message: fleeMessage, type: 'player' })
-  if (actionLog.value.length > 10) {
-    actionLog.value = actionLog.value.slice(0, 10)
-  }
-  
-  dispatch(newState)
-  // Flee ends encounter, so no need to handle enemy turn
+  runAction('flee')
+}
+
+function handleSkill(action: PlayerAction) {
+  const targetId = selectedTarget.value || aliveEnemies.value[0]?.id
+  runAction(action, { targetId })
+}
+
+function handleUseItem(templateId: string) {
+  runAction('use_item', { itemId: templateId })
 }
 </script>
 
@@ -427,119 +242,133 @@ function handleFlee() {
 .encounter-screen {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
 
 .encounter-header {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
   padding: 16px;
-  background-color: #2a2a2a;
-  border-radius: 8px;
-  border: 2px solid #ff4444;
+  background: var(--color-panel);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-danger);
 }
 
 .encounter-header h1 {
-  font-size: 24px;
+  font-size: 22px;
   margin: 0;
-  color: #ff4444;
+  color: var(--color-danger-bright);
+  font-family: var(--font-display);
 }
 
-.enemy-list {
-  background-color: #2a2a2a;
-  padding: 16px;
-  border-radius: 8px;
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
 }
+.status-badge.poison { background: #4a2a4a; color: #ce93d8; }
+.status-badge.stun { background: #4a4a2a; color: #ffd54f; }
+
+.player-combat-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #1a2a1a;
+  border-radius: 8px;
+  border-left: 4px solid #4caf50;
+}
+
+.energy-text { color: #ce93d8; font-weight: 600; }
+
+.enemy-list { background: #2a2a2a; padding: 16px; border-radius: 8px; }
 
 .enemy-card {
   padding: 12px;
   margin-bottom: 8px;
-  background-color: #1a1a1a;
+  background: #1a1a1a;
   border-radius: 6px;
   border-left: 4px solid #ff4444;
   transition: all 0.2s;
 }
-
-.enemy-card.clickable {
-  cursor: pointer;
-}
-
-.enemy-card.clickable:hover {
-  background-color: #2a2a2a;
-  transform: translateX(4px);
-}
-
+.enemy-card.clickable { cursor: pointer; }
+.enemy-card.clickable:hover { background: #2a2a2a; transform: translateX(4px); }
 .enemy-card.selected-target {
-  background-color: #2a4a2a;
-  border-left: 4px solid #4caf50;
+  background: #2a4a2a;
+  border-left-color: #4caf50;
   box-shadow: 0 0 8px rgba(76, 175, 80, 0.3);
 }
 
 .enemy-name {
   font-weight: 600;
-  color: #ffffff;
+  color: #fff;
   margin-bottom: 8px;
-  font-size: 18px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.target-icon {
-  font-size: 20px;
-  animation: pulse 1s ease-in-out infinite;
+.boss-tag {
+  background: #ff4444;
+  color: #fff;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.6;
-  }
-}
-
-.enemy-hp {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
+.enemy-hp { display: flex; align-items: center; gap: 12px; }
 .hp-bar {
   flex: 1;
-  height: 24px;
-  background-color: #1a1a1a;
+  height: 20px;
+  background: #1a1a1a;
   border: 1px solid #444;
   border-radius: 4px;
   overflow: hidden;
 }
+.hp-fill { height: 100%; transition: width 0.4s ease; }
+.hp-fill.player-hp { background: #4caf50; }
+.hp-fill.enemy-hp { background: #f44336; }
+.hp-text { font-size: 13px; color: #aaa; min-width: 90px; font-weight: 600; }
+.enemy-status { font-size: 12px; color: #ce93d8; margin-top: 4px; }
 
-.hp-fill {
-  height: 100%;
-  background-color: #f44336;
-  transition: width 0.3s ease;
+.combat-actions { background: #2a2a2a; padding: 16px; border-radius: 8px; display: flex; flex-direction: column; gap: 12px; }
+
+.action-buttons, .skill-buttons, .item-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
 }
 
-.hp-text {
+.action-button {
+  padding: 10px 18px;
   font-size: 14px;
-  color: #aaa;
-  min-width: 100px;
   font-weight: 600;
+  background: #3a3a3a;
+  color: #fff;
+  border: 2px solid #555;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
-
-.combat-actions {
-  background-color: #2a2a2a;
-  padding: 16px;
-  border-radius: 8px;
-}
+.action-button:hover:not(:disabled) { background: #4a4a4a; }
+.action-button.primary { background: #4caf50; border-color: #66bb6a; }
+.action-button.danger { background: #f44336; border-color: #ef5350; }
+.action-button.skill { background: #5c3d8a; border-color: #7b52b8; }
+.action-button.item-btn { background: #2a4a5a; border-color: #3a6a7a; }
+.action-button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .action-log {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  max-height: 200px;
+  gap: 6px;
+  max-height: 220px;
   overflow-y: auto;
   padding: 12px;
-  background-color: #1a1a1a;
+  background: #1a1a1a;
   border-radius: 8px;
   border: 1px solid #444;
 }
@@ -548,76 +377,15 @@ function handleFlee() {
   padding: 8px 12px;
   border-radius: 4px;
   font-size: 14px;
-  line-height: 1.4;
+  animation: slideIn 0.3s ease;
 }
+.action-log-entry.player { background: #2a4a2a; color: #4caf50; border-left: 3px solid #4caf50; }
+.action-log-entry.enemy { background: #4a2a2a; color: #ff6666; border-left: 3px solid #ff4444; }
+.action-log-entry.system { background: #3a3a2a; color: #ffd54f; border-left: 3px solid #ffd54f; }
+.action-log-entry.crit { font-weight: 700; text-shadow: 0 0 6px rgba(255, 215, 0, 0.5); }
 
-.action-log-entry.player {
-  background-color: #2a4a2a;
-  color: #4caf50;
-  border-left: 3px solid #4caf50;
-}
-
-.action-log-entry.enemy {
-  background-color: #4a2a2a;
-  color: #ff6666;
-  border-left: 3px solid #ff4444;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-}
-
-.action-button {
-  padding: 12px 24px;
-  font-size: 16px;
-  font-weight: 600;
-  background-color: #3a3a3a;
-  color: #ffffff;
-  border: 2px solid #555;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.action-button:hover {
-  background-color: #4a4a4a;
-  border-color: #666;
-}
-
-.action-button.primary {
-  background-color: #4caf50;
-  border-color: #66bb6a;
-}
-
-.action-button.primary:hover {
-  background-color: #66bb6a;
-}
-
-.action-button.danger {
-  background-color: #f44336;
-  border-color: #ef5350;
-}
-
-.action-button.danger:hover {
-  background-color: #ef5350;
-}
-
-.action-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-.target-hint {
-  padding: 12px;
-  background-color: #2a2a2a;
-  border-radius: 8px;
-  border-left: 4px solid #4caf50;
-  font-size: 14px;
-  color: #aaa;
-  text-align: center;
-  font-style: italic;
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 </style>

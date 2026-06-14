@@ -1,0 +1,1 @@
+{"id":"skill_brace","name":"Brace","branch":"might","description":"Defend and recover a little HP.","requires":["skill_cleave"],"cost":2,"energyCost":2,"action":"skill_brace"}

@@ -1,0 +1,12 @@
+{
+  "id": "house",
+  "name": "Your Home",
+  "description": "A small cabin in the clearing. Sleep here for free, full recovery.",
+  "levels": [
+    {
+      "cost": { "gold": 120, "materials": { "oak_wood": 15, "cloth_scrap": 5 } },
+      "unlocksText": "Unlock Sleep at Home — free full rest, clears wounded.",
+      "effects": [{ "kind": "set_flag", "flag": "has_house", "value": true }]
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+{"id":"wooden_stake","name":"Wooden Stake","station":"workbench","npcId":"garrick_smith","requires":{"materials":{"oak_wood":1},"gold":0},"output":{"itemId":"wooden_stake","qty":1},"unlockedBy":{"building":"workbench","buildingLevel":1}}

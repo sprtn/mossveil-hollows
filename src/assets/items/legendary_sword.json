@@ -1,7 +1,7 @@
 {
   "id": "legendary_sword",
   "name": "Legendary Sword",
-  "description": "An ancient, powerful blade imbued with magic. Increases damage by 15.",
+  "description": "An ancient, powerful blade imbued with magic. Increases attack by 20.",
   "type": "weapon",
   "rarity": "legendary",
   "stackable": false,

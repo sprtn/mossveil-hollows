@@ -1,0 +1,13 @@
+{
+  "id": "final_gate",
+  "type": "static",
+  "name": "The Shadow Gate",
+  "description": "Three crystal shards in your possession resonate with the massive obsidian gate before you. It groans open, revealing a staircase descending into absolute darkness.",
+  "picture": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&q=80",
+  "difficulty": 5,
+  "exits": [
+    { "direction": "north", "targetRoomId": "town_hub" },
+    { "direction": "down", "targetRoomId": "final_boss_chamber" }
+  ],
+  "encounters": []
+}

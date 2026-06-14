@@ -1,0 +1,9 @@
+{
+  "id": "cave_shard",
+  "name": "Cave Shard",
+  "description": "A luminescent crystal from the Cave Warden. One of three keys to the final gate.",
+  "type": "key",
+  "rarity": "rare",
+  "stackable": false,
+  "weight": 0.1
+}

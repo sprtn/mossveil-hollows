@@ -1,0 +1,21 @@
+{
+  "id": "camp_supplies",
+  "name": "Camp Supplies",
+  "stages": [
+    {
+      "id": "gather_wood",
+      "description": "Gather 10 oak wood for the logging camp.",
+      "objective": { "type": "collect_material", "target": "oak_wood", "count": 10 },
+      "rewards": []
+    },
+    {
+      "id": "deliver",
+      "description": "Bring the oak wood to Old Pell.",
+      "objective": { "type": "set_flag", "target": "camp_supplies_delivered" },
+      "rewards": [
+        { "kind": "take_material", "materialId": "oak_wood", "qty": 10 },
+        { "kind": "give_gold", "amount": 25 }
+      ]
+    }
+  ]
+}

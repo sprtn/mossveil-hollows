@@ -1,109 +1,132 @@
 /**
  * Core game loop - pure logic, no Vue dependencies
- * 
- * Philosophy: Each function is testable in isolation.
- * Side effects (UI updates) happen outside this module.
  */
 
 import type {
-  GameState,
-  Player,
-  Room,
+  CombatEvent,
+  CombatResults,
   Encounter,
   EncounterResult,
+  GameState,
+  Player,
   PlayerAction,
+  PlayerActionOptions,
+  Room,
   Enemy,
-  InventoryItem,
-  CombatResults,
 } from './GameLoopDesign'
-import { checkLevelUp, calculateMaxHp, calculateStrength, calculateDefense, calculateSpeed } from './ProgressionSystem'
+import {
+  checkLevelUp,
+  calculateMaxHp,
+  calculateStrength,
+  calculateDefense,
+  calculateConstitution,
+  calculateDexterity,
+  calculateAgility,
+} from './ProgressionSystem'
 import { loadRoom as loadRoomFromManager } from './RoomManager'
 import type { Room as RoomSystemRoom } from './RoomSystem'
+import {
+  addItemToInventory,
+  applyConsumableEffect,
+  getItemTemplate,
+  hasItem,
+  removeItemFromInventory,
+} from './ItemDatabase'
+import {
+  calculateTurnOrder,
+  executeEnemyTurns,
+  resolvePlayerCombatAction,
+  SeededRandom,
+  eventToLogMessage,
+  generateCombatSeed,
+  splitEnemiesByInitiative,
+  getEffectiveAgility,
+  rollExtraActionChance,
+  trySecondWind,
+} from './CombatEngine'
+import { getEffectiveStats } from './ItemDatabase'
+import {
+  FINAL_BOSS_ENEMY_ID,
+  ZONE_BOSS_IDS,
+  ZONE_SHARD_IDS,
+  STAMINA_PER_ENCOUNTER,
+  STAMINA_PER_MOVE,
+  ENERGY_PER_WIN,
+  EVENT_CHANCE_ON_EXPLORE,
+  type ZoneId,
+} from './gameConfig'
+import { saveGame, clearSave } from './saveGame'
+import { getDefaultGameMeta } from './Outcomes'
+import { getEffectiveMaxHp, applyWounded, clampPlayerHp } from './PlayerStats'
+import { addMaterial } from './Materials'
+import { pickRandomEvent, startEvent } from './EventSystem'
+import { checkAndAdvanceQuests } from './QuestSystem'
+import { getBuildingLevel } from './BuildingSystem'
 
-/**
- * Seeded random number generator (matches EncounterSystem)
- */
-class SeededRandom {
-  seed: number
-
-  constructor(seed: number) {
-    this.seed = seed
-  }
-
-  next(): number {
-    this.seed = (this.seed * 9301 + 49297) % 233280
-    return this.seed / 233280
-  }
-
-  nextInt(max: number): number {
-    return Math.floor(this.next() * max)
-  }
-
-  nextInRange(min: number, max: number): number {
-    return min + this.nextInt(Math.max(0, max - min + 1))
-  }
-}
-
-/**
- * Convert RoomSystem Room to GameLoopDesign Room
- */
 function convertRoom(roomSystemRoom: RoomSystemRoom): Room {
-  // Extract picture from room if it exists (JSON files have picture field)
-  const picture = (roomSystemRoom as any).picture as string | undefined
-  
+  const r = roomSystemRoom as RoomSystemRoom & {
+    picture?: string
+    isHub?: boolean
+    isFinalBoss?: boolean
+    zoneId?: string
+  }
   return {
-    id: roomSystemRoom.id,
-    name: roomSystemRoom.name,
-    description: roomSystemRoom.description,
-    nodeCount: 3, // Default node count for compatibility
-    encounters: roomSystemRoom.encounters || [],
-    exits: roomSystemRoom.exits,
-    picture: picture,
+    id: r.id,
+    name: r.name,
+    description: r.description,
+    encounters: r.encounters || [],
+    exits: r.exits,
+    picture: r.picture,
+    isHub: r.isHub,
+    isFinalBoss: r.isFinalBoss,
+    zoneId: r.zoneId,
   }
 }
 
-/**
- * Load a room and convert it to GameLoopDesign format
- */
+export function roomFromAsset(roomSystemRoom: RoomSystemRoom): Room {
+  return convertRoom(roomSystemRoom)
+}
+
 async function loadRoom(roomId: string): Promise<Room> {
   const roomSystemRoom = await loadRoomFromManager(roomId)
   return convertRoom(roomSystemRoom)
 }
 
-/**
- * Generate a deterministic seed from room ID and turn count
- */
-function generateSeed(roomId: string, turnCount: number, extra: number = 0): number {
-  // Hash room ID to a number
+function generateSeed(roomId: string, turnCount: number, extra = 0): number {
   let hash = 0
   for (let i = 0; i < roomId.length; i++) {
     const char = roomId.charCodeAt(i)
     hash = ((hash << 5) - hash) + char
-    hash = hash & hash // Convert to 32-bit integer
+    hash = hash & hash
   }
-  // Combine with turnCount and extra for unique seeds per action
   return Math.abs((hash * 73856093) ^ (turnCount * 19349663) ^ (extra * 83492791))
 }
 
-/**
- * Get or create a seed for the current state
- */
-function getStateSeed(state: GameState, extra: number = 0): number {
-  if (state.seed !== undefined) {
-    // Use existing seed, but advance it for different operations
-    return generateSeed(state.currentRoom.id, state.turnCount, extra)
-  }
-  // Generate new seed from room ID and turn count
+function getStateSeed(state: GameState, extra = 0): number {
   return generateSeed(state.currentRoom.id, state.turnCount, extra)
 }
 
-/**
- * Initialize game with player and first room
- */
+function drainStamina(player: Player, amount: number): Player {
+  return { ...player, stamina: Math.max(0, player.stamina - amount) }
+}
+
+function isAreaAccessible(state: GameState, areaId: string): boolean {
+  return (state.areasUnlocked ?? ['forest']).includes(areaId)
+}
+
+function getRoomAreaId(roomId: string): string | null {
+  if (roomId.startsWith('zone_forest')) return 'forest'
+  if (roomId.startsWith('zone_cave')) return 'cave'
+  if (roomId.startsWith('zone_ruins')) return 'ruins'
+  if (roomId === 'final_gate' || roomId === 'final_boss_chamber') return 'final_gate'
+  return null
+}
+
 export function initGame(player: Player, firstRoom: Room, seed?: number): GameState {
+  const meta = getDefaultGameMeta()
   return {
     phase: 'room_enter',
-    player,
+    player: clampPlayerHp(player),
     currentRoom: firstRoom,
     roomHistory: [firstRoom.id],
     turnCount: 0,
@@ -111,184 +134,156 @@ export function initGame(player: Player, firstRoom: Room, seed?: number): GameSt
     encounterChainCount: 0,
     lastHealingOpportunity: 0,
     moveCount: 0,
+    zonesCleared: [],
+    finalBossDefeated: false,
+    ...meta,
   }
 }
 
-/**
- * Enter a room: reset exploration state, check for auto-triggers
- */
 export function enterRoom(state: GameState, room: Room, previousRoomId?: string): GameState {
-  const updatedState: GameState = {
+  let updatedState: GameState = {
     ...state,
     phase: 'room_exploring',
     currentRoom: room,
     currentEncounter: undefined,
-    previousRoomId: previousRoomId,
-    moveCount: 0, // Reset move count when entering a new room
+    previousRoomId,
+    moveCount: 0,
+    statusMessage: undefined,
   }
 
-  // Add to room history if not already there
   if (!state.roomHistory.includes(room.id)) {
     updatedState.roomHistory = [...state.roomHistory, room.id]
   }
 
-  // Check for auto-trigger encounters
+  // Drain stamina on room move (not when entering hub from outside — hub is safe)
+  if (!room.isHub && previousRoomId) {
+    updatedState.player = drainStamina(updatedState.player, STAMINA_PER_MOVE)
+  }
+
   const autoEncounter = room.encounters.find((e) => e.onTrigger === 'auto')
   if (autoEncounter) {
     return triggerEncounter(updatedState, autoEncounter.enemies)
   }
 
+  if (room.isHub) {
+    saveGame(updatedState)
+    updatedState = {
+      ...updatedState,
+      flags: { ...(updatedState.flags ?? {}), second_wind_used: false },
+    }
+  }
+
+  updatedState = checkAndAdvanceQuests(updatedState)
   return updatedState
 }
 
-/**
- * Check if player needs a healing opportunity (prevent unwinnable states)
- * Returns true if player has had too many consecutive encounters without healing
- */
 function shouldProvideHealingOpportunity(state: GameState): boolean {
   const chainCount = state.encounterChainCount || 0
   const lastHealing = state.lastHealingOpportunity || 0
   const turnsSinceHealing = state.turnCount - lastHealing
-
-  // Provide healing opportunity if:
-  // 1. Player has had 3+ consecutive encounters, OR
-  // 2. Player HP is below 30% and has had 2+ encounters, OR
-  // 3. It's been 5+ turns since last healing opportunity
-  const hpPercent = state.player.hp / state.player.maxHp
-  return (
-    chainCount >= 3 ||
-    (hpPercent < 0.3 && chainCount >= 2) ||
-    turnsSinceHealing >= 5
-  )
+  const maxHp = getEffectiveMaxHp(state.player)
+  const hpPercent = state.player.hp / maxHp
+  return chainCount >= 3 || (hpPercent < 0.3 && chainCount >= 2) || turnsSinceHealing >= 5
 }
 
-/**
- * Player moves within room - check for encounter triggers
- */
-export function moveInRoom(state: GameState, newNode: number): GameState {
-  if (state.phase !== 'room_exploring') return state
-
-  // Increment move count to ensure seed varies with each move
-  const newMoveCount = (state.moveCount || 0) + 1
-
-  // Use seeded RNG for deterministic testing
-  // Include moveCount to ensure seed varies with each move
-  const seed = getStateSeed(state, newNode + newMoveCount * 1000)
-  const rng = new SeededRandom(seed)
-
-  // Prevent unwinnable states: reduce encounter chance if player needs healing
-  const needsHealing = shouldProvideHealingOpportunity(state)
-  const encounterChanceMultiplier = needsHealing ? 0.5 : 1.0
-
-  // Check for random encounters (old system - direct encounter definitions)
-  const randomEncounters = state.currentRoom.encounters.filter(
-    (e) => e.type === 'random' && e.triggerChance
-  )
-
-  for (const enc of randomEncounters) {
-    // Use seeded RNG for deterministic encounter triggering
-    // Reduce chance if player needs healing to prevent unwinnable chains
-    const adjustedChance = (enc.triggerChance || 0) * encounterChanceMultiplier
-    const roll = rng.next()
-    if (roll < adjustedChance) {
-      return triggerEncounter(state, enc.enemies)
-    }
-  }
-
-  // Check if reached next room exit (deprecated - use exits array instead)
-  if (state.currentRoom.nodeCount && newNode === state.currentRoom.nodeCount - 1 && state.currentRoom.nextRoomId) {
-    return {
-      ...state,
-      phase: 'room_enter',
-      roomHistory: [...state.roomHistory, state.currentRoom.nextRoomId],
-      moveCount: 0, // Reset move count when changing rooms
-    }
-  }
-
-  // Update move count even if no encounter triggered
-  return {
-    ...state,
-    moveCount: newMoveCount,
-  }
-}
-
-/**
- * Explore current room - attempt to trigger a random encounter
- */
 export function exploreRoom(state: GameState): GameState {
   if (state.phase !== 'room_exploring') return state
+  if (state.currentRoom.isHub) return state
+  if (state.player.stamina <= 0) {
+    return { ...state, statusMessage: 'Exhausted — return to town to recover stamina.' }
+  }
 
-  // Increment move count to ensure seed varies
-  const newMoveCount = (state.moveCount || 0) + 1
-
-  // Use seeded RNG for deterministic encounter triggering
-  const seed = getStateSeed(state, newMoveCount * 1000)
+  const newExploreCount = (state.exploreCount ?? 0) + 1
+  const baseState: GameState = { ...state, exploreCount: newExploreCount }
+  const seed = getStateSeed(baseState, newExploreCount * 1000)
   const rng = new SeededRandom(seed)
-
-  // Prevent unwinnable states: reduce encounter chance if player needs healing
-  const needsHealing = shouldProvideHealingOpportunity(state)
+  const needsHealing = shouldProvideHealingOpportunity(baseState)
   const encounterChanceMultiplier = needsHealing ? 0.5 : 1.0
 
-  // Check for random encounters
-  const randomEncounters = state.currentRoom.encounters.filter(
+  const randomEncounters = baseState.currentRoom.encounters.filter(
     (e) => e.type === 'random' && e.triggerChance
   )
 
   for (const enc of randomEncounters) {
-    // Use seeded RNG for deterministic encounter triggering
     const adjustedChance = (enc.triggerChance || 0) * encounterChanceMultiplier
-    const roll = rng.next()
-    if (roll < adjustedChance) {
-      return triggerEncounter(state, enc.enemies)
+    if (rng.next() < adjustedChance) {
+      return triggerEncounter(baseState, enc.enemies)
     }
   }
 
-  // No encounter triggered, just update move count
+  // Event card chance
+  const zone = baseState.currentRoom.zoneId ?? 'forest'
+  if (rng.next() < EVENT_CHANCE_ON_EXPLORE) {
+    const event = pickRandomEvent(baseState, zone)
+    if (event) return startEvent(baseState, event)
+  }
+
   return {
-    ...state,
-    moveCount: newMoveCount,
+    ...baseState,
+    statusMessage: 'You search the area but find nothing of note.',
   }
 }
 
-/**
- * Go to a specific room by ID
- * Validates the room exists in current room's exits
- */
+export function gatherMaterials(state: GameState): GameState {
+  if (state.phase !== 'room_exploring') return state
+  if (state.currentRoom.isHub) return state
+  if (state.currentRoom.zoneId !== 'forest') return state
+  if (state.player.stamina <= 0) {
+    return { ...state, statusMessage: 'Too exhausted to gather.' }
+  }
+
+  const campLevel = getBuildingLevel(state, 'logging_camp')
+  const seed = getStateSeed(state, (state.moveCount ?? 0) * 2000)
+  const rng = new SeededRandom(seed)
+  const baseQty = rng.next() < 0.5 ? 1 : 2
+  const qty = baseQty + (campLevel > 0 ? 1 : 0)
+
+  let player = drainStamina(state.player, 1)
+  player = addMaterial(player, 'oak_wood', qty)
+
+  return {
+    ...state,
+    player,
+    statusMessage: `Gathered ${qty} oak wood.`,
+  }
+}
+
 export async function goToRoom(state: GameState, targetRoomId: string): Promise<GameState> {
   if (state.phase !== 'room_exploring') return state
 
-  // Check if targetRoomId exists in current room's exits
-  const hasExit = state.currentRoom.exits?.some((exit) => exit.targetRoomId === targetRoomId)
-  
-  // Also check deprecated nextRoomId for backward compatibility
-  const isNextRoom = state.currentRoom.nextRoomId === targetRoomId
-
-  if (!hasExit && !isNextRoom) {
-    console.warn(`Cannot go to ${targetRoomId}: not found in current room exits`)
-    return state
+  const areaId = getRoomAreaId(targetRoomId)
+  if (areaId && areaId !== 'final_gate' && !isAreaAccessible(state, areaId)) {
+    return { ...state, statusMessage: 'That area is not yet accessible.' }
   }
 
-  // Check if exit is locked or hidden
+  const hasExit = state.currentRoom.exits?.some((exit) => exit.targetRoomId === targetRoomId)
+  if (!hasExit) return state
+
   const exit = state.currentRoom.exits?.find((e) => e.targetRoomId === targetRoomId)
   if (exit) {
-    if (exit.hidden) {
-      console.warn(`Cannot go to ${targetRoomId}: exit is hidden`)
-      return state
-    }
-    if (exit.locked && exit.requiresItem) {
-      const hasItem = state.player.inventory.some((item) => item.id === exit.requiresItem)
-      if (!hasItem) {
-        console.warn(`Cannot go to ${targetRoomId}: requires item ${exit.requiresItem}`)
+    if (exit.hidden) return state
+    if (exit.locked) {
+      if (exit.requiresItems?.length) {
+        const hasAll = exit.requiresItems.every((id) => hasItem(state.player, id))
+        if (!hasAll) return state
+      } else if (exit.requiresItem) {
+        if (!hasItem(state.player, exit.requiresItem)) return state
+      } else {
         return state
       }
     }
   }
 
+  // Block deeper travel at 0 stamina unless returning toward hub
+  if (state.player.stamina <= 0 && !state.currentRoom.isHub && targetRoomId !== 'town_hub') {
+    const goingBack = state.previousRoomId === targetRoomId
+    if (!goingBack) {
+      return { ...state, statusMessage: 'Exhausted — you can only retreat to safety.' }
+    }
+  }
+
   try {
-    // Load the target room
     const targetRoom = await loadRoom(targetRoomId)
-    
-    // Enter the new room, setting previousRoomId to current room
     return enterRoom(state, targetRoom, state.currentRoom.id)
   } catch (error) {
     console.error(`Failed to load room ${targetRoomId}:`, error)
@@ -296,404 +291,484 @@ export async function goToRoom(state: GameState, targetRoomId: string): Promise<
   }
 }
 
-/**
- * Go back to the previous room
- */
 export async function goBack(state: GameState): Promise<GameState> {
-  if (state.phase !== 'room_exploring') return state
-  if (!state.previousRoomId) {
-    console.warn('Cannot go back: no previous room')
-    return state
-  }
-
+  if (state.phase !== 'room_exploring' || !state.previousRoomId) return state
   try {
-    // Load the previous room
     const previousRoom = await loadRoom(state.previousRoomId)
-    
-    // Enter the previous room, setting previousRoomId to current room (so we can go back again)
     return enterRoom(state, previousRoom, state.currentRoom.id)
   } catch (error) {
-    console.error(`Failed to load previous room ${state.previousRoomId}:`, error)
+    console.error(`Failed to load previous room:`, error)
     return state
   }
 }
 
-/**
- * Trigger an encounter
- */
 export function triggerEncounter(state: GameState, enemies: Enemy[]): GameState {
   const turnOrder = calculateTurnOrder([state.player, ...enemies])
-
-  // Generate deterministic encounter ID from seed
   const seed = getStateSeed(state, state.turnCount)
   const encounterId = `enc_${state.currentRoom.id}_${state.turnCount}_${seed}`
-  
+  const rngState = Math.abs(
+    generateCombatSeed(state, state.encounterChainCount ?? 0) ^ (Date.now() & 0xffff)
+  )
+
   const encounter: Encounter = {
     id: encounterId,
-    enemies,
+    enemies: enemies.map((e) => ({ ...e, statusEffects: e.statusEffects ?? [] })),
     turnOrder,
     currentTurnIndex: 0,
     roundNumber: 1,
+    rngState,
+    combatLog: [],
+    playerDefending: false,
+    playerBracing: false,
+    playerBonusAction: false,
   }
 
-  // Increment encounter chain count (track consecutive encounters)
-  const chainCount = (state.encounterChainCount || 0) + 1
+  let player = state.player
+  if (!state.forcedEncounter) {
+    player = drainStamina(player, STAMINA_PER_ENCOUNTER)
+  }
 
-  return {
+  let newState: GameState = {
     ...state,
     phase: 'encounter_action',
     currentEncounter: encounter,
-    encounterChainCount: chainCount,
+    encounterChainCount: (state.encounterChainCount || 0) + 1,
+    player,
+    forcedEncounter: undefined,
   }
+
+  const playerAgi = getEffectiveAgility(
+    getEffectiveStats(newState.player),
+    newState.player.statusEffects
+  )
+  const { fast } = splitEnemiesByInitiative(playerAgi, encounter.enemies)
+  if (fast.length > 0) {
+    const fastResult = executeEnemyTurns(newState, [], fast)
+    newState = trySecondWind(fastResult.state)
+    if (newState.player.hp <= 0) {
+      return endEncounter(newState, 'loss', fastResult.events)
+    }
+  }
+
+  return newState
 }
 
-/**
- * Calculate turn order based on speed stat
- */
-export function calculateTurnOrder(combatants: (Player | Enemy)[]): string[] {
-  return combatants
-    .sort((a, b) => b.stats.speed - a.stats.speed)
-    .map((c) => c.id)
+function finishEnemyPhase(
+  state: GameState,
+  events: CombatEvent[],
+  enemies: Enemy[]
+): GameState {
+  if (enemies.length === 0) return state
+  const enemyResult = executeEnemyTurns(state, events, enemies)
+  let result = trySecondWind(enemyResult.state)
+  if (result.player.hp <= 0) {
+    return endEncounter(result, 'loss', enemyResult.events)
+  }
+  return result
 }
 
-/**
- * Player takes action in encounter
- */
-export function playerAction(state: GameState, action: PlayerAction, targetId?: string): GameState {
+function advanceCombatRound(state: GameState, events: CombatEvent[]): GameState {
   if (!state.currentEncounter) return state
-
-  let result: GameState = {
+  const enc = state.currentEncounter
+  const playerAgi = getEffectiveAgility(
+    getEffectiveStats(state.player),
+    state.player.statusEffects
+  )
+  const updated: GameState = {
     ...state,
     currentEncounter: {
-      ...state.currentEncounter,
-      playerAction: action,
-      // Preserve combatLog when updating encounter
-      combatLog: state.currentEncounter.combatLog || [],
+      ...enc,
+      roundNumber: enc.roundNumber + 1,
+      playerDefending: false,
+      playerBracing: false,
     },
   }
-
-  // Resolve player action
-  switch (action) {
-    case 'attack':
-      result = resolveAttack(result, state.player.id, targetId || state.currentEncounter?.enemies[0]?.id || '')
-      break
-    case 'flee':
-      return endEncounter(result, 'flee')
-    case 'defend':
-      // TODO: Apply defense bonus
-      break
-    case 'use_item':
-      // TODO: Consume item and apply effect
-      break
-  }
-
-  // Check encounter end
-  const allEnemiesDead = result.currentEncounter?.enemies.every((e) => e.hp <= 0)
-  if (allEnemiesDead) {
-    return endEncounter(result, 'win')
-  }
-
-  // Enemy turns
-  result = executeEnemyTurns(result)
-
-  // Check if player defeated
-  if (result.player.hp <= 0) {
-    return endEncounter(result, 'loss')
-  }
-
-  return result
+  const { fast } = splitEnemiesByInitiative(playerAgi, updated.currentEncounter!.enemies)
+  return finishEnemyPhase(updated, events, fast)
 }
 
-/**
- * Resolve an attack action
- */
-export function resolveAttack(state: GameState, attackerId: string, defenderId: string): GameState {
+function maybeGrantPlayerBonusAction(state: GameState): GameState {
   if (!state.currentEncounter) return state
-
-  const attacker = attackerId === state.player.id ? state.player : 
-                   state.currentEncounter.enemies.find((e) => e.id === attackerId)
-  const defender = defenderId === state.player.id ? state.player :
-                   state.currentEncounter.enemies.find((e) => e.id === defenderId)
-
-  if (!attacker || !defender) return state
-
-  // Simple damage calculation: attacker strength - defender defense
-  const baseDamage = Math.max(1, attacker.stats.strength - defender.stats.defense)
-  // Use seeded RNG for deterministic damage variance
-  const seed = getStateSeed(state, state.currentEncounter.roundNumber || 0)
-  const rng = new SeededRandom(seed)
-  const variance = Math.floor(rng.next() * 5) - 2 // -2 to +2
-  const totalDamage = Math.max(1, baseDamage + variance)
-
-  // Apply damage
-  if (attackerId === state.player.id) {
-    const updatedEnemies = state.currentEncounter.enemies.map((e) =>
-      e.id === defenderId ? { ...e, hp: Math.max(0, e.hp - totalDamage) } : e
-    )
+  const enc = state.currentEncounter
+  const playerStats = getEffectiveStats(state.player)
+  const playerAgi = getEffectiveAgility(playerStats, state.player.statusEffects)
+  const aliveEnemies = enc.enemies.filter((e) => e.hp > 0)
+  const avgEnemyAgi =
+    aliveEnemies.length > 0
+      ? aliveEnemies.reduce(
+          (sum, e) => sum + getEffectiveAgility(e.stats, e.statusEffects),
+          0
+        ) / aliveEnemies.length
+      : 0
+  const rng = new SeededRandom(enc.rngState)
+  const granted = rollExtraActionChance(playerAgi, avgEnemyAgi, rng)
+  if (!granted) {
     return {
       ...state,
-      currentEncounter: {
-        ...state.currentEncounter,
-        enemies: updatedEnemies,
-      },
+      currentEncounter: { ...enc, rngState: rng.seed },
     }
-  } else {
-    return {
+  }
+  return {
+    ...state,
+    currentEncounter: {
+      ...enc,
+      rngState: rng.seed,
+      playerBonusAction: true,
+      lastEvents: [
+        {
+          type: 'skill',
+          source: state.player.id,
+          sourceName: state.player.name,
+          message: 'Your agility grants an extra action!',
+        },
+        ...(enc.lastEvents ?? []),
+      ],
+    },
+  }
+}
+
+export function playerAction(
+  state: GameState,
+  action: PlayerAction,
+  options: PlayerActionOptions = {}
+): GameState {
+  if (!state.currentEncounter) return state
+
+  if (action === 'flee') {
+    const fleeResult = resolvePlayerCombatAction(state, 'flee')
+    let result = endEncounter(fleeResult.state, 'flee', fleeResult.events)
+    result = {
+      ...result,
+      player: applyWounded(result.player),
+    }
+    return result
+  }
+
+  if (action === 'use_item') {
+    const templateId = options.itemId
+    if (!templateId || !hasItem(state.player, templateId)) return state
+    const template = getItemTemplate(templateId)
+    if (!template || template.type !== 'consumable') return state
+
+    const { player: healedPlayer, message } = applyConsumableEffect(state.player, template)
+    const events: CombatEvent[] = [
+      {
+        type: 'use_item',
+        source: state.player.id,
+        sourceName: state.player.name,
+        message,
+      },
+    ]
+
+    let result: GameState = {
       ...state,
       player: {
-        ...state.player,
-        hp: Math.max(0, state.player.hp - totalDamage),
+        ...clampPlayerHp(healedPlayer),
+        inventory: removeItemFromInventory(healedPlayer.inventory, templateId, 1),
       },
     }
+
+    const allEnemiesDead = result.currentEncounter?.enemies.every((e) => e.hp <= 0)
+    if (allEnemiesDead) return endEncounter(result, 'win', events)
+
+    const playerAgi = getEffectiveAgility(
+      getEffectiveStats(result.player),
+      result.player.statusEffects
+    )
+    const { slow } = splitEnemiesByInitiative(playerAgi, result.currentEncounter!.enemies)
+    result = finishEnemyPhase(result, events, slow)
+    if (result.phase === 'game_over' || result.phase === 'combat_results') return result
+
+    if (!result.currentEncounter?.playerBonusAction) {
+      result = maybeGrantPlayerBonusAction(result)
+      if (result.currentEncounter?.playerBonusAction) return result
+    }
+
+    return advanceCombatRound(result, events)
+  }
+
+  const combatResult = resolvePlayerCombatAction(state, action, options)
+  let result = combatResult.state
+  let events = combatResult.events
+
+  const allEnemiesDead = result.currentEncounter?.enemies.every((e) => e.hp <= 0)
+  if (allEnemiesDead) return endEncounter(result, 'win', events)
+
+  const playerAgi = getEffectiveAgility(
+    getEffectiveStats(result.player),
+    result.player.statusEffects
+  )
+  const { slow } = splitEnemiesByInitiative(playerAgi, result.currentEncounter!.enemies)
+  result = finishEnemyPhase(result, events, slow)
+  if (result.phase === 'game_over' || result.phase === 'combat_results') return result
+  events = result.currentEncounter?.lastEvents ?? events
+
+  if (!result.currentEncounter?.playerBonusAction) {
+    result = maybeGrantPlayerBonusAction(result)
+    if (result.currentEncounter?.playerBonusAction) return result
+  }
+
+  return advanceCombatRound(result, events)
+}
+
+export { executeEnemyTurns }
+
+export function useItem(state: GameState, templateId: string): GameState {
+  if (state.phase === 'encounter_action') {
+    return playerAction(state, 'use_item', { itemId: templateId })
+  }
+
+  const template = getItemTemplate(templateId)
+  if (!template || template.type !== 'consumable' || !hasItem(state.player, templateId)) {
+    return state
+  }
+
+  const { player: updatedPlayer } = applyConsumableEffect(state.player, template)
+  return {
+    ...state,
+    player: clampPlayerHp({
+      ...updatedPlayer,
+      inventory: removeItemFromInventory(updatedPlayer.inventory, templateId, 1),
+    }),
   }
 }
 
-/**
- * Execute all enemy turns
- * Returns state with enemy attacks logged individually
- */
-export function executeEnemyTurns(state: GameState): GameState {
-  if (!state.currentEncounter) return state
+export function equipItemAction(state: GameState, templateId: string): GameState {
+  const template = getItemTemplate(templateId)
+  if (!template || !hasItem(state.player, templateId)) return state
+  if (template.type !== 'weapon' && template.type !== 'armor') return state
 
-  let result = state
-  const enemyAttacks: Array<{ enemyId: string; enemyName: string; damage: number }> = []
+  const equipment = { ...state.player.equipment }
+  if (template.type === 'weapon') equipment.weapon = templateId
+  else equipment.armor = templateId
 
-  // Simple AI: each alive enemy attacks player
-  for (const enemy of state.currentEncounter.enemies) {
-    if (enemy.hp > 0) {
-      const playerHpBefore = result.player.hp
-      result = resolveAttack(result, enemy.id, state.player.id)
-      const playerHpAfter = result.player.hp
-      const damage = playerHpBefore - playerHpAfter
-      
-      // Always log enemy attacks, even if they deal 0 damage
-      enemyAttacks.push({
-        enemyId: enemy.id,
-        enemyName: enemy.name,
-        damage: damage,
-      })
-      
-      // Preserve combatLog through resolveAttack
-      if (result.currentEncounter && state.currentEncounter.combatLog) {
-        result.currentEncounter.combatLog = state.currentEncounter.combatLog
-      }
+  return { ...state, player: { ...state.player, equipment } }
+}
+
+export function unequipItemAction(state: GameState, slot: 'weapon' | 'armor'): GameState {
+  const equipment = { ...state.player.equipment }
+  delete equipment[slot]
+  return { ...state, player: { ...state.player, equipment } }
+}
+
+export function allocateAttributePoint(
+  state: GameState,
+  stat: 'strength' | 'constitution' | 'dexterity' | 'agility' | 'defense'
+): GameState {
+  const available = state.player.unallocatedAttributePoints || 0
+  if (available <= 0) return state
+
+  const newStats = {
+    ...state.player.stats,
+    [stat]: state.player.stats[stat] + 1,
+  }
+  let player = {
+    ...state.player,
+    unallocatedAttributePoints: available - 1,
+    stats: newStats,
+  }
+
+  if (stat === 'constitution') {
+    const newMaxHp = calculateMaxHp(player.level, newStats.constitution)
+    player = {
+      ...player,
+      maxHp: newMaxHp,
+      hp: Math.min(player.hp + 3, newMaxHp),
     }
   }
 
-  // Log enemy attacks to combat log (always log, even if damage is 0)
-  if (result.currentEncounter && enemyAttacks.length > 0) {
-    const currentLog = result.currentEncounter.combatLog || []
-    const attackMessages = enemyAttacks.map(attack => 
-      attack.damage > 0 
-        ? `${attack.enemyName} attacks you for ${attack.damage} damage!`
-        : `${attack.enemyName} attacks you but deals no damage!`
-    )
-    const updatedLog = [...attackMessages, ...currentLog].slice(0, 50)
-    result.currentEncounter.combatLog = updatedLog
-  }
-
-  // Increment round
-  if (result.currentEncounter) {
-    result.currentEncounter.roundNumber += 1
-    // Preserve combatLog (already updated above)
-  }
-
-  return result
+  return { ...state, player }
 }
 
-/**
- * Use a consumable item from inventory
- * Removes item and applies effect (e.g., heal HP)
- */
-export function useItem(state: GameState, itemId: string): GameState {
-  const item = state.player.inventory.find((i) => i.id === itemId)
-  
-  if (!item) {
-    return state // Item not found, no change
-  }
-  
-  // Only consumables can be used
-  if (item.type !== 'consumable') {
-    return state // Not a consumable, no change
-  }
-  
-  // Apply effect if present
-  let updatedPlayer = { ...state.player }
-  
-  if (item.effect?.hpRestore) {
-    updatedPlayer.hp = Math.min(
-      updatedPlayer.hp + item.effect.hpRestore,
-      updatedPlayer.maxHp
-    )
-  }
-  
-  // Remove item from inventory (reduce quantity or remove)
-  const updatedInventory = [...updatedPlayer.inventory]
-  const itemIndex = updatedInventory.findIndex((i) => i.id === itemId)
-  
-  if (itemIndex !== -1) {
-    const inventoryItem = updatedInventory[itemIndex]
-    if (inventoryItem && inventoryItem.quantity > 1) {
-      // Reduce quantity
-      updatedInventory[itemIndex] = {
-        ...inventoryItem,
-        quantity: inventoryItem.quantity - 1,
-      }
-    } else if (inventoryItem) {
-      // Remove entirely
-      updatedInventory.splice(itemIndex, 1)
-    }
-  }
-  
-  updatedPlayer.inventory = updatedInventory
-  
-  return {
-    ...state,
-    player: updatedPlayer,
-  }
+function detectZoneBossDefeated(enemies: Enemy[], zoneId?: string): ZoneId | null {
+  if (!zoneId) return null
+  const bossId = ZONE_BOSS_IDS[zoneId as ZoneId]
+  const bossDefeated = enemies.some((e) => e.id === bossId || e.isBoss)
+  if (bossDefeated) return zoneId as ZoneId
+  return null
 }
 
-/**
- * Allocate an attribute point to a stat
- */
-export function allocateAttributePoint(state: GameState, stat: 'strength' | 'defense' | 'speed'): GameState {
-  const player = state.player
-  const availablePoints = player.unallocatedAttributePoints || 0
-
-  if (availablePoints <= 0) {
-    return state // No points available
-  }
-
-  const updatedPlayer = {
-    ...player,
-    unallocatedAttributePoints: availablePoints - 1,
-    stats: {
-      ...player.stats,
-      [stat]: player.stats[stat] + 1,
-    },
-  }
-
-  return {
-    ...state,
-    player: updatedPlayer,
-  }
-}
-
-/**
- * End encounter: apply rewards, return to room
- * @param combatLog Optional array of combat log messages to display in results
- */
-export function endEncounter(state: GameState, result: EncounterResult, combatLog: string[] = []): GameState {
+export function endEncounter(
+  state: GameState,
+  result: EncounterResult,
+  events: CombatEvent[] = []
+): GameState {
   if (!state.currentEncounter) return state
 
   let updatedPlayer = { ...state.player }
-  let newLastHealingOpportunity = state.lastHealingOpportunity
   let newChainCount = state.encounterChainCount || 0
-
-  // Collect combat results for display
+  let newLastHealing = state.lastHealingOpportunity
   let totalXp = 0
-  let totalLoot: InventoryItem[] = []
+  let totalGold = 0
+  const totalLoot: Array<{ templateId: string; quantity: number }> = []
   let levelsGained = 0
+  let zonesCleared = [...(state.zonesCleared || [])]
+  let finalBossDefeated = state.finalBossDefeated ?? false
+  let areasUnlocked = [...(state.areasUnlocked ?? ['forest'])]
+  let bossesDefeated = [...(state.bossesDefeated ?? [])]
+  let flags = { ...(state.flags ?? {}) }
+  let phase: GameState['phase'] = result === 'loss' ? 'game_over' : 'combat_results'
 
-  // Apply rewards on win
   if (result === 'win') {
     for (const enemy of state.currentEncounter.enemies) {
       totalXp += enemy.xpReward || 0
+      totalGold += enemy.goldReward || Math.floor((enemy.level || 1) * 5 + 5)
       if (enemy.loot) {
-        totalLoot.push(...enemy.loot)
+        for (const drop of enemy.loot) {
+          totalLoot.push({ templateId: drop.templateId, quantity: drop.quantity })
+        }
       }
+      flags[`defeated_${enemy.id}`] = true
     }
 
-    // Add XP to player
-    const newXp = updatedPlayer.xp + totalXp
-    updatedPlayer.xp = newXp
+    updatedPlayer.xp += totalXp
+    updatedPlayer.gold += totalGold
+    updatedPlayer.energy = Math.min(
+      updatedPlayer.maxEnergy,
+      updatedPlayer.energy + ENERGY_PER_WIN
+    )
 
-    // Check for level ups and award attribute points
     const oldLevel = updatedPlayer.level
-    const newLevel = checkLevelUp(oldLevel, newXp)
+    const newLevel = checkLevelUp(oldLevel, updatedPlayer.xp)
     levelsGained = newLevel - oldLevel
-    
+
     if (levelsGained > 0) {
-      // Calculate base stats for new level (automatic scaling)
-      const newMaxHp = calculateMaxHp(newLevel)
-      const baseStrength = calculateStrength(newLevel)
-      const baseDefense = calculateDefense(newLevel)
-      const baseSpeed = calculateSpeed(newLevel)
-      
-      // Calculate how many attribute points have been allocated
-      // (current stats - base stats at old level)
-      const oldBaseStrength = calculateStrength(oldLevel)
-      const oldBaseDefense = calculateDefense(oldLevel)
-      const oldBaseSpeed = calculateSpeed(oldLevel)
-      
-      const allocatedStrength = updatedPlayer.stats.strength - oldBaseStrength
-      const allocatedDefense = updatedPlayer.stats.defense - oldBaseDefense
-      const allocatedSpeed = updatedPlayer.stats.speed - oldBaseSpeed
-      
-      // Update player with new level and recalculated stats
+      const newMaxHp = calculateMaxHp(newLevel, updatedPlayer.stats.constitution)
+      const baseStr = calculateStrength(newLevel)
+      const baseDef = calculateDefense(newLevel)
+      const baseCon = calculateConstitution(newLevel)
+      const baseDex = calculateDexterity(newLevel)
+      const baseAgi = calculateAgility(newLevel)
+      const oldBaseStr = calculateStrength(oldLevel)
+      const oldBaseDef = calculateDefense(oldLevel)
+      const oldBaseCon = calculateConstitution(oldLevel)
+      const oldBaseDex = calculateDexterity(oldLevel)
+      const oldBaseAgi = calculateAgility(oldLevel)
+
       updatedPlayer.level = newLevel
       updatedPlayer.maxHp = newMaxHp
-      updatedPlayer.hp = Math.min(updatedPlayer.hp, newMaxHp) // Cap HP to new max
-      
-      // Apply base stats + previously allocated attribute points
+      updatedPlayer.hp = Math.min(
+        updatedPlayer.hp + levelsGained * 6,
+        getEffectiveMaxHp({ ...updatedPlayer, maxHp: newMaxHp, wounded: updatedPlayer.wounded })
+      )
+      updatedPlayer.maxEnergy = Math.min(10, 6 + Math.floor(newLevel / 3))
+      updatedPlayer.skillPoints = (updatedPlayer.skillPoints ?? 0) + levelsGained
       updatedPlayer.stats = {
-        strength: baseStrength + allocatedStrength,
-        defense: baseDefense + allocatedDefense,
-        speed: baseSpeed + allocatedSpeed,
+        strength: baseStr + (updatedPlayer.stats.strength - oldBaseStr),
+        constitution: baseCon + (updatedPlayer.stats.constitution - oldBaseCon),
+        dexterity: baseDex + (updatedPlayer.stats.dexterity - oldBaseDex),
+        agility: baseAgi + (updatedPlayer.stats.agility - oldBaseAgi),
+        defense: baseDef + (updatedPlayer.stats.defense - oldBaseDef),
       }
-      
-      // Award 1 attribute point per level gained
-      updatedPlayer.unallocatedAttributePoints = (updatedPlayer.unallocatedAttributePoints || 0) + levelsGained
+      updatedPlayer.unallocatedAttributePoints =
+        (updatedPlayer.unallocatedAttributePoints || 0) + levelsGained
     }
 
-    // Add loot to inventory
-    for (const item of totalLoot) {
-      const existingItem = updatedPlayer.inventory.find((i) => i.id === item.id)
-      if (existingItem) {
-        existingItem.quantity += item.quantity
-      } else {
-        updatedPlayer.inventory.push(item)
+    for (const drop of totalLoot) {
+      updatedPlayer.inventory = addItemToInventory(
+        updatedPlayer.inventory,
+        drop.templateId,
+        drop.quantity
+      )
+      const template = getItemTemplate(drop.templateId)
+      if (template?.type === 'crafting') {
+        updatedPlayer = addMaterial(updatedPlayer, drop.templateId, drop.quantity)
       }
     }
 
-    // Check if player received healing items (reset healing opportunity tracking)
-    const hasHealingItem = totalLoot.some(
-      (item) => item.id === 'health_potion' || item.type === 'consumable'
+    const zoneCleared = detectZoneBossDefeated(
+      state.currentEncounter.enemies,
+      state.currentRoom.zoneId
     )
-    if (hasHealingItem) {
-      newLastHealingOpportunity = state.turnCount + 1
-      // Reset chain count when player gets healing opportunity
+    if (zoneCleared && !zonesCleared.includes(zoneCleared)) {
+      zonesCleared.push(zoneCleared)
+      const shardId = ZONE_SHARD_IDS[zoneCleared]
+      updatedPlayer.inventory = addItemToInventory(updatedPlayer.inventory, shardId, 1)
+      totalLoot.push({ templateId: shardId, quantity: 1 })
+
+      if (!bossesDefeated.includes(ZONE_BOSS_IDS[zoneCleared])) {
+        bossesDefeated.push(ZONE_BOSS_IDS[zoneCleared])
+      }
+
+      if (zoneCleared === 'forest' && !areasUnlocked.includes('cave')) {
+        areasUnlocked.push('cave')
+        flags.forest_boss_defeated = true
+      }
+      if (zoneCleared === 'cave' && !areasUnlocked.includes('ruins')) {
+        areasUnlocked.push('ruins')
+      }
+    }
+
+    const finalBossInEncounter = state.currentEncounter.enemies.some(
+      (e) => e.id === FINAL_BOSS_ENEMY_ID
+    )
+    if (finalBossInEncounter || state.currentRoom.isFinalBoss) {
+      finalBossDefeated = true
+      phase = 'victory'
+    }
+
+    const hasHealing = totalLoot.some((d) => d.templateId === 'health_potion')
+    if (hasHealing) {
+      newLastHealing = state.turnCount + 1
       newChainCount = 0
     }
   } else if (result === 'flee') {
-    // Reset encounter chain on flee (player escaped, gets a break)
     newChainCount = 0
   }
-  // On loss, chain count persists (but game is over anyway)
 
-  const gameOverReason = result === 'loss' ? 'defeat' : result === 'win' ? 'victory' : undefined
+  updatedPlayer = clampPlayerHp(updatedPlayer)
 
-  // Get combat log from encounter if available
-  const encounterCombatLog = state.currentEncounter?.combatLog || combatLog
+  const logMessages = events.map(eventToLogMessage)
+  const encounterLog = state.currentEncounter.combatLog || []
+  const combatLog = [...logMessages, ...encounterLog].slice(0, 50)
 
-  // Create combat results for display
   const combatResults: CombatResults = {
     result,
     xpGained: totalXp,
-    lootGained: totalLoot,
-    combatLog: encounterCombatLog,
+    goldGained: totalGold,
+    lootGained: totalLoot.map((d) => ({ templateId: d.templateId, quantity: d.quantity })),
+    combatLog,
     levelsGained,
+    events,
   }
 
-  return {
+  let newState: GameState = {
     ...state,
-    phase: result === 'loss' ? 'game_over' : 'combat_results',
+    phase,
     player: updatedPlayer,
     currentEncounter: undefined,
-    combatResults: combatResults,
-    gameOverReason: gameOverReason as any,
+    combatResults,
+    gameOverReason: result === 'loss' ? 'defeat' : undefined,
     turnCount: state.turnCount + 1,
     encounterChainCount: newChainCount,
-    lastHealingOpportunity: newLastHealingOpportunity,
+    lastHealingOpportunity: newLastHealing,
+    zonesCleared,
+    finalBossDefeated,
+    areasUnlocked,
+    bossesDefeated,
+    flags,
   }
+
+  newState = checkAndAdvanceQuests(newState)
+
+  if (phase === 'victory') {
+    clearSave()
+  } else if (result === 'win' && state.currentRoom.isHub) {
+    saveGame(newState)
+  }
+
+  return newState
+}
+
+export function continueFromCombatResults(state: GameState): GameState {
+  if (state.finalBossDefeated) {
+    return { ...state, phase: 'victory', combatResults: undefined }
+  }
+  return { ...state, phase: 'room_exploring', combatResults: undefined }
+}
+
+export async function startGameFromRoom(roomId: string, player: Player): Promise<GameState> {
+  const room = await loadRoom(roomId)
+  const state = initGame(player, room)
+  return enterRoom(state, room)
 }

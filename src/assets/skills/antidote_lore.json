@@ -1,0 +1,1 @@
+{"id":"skill_antidote_lore","name":"Antidote Lore","branch":"survival","description":"Cleanse poison without an item.","requires":["skill_bandage"],"cost":2,"energyCost":2,"action":"skill_antidote_lore"}

@@ -1,0 +1,79 @@
+{
+  "id": "zone_forest_entrance",
+  "type": "static",
+  "name": "Whispering Woods",
+  "description": "Sunlight filters through ancient canopy. The forest hums with hidden life. A narrow trail winds deeper into the green.",
+  "picture": "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=80",
+  "zoneId": "forest",
+  "difficulty": 1,
+  "exits": [
+    {
+      "direction": "south",
+      "targetRoomId": "town_hub"
+    },
+    {
+      "direction": "north",
+      "targetRoomId": "zone_forest_deep"
+    }
+  ],
+  "encounters": [
+    {
+      "id": "forest_wolves",
+      "type": "random",
+      "triggerChance": 0.45,
+      "enemies": [
+        {
+          "id": "forest_wolf_1",
+          "name": "Forest Wolf",
+          "hp": 20,
+          "maxHp": 20,
+          "level": 1,
+          "stats": {
+            "strength": 11,
+            "defense": 2,
+            "agility": 6,
+            "dexterity": 5
+          },
+          "archetype": "attacker",
+          "xpReward": 30,
+          "goldReward": 4,
+          "loot": [
+            {
+              "templateId": "wolf_pelt",
+              "quantity": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "forest_spiders",
+      "type": "random",
+      "triggerChance": 0.35,
+      "enemies": [
+        {
+          "id": "forest_spider_1",
+          "name": "Giant Spider",
+          "hp": 16,
+          "maxHp": 16,
+          "level": 1,
+          "stats": {
+            "strength": 9,
+            "defense": 1,
+            "agility": 9,
+            "dexterity": 8
+          },
+          "archetype": "caster",
+          "xpReward": 28,
+          "goldReward": 3,
+          "loot": [
+            {
+              "templateId": "spider_silk",
+              "quantity": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

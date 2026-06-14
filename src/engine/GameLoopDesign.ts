@@ -1,119 +1,98 @@
 /**
- * Core Game Loop Design
- * 
- * A turn-based RPG with room exploration and encounters
+ * Core Game Loop Design - unified types for the finite RPG
  */
 
-/**
- * GAME LOOP FLOW
- * 
- * 1. ROOM_ENTER
- *    - Load room data (layout, static encounters)
- *    - Check for auto-trigger encounters
- *    - Player can now move/act
- * 
- * 2. ROOM_EXPLORING
- *    - Player moves between room nodes/positions
- *    - Triggers random/fixed encounters OR reaches next room
- *    - If encounter → transition to ENCOUNTER_START
- *    - If reached exit → transition to ROOM_ENTER (next room)
- * 
- * 3. ENCOUNTER_START
- *    - Initialize turn order (player vs enemies)
- *    - Present action choices to player
- * 
- * 4. ENCOUNTER_ACTION
- *    - Player chooses: Attack, Use Item, Flee, Defend
- *    - Resolve player action
- *    - Enemy turn(s)
- *    - Check win/loss/flee conditions
- * 
- * 5. ENCOUNTER_END
- *    - Rewards (XP, loot, items)
- *    - Return to ROOM_EXPLORING
- *    - OR transition to GAME_OVER if player defeated
- * 
- * 6. GAME_OVER (victory or defeat)
- */
+import type { RoomExit } from './RoomSystem'
+import type {
+  ActiveEventState,
+  CraftOrder,
+  DialogueState,
+  MarketCategoryState,
+  ProductionBuildingState,
+  QuestProgress,
+  VendorState,
+} from './ContentSchemas'
 
-/**
- * STATE DIAGRAM (ASCII)
- * 
- *   ┌─────────────┐
- *   │  GAME_START │
- *   └──────┬──────┘
- *          │
- *          ▼
- *   ┌─────────────────┐
- *   │   ROOM_ENTER    │◄──────────────────┐
- *   │ Load room, init │                   │
- *   └────────┬────────┘                   │
- *            │                           │
- *            ▼                           │
- *   ┌──────────────────┐                │
- *   │ ROOM_EXPLORING   │                │
- *   │ Player moves     │                │
- *   └────────┬─────────┘                │
- *            │                           │
- *      ┌─────┴─────┬──────────┐         │
- *      │            │          │         │
- *   RANDOM     FIXED      EXIT      BACK_DOOR
- *   ENCOUNTER  ENCOUNTER  ROOM      (no rewards)
- *      │         │         │         │
- *      ▼         ▼         ▼         │
- *   ┌──────────────────────┐         │
- *   │ ENCOUNTER_START      │         │
- *   │ Init turn order      │         │
- *   └───────────┬──────────┘         │
- *               │                    │
- *               ▼                    │
- *   ┌──────────────────────┐         │
- *   │ ENCOUNTER_ACTION     │         │
- *   │ Player chooses       │         │
- *   └───────────┬──────────┘         │
- *               │                    │
- *        ┌──────┼──────┐             │
- *        │      │      │             │
- *       WIN   LOSS   FLEE            │
- *        │      │      │             │
- *        ▼      ▼      ▼             │
- *    REWARDS  DEFEATED   BACK─────────┘
- *        │      │          to ROOM
- *        │      ▼
- *        │  GAME_OVER
- *        │
- *        └────────┐
- *                 │ Next Room?
- *                 ▼
- *          ROOM_ENTER ◄───┘
- */
-
-/**
- * Game phases
- */
-export type GamePhase = 
+export type GamePhase =
   | 'game_start'
   | 'room_enter'
   | 'room_exploring'
-  | 'encounter_start'
   | 'encounter_action'
-  | 'encounter_end'
   | 'combat_results'
+  | 'event'
+  | 'dialogue'
   | 'game_over'
+  | 'victory'
 
-/**
- * Encounter result
- */
 export type EncounterResult = 'win' | 'loss' | 'flee'
 
-/**
- * Player action in encounter
- */
-export type PlayerAction = 'attack' | 'use_item' | 'defend' | 'flee'
+export type PlayerAction =
+  | 'attack'
+  | 'use_item'
+  | 'defend'
+  | 'flee'
+  | 'skill_power_strike'
+  | 'skill_cleave'
+  | 'skill_bandage'
+  | 'skill_brace'
+  | 'skill_antidote_lore'
+  | 'skill_precise_shot'
+  | 'skill_bleed'
+  | 'skill_hamstring'
+  | 'skill_second_wind'
 
-/**
- * Minimal player state
- */
+export type PlayerStatKey = 'strength' | 'constitution' | 'dexterity' | 'agility' | 'defense'
+
+export interface PlayerStats {
+  strength: number
+  constitution: number
+  dexterity: number
+  agility: number
+  defense: number
+}
+
+export type ItemType = 'weapon' | 'armor' | 'consumable' | 'key' | 'quest' | 'crafting'
+export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
+export type ItemEffect = 'heal_health' | 'restore_energy' | 'remove_poison' | 'boost_damage' | 'boost_defense'
+export type StatusType = 'poison' | 'stun' | 'bleed' | 'slow'
+export type EnemyArchetype = 'attacker' | 'defender' | 'caster'
+
+/** Item template loaded from JSON */
+export interface ItemTemplate {
+  id: string
+  name: string
+  description: string
+  type: ItemType
+  rarity: ItemRarity
+  stackable: boolean
+  maxStackSize?: number
+  power?: number
+  effect?: ItemEffect
+  damageBonus?: number
+  defenseBonus?: number
+  statBonus?: Partial<PlayerStats>
+  slot?: 'weapon' | 'armor' | 'body'
+  buyPrice?: number
+  sellPrice?: number
+}
+
+/** Runtime inventory entry */
+export interface InventoryItem {
+  templateId: string
+  quantity: number
+}
+
+export interface EquipmentSlots {
+  weapon?: string
+  armor?: string
+}
+
+export interface StatusEffect {
+  type: StatusType
+  turnsRemaining: number
+  power: number
+}
+
 export interface Player {
   id: string
   name: string
@@ -121,124 +100,149 @@ export interface Player {
   maxHp: number
   level: number
   xp: number
+  gold: number
+  energy: number
+  maxEnergy: number
+  stamina: number
+  maxStamina: number
   inventory: InventoryItem[]
-  stats: {
-    strength: number
-    defense: number
-    speed: number
-  }
-  unallocatedAttributePoints?: number // Points available to allocate to stats
+  equipment: EquipmentSlots
+  stats: PlayerStats
+  statusEffects: StatusEffect[]
+  unallocatedAttributePoints: number
+  materials: Record<string, number>
+  knownSkills: string[]
+  skillPoints: number
+  wounded: boolean
 }
 
-/**
- * Inventory item
- */
-export interface InventoryItem {
-  id: string
-  type: 'weapon' | 'armor' | 'consumable' | 'key'
-  name: string
+export interface LootDrop {
+  templateId: string
   quantity: number
-  effect?: {
-    hpRestore?: number
-    damageBonus?: number
-    defenseBonus?: number
-  }
 }
 
-/**
- * Enemy in an encounter
- */
 export interface Enemy {
   id: string
   name: string
   hp: number
   maxHp: number
   level: number
-  stats: {
-    strength: number
-    defense: number
-    speed: number
-  }
-  loot?: InventoryItem[]
+  stats: PlayerStats
+  archetype?: EnemyArchetype
+  abilities?: string[]
+  loot?: LootDrop[]
+  goldReward?: number
   xpReward?: number
+  isBoss?: boolean
+  statusEffects?: StatusEffect[]
 }
 
-import type { RoomExit } from './RoomSystem'
-
-/**
- * Room definition (data-driven)
- */
 export interface Room {
   id: string
   name: string
   description: string
-  nodeCount?: number // Number of movement nodes (optional for compatibility)
   encounters: EncounterDef[]
-  exits: RoomExit[] // Connections to other rooms
-  nextRoomId?: string // Deprecated: use exits array instead
-  isLastRoom?: boolean
-  picture?: string // URL or path to room image
+  exits: RoomExit[]
+  isHub?: boolean
+  isFinalBoss?: boolean
+  picture?: string
+  zoneId?: string
 }
 
-/**
- * Encounter definition
- */
 export interface EncounterDef {
   id: string
   type: 'fixed' | 'random'
   enemies: Enemy[]
-  triggerChance?: number // 0-1, for random encounters
-  onTrigger?: 'auto' | 'on_move' // auto = immediate, on_move = when moving to node
+  triggerChance?: number
+  onTrigger?: 'auto' | 'on_move'
 }
 
-/**
- * Current encounter state
- */
+export interface CombatEvent {
+  type:
+    | 'attack'
+    | 'heal'
+    | 'defend'
+    | 'skill'
+    | 'status_apply'
+    | 'status_tick'
+    | 'flee'
+    | 'miss'
+    | 'use_item'
+    | 'stun_skip'
+  source: string
+  sourceName: string
+  target?: string
+  targetName?: string
+  amount?: number
+  crit?: boolean
+  status?: StatusType
+  message: string
+}
+
 export interface Encounter {
   id: string
   enemies: Enemy[]
-  turnOrder: string[] // IDs of player and enemies in turn order
+  turnOrder: string[]
   currentTurnIndex: number
   roundNumber: number
+  rngState: number
   result?: EncounterResult
   playerAction?: PlayerAction
-  combatLog?: string[] // Combat log messages for results screen
+  playerDefending?: boolean
+  playerBracing?: boolean
+  playerBonusAction?: boolean
+  combatLog?: string[]
+  lastEvents?: CombatEvent[]
 }
 
-/**
- * Combat results for display after encounter ends
- */
 export interface CombatResults {
   result: 'win' | 'loss' | 'flee'
   xpGained: number
+  goldGained: number
   lootGained: InventoryItem[]
   combatLog: string[]
   levelsGained: number
+  events: CombatEvent[]
 }
 
-/**
- * Top-level game state
- */
 export interface GameState {
   phase: GamePhase
   player: Player
   currentRoom: Room
   currentEncounter?: Encounter
-  combatResults?: CombatResults // Results from last combat
-  roomHistory: string[] // IDs of visited rooms
-  previousRoomId?: string // ID of the room we came from (for "Go Back")
+  combatResults?: CombatResults
+  roomHistory: string[]
+  previousRoomId?: string
   turnCount: number
   gameOverReason?: 'victory' | 'defeat'
-  seed?: number // Deterministic seed for randomness (optional for backward compatibility)
-  encounterChainCount?: number // Number of consecutive encounters without rest/healing
-  lastHealingOpportunity?: number // Turn count when last healing was available
-  moveCount?: number // Counter for moves within room (ensures seed variation)
+  seed?: number
+  encounterChainCount?: number
+  lastHealingOpportunity?: number
+  moveCount?: number
+  exploreCount?: number
+  zonesCleared?: string[]
+  finalBossDefeated?: boolean
+  quests: Record<string, QuestProgress>
+  flags: Record<string, boolean>
+  townBuildings: Record<string, number>
+  areasUnlocked: string[]
+  bossesDefeated: string[]
+  day: number
+  activeEvent?: ActiveEventState
+  activeDialogue?: DialogueState
+  saveVersion?: number
+  statusMessage?: string
+  forcedEncounter?: boolean
+  counters?: Record<string, number>
+  craftOrders?: CraftOrder[]
+  marketState?: Record<string, MarketCategoryState>
+  marketMaterialStock?: Record<string, number>
+  vendorState?: Record<string, VendorState>
+  productionState?: Record<string, ProductionBuildingState>
+  pendingHubPanel?: { panel: 'train' | 'craft' | 'shop'; npcId: string }
 }
 
-/**
- * Game action interface (for reducer/event system)
- */
-export interface GameAction {
-  type: string
-  payload?: any
+export interface PlayerActionOptions {
+  targetId?: string
+  itemId?: string
 }

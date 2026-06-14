@@ -1,0 +1,1 @@
+{"id":"skill_hamstring","name":"Hamstring","branch":"hunter","description":"Stun an enemy.","requires":["skill_bleed"],"cost":2,"energyCost":3,"action":"skill_hamstring"}

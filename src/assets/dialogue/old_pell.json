@@ -1,0 +1,64 @@
+{
+  "id": "old_pell_dialogue",
+  "npcId": "old_pell",
+  "nodes": [
+    {
+      "id": "start",
+      "text": "Old Pell whittles a stick. 'The logging camp's running low — could use a hand with wood.'",
+      "responses": [
+        {
+          "text": "Deliver the 10 oak wood.",
+          "requires": [
+            { "kind": "quest_stage", "questId": "camp_supplies", "stageId": "deliver" },
+            { "kind": "has_material", "materialId": "oak_wood", "qty": 10 }
+          ],
+          "outcomes": [{ "kind": "set_flag", "flag": "camp_supplies_delivered", "value": true }],
+          "next": "delivered"
+        },
+        {
+          "text": "Need wood for the camp?",
+          "requires": [{ "kind": "not_has_quest", "questId": "camp_supplies" }],
+          "next": "quest_offer"
+        },
+        {
+          "text": "What was it you needed?",
+          "requires": [{ "kind": "has_active_quest", "questId": "camp_supplies" }],
+          "next": "quest_reminder"
+        },
+        {
+          "text": "The camp's stocked now.",
+          "requires": [{ "kind": "quest_completed", "questId": "camp_supplies" }],
+          "next": "quest_done"
+        },
+        { "text": "Farewell.", "outcomes": [] }
+      ]
+    },
+    {
+      "id": "quest_offer",
+      "text": "'Ten oak wood for the logging camp. Gather it in the forest and bring it here — I'll pay twenty-five gold.'",
+      "responses": [
+        {
+          "text": "I'll gather it.",
+          "outcomes": [{ "kind": "start_quest", "questId": "camp_supplies" }],
+          "next": "start"
+        },
+        { "text": "Not yet.", "next": "start" }
+      ]
+    },
+    {
+      "id": "quest_reminder",
+      "text": "'Ten oak wood for the logging camp. Gather it in the forest, then bring it here.'",
+      "responses": [{ "text": "Understood.", "next": "start" }]
+    },
+    {
+      "id": "delivered",
+      "text": "'Good haul. The camp won't run dry this week — here's your coin.'",
+      "responses": [{ "text": "Back", "next": "start" }]
+    },
+    {
+      "id": "quest_done",
+      "text": "'The camp's stocked for now. Much obliged.'",
+      "responses": [{ "text": "Back", "next": "start" }]
+    }
+  ]
+}

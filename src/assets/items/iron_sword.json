@@ -1,7 +1,7 @@
 {
   "id": "iron_sword",
   "name": "Iron Sword",
-  "description": "A sturdy iron blade. Increases damage by 5.",
+  "description": "A sturdy iron blade. Increases attack by 7.",
   "type": "weapon",
   "rarity": "common",
   "stackable": false,
@@ -9,5 +9,7 @@
   "damageBonus": 5,
   "statBonus": {
     "strength": 2
-  }
+  },
+  "buyPrice": 40,
+  "sellPrice": 20
 }

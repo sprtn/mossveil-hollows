@@ -1,0 +1,51 @@
+{
+  "id": "zone_cave_boss",
+  "type": "static",
+  "name": "Warden's Chamber",
+  "description": "A pool of underground water reflects torchlight. The Cave Warden rises from the depths, armored in stone and crystal.",
+  "picture": "https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=800&q=80",
+  "zoneId": "cave",
+  "difficulty": 4,
+  "exits": [
+    {
+      "direction": "south",
+      "targetRoomId": "zone_cave_deep"
+    }
+  ],
+  "encounters": [
+    {
+      "id": "cave_boss_encounter",
+      "type": "fixed",
+      "onTrigger": "auto",
+      "enemies": [
+        {
+          "id": "cave_warden",
+          "name": "Cave Warden",
+          "hp": 95,
+          "maxHp": 95,
+          "level": 4,
+          "stats": {
+            "strength": 14,
+            "defense": 8,
+            "agility": 4,
+            "dexterity": 4
+          },
+          "archetype": "defender",
+          "isBoss": true,
+          "xpReward": 180,
+          "goldReward": 60,
+          "loot": [
+            {
+              "templateId": "iron_plate_armor",
+              "quantity": 1
+            },
+            {
+              "templateId": "health_potion",
+              "quantity": 2
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

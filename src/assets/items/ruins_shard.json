@@ -1,0 +1,9 @@
+{
+  "id": "ruins_shard",
+  "name": "Ruins Shard",
+  "description": "An ancient crystal from the Ruins Sentinel. One of three keys to the final gate.",
+  "type": "key",
+  "rarity": "rare",
+  "stackable": false,
+  "weight": 0.1
+}

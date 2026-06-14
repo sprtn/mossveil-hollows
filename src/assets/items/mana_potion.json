@@ -1,13 +1,15 @@
 {
   "id": "mana_potion",
   "name": "Mana Potion",
-  "description": "Restores 20 mana when consumed. For spellcasters.",
+  "description": "Restores 3 energy when consumed.",
   "type": "consumable",
   "rarity": "uncommon",
   "stackable": true,
   "maxStackSize": 10,
   "weight": 0.2,
-  "effect": "restore_mana",
-  "power": 20,
-  "duration": null
+  "effect": "restore_energy",
+  "power": 3,
+  "duration": null,
+  "buyPrice": 15,
+  "sellPrice": 7
 }
