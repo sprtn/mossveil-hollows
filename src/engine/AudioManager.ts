@@ -211,7 +211,8 @@ class AudioManagerImpl {
         this.playlistIndex = index
         this.crossfadeTo(audio)
       })
-      .catch(() => {
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === 'AbortError') return
         audio.src = ''
         if (index + 1 < playlist.length) {
           this.playTrack(context, index + 1)
