@@ -86,7 +86,6 @@ async function startNewGame() {
     const player = createDefaultPlayer()
     const state = await startGameFromRoom(START_ROOM_ID, player)
     dispatch(state)
-    audioManager.playForState(state)
   } finally {
     loading.value = false
   }
