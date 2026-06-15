@@ -1,7 +1,7 @@
 {
   "id": "oak_spear",
   "name": "Oak Spear",
-  "description": "A sturdy wooden spear (+5 ATK).",
+  "description": "A sturdy wooden spear.",
   "type": "weapon",
   "stackable": false,
   "damageBonus": 5,

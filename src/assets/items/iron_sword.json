@@ -1,7 +1,7 @@
 {
   "id": "iron_sword",
   "name": "Iron Sword",
-  "description": "A sturdy iron blade. Increases attack by 7.",
+  "description": "A sturdy iron blade.",
   "type": "weapon",
   "stackable": false,
   "weight": 1.5,

@@ -1,7 +1,7 @@
 {
   "id": "mana_potion",
   "name": "Mana Potion",
-  "description": "Restores 3 energy when consumed.",
+  "description": "Restores energy when consumed.",
   "type": "consumable",
   "stackable": true,
   "maxStackSize": 10,

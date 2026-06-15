@@ -1,7 +1,7 @@
 {
   "id": "rusty_shortsword",
   "name": "Rusty Shortsword",
-  "description": "A worn blade (+2 ATK). Better than nothing.",
+  "description": "A worn blade. Better than nothing.",
   "type": "weapon",
   "stackable": false,
   "damageBonus": 2,

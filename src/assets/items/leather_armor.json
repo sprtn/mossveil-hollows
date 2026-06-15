@@ -1,7 +1,7 @@
 {
   "id": "leather_armor",
   "name": "Leather Armor",
-  "description": "Light protective gear. Increases defense by 5.",
+  "description": "Light protective gear for adventurers.",
   "type": "armor",
   "stackable": false,
   "weight": 2.0,

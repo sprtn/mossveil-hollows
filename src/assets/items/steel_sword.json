@@ -1,7 +1,7 @@
 {
   "id": "steel_sword",
   "name": "Steel Sword",
-  "description": "A well-crafted steel blade. Increases attack by 11.",
+  "description": "A well-crafted steel blade.",
   "type": "weapon",
   "stackable": false,
   "weight": 1.8,

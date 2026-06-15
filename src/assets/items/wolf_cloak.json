@@ -1,7 +1,7 @@
 {
   "id": "wolf_cloak",
   "name": "Wolf Pelt Cloak",
-  "description": "Wolf-hide cloak (+2 DEF, +1 AGI).",
+  "description": "A wolf-hide cloak — light, warm, and surprisingly agile.",
   "type": "armor",
   "stackable": false,
   "defenseBonus": 2,

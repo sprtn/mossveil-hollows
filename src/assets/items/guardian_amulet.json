@@ -1,7 +1,7 @@
 {
   "id": "guardian_amulet",
   "name": "Guardian Amulet",
-  "description": "A powerful ancient amulet. Increases defense by 16.",
+  "description": "A powerful ancient amulet woven with protective wards.",
   "type": "armor",
   "stackable": false,
   "weight": 0.5,

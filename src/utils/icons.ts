@@ -113,6 +113,8 @@ export function itemStatSummary(
     if (template.effect === 'boost_damage') {
       const pct = applyQualityToStat(template.power ?? 0, quality)
       parts.push(`On use: +${pct}% next attack (in combat)`)
+    } else if (template.effect === 'remove_poison') {
+      parts.push(consumableEffectLabels.remove_poison ?? 'Cure Poison')
     } else {
       const label = consumableEffectLabels[template.effect] ?? template.effect.replace(/_/g, ' ')
       const power = applyQualityToStat(template.power ?? 0, quality)
