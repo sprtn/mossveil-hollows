@@ -17,6 +17,9 @@ import type {
 import { getEffectiveStats } from './ItemDatabase'
 import { SKILL_COSTS, DEFAULT_MAX_ENERGY, DEFAULT_MAX_STAMINA } from './gameConfig'
 import { calculateMaxHp, getBaseStatsForLevel } from './ProgressionSystem'
+import { consumeDamageMultiplier } from './combatBuffs'
+import { DEFAULT_QUALITY } from './Quality'
+import { createDefaultProfessions } from './Professions'
 
 export class SeededRandom {
   seed: number
@@ -44,10 +47,6 @@ export function generateCombatSeed(state: GameState, extra = 0): number {
 
 export function eventToLogMessage(event: CombatEvent): string {
   return event.message
-}
-
-export function calculateTurnOrder(combatants: Array<{ id: string; stats: { agility: number } }>): string[] {
-  return [...combatants].sort((a, b) => b.stats.agility - a.stats.agility).map((c) => c.id)
 }
 
 function clamp(val: number, min: number, max: number): number {
@@ -128,7 +127,12 @@ export function rollDamage(
   defenderAgi: number,
   defenderDefending: boolean,
   rng: SeededRandom,
-  options: { critBonus?: number; guaranteedHit?: boolean; defenseMultiplier?: number } = {}
+  options: {
+    critBonus?: number
+    guaranteedHit?: boolean
+    defenseMultiplier?: number
+    damageMultiplier?: number
+  } = {}
 ): DamageResult {
   const critChance = critChanceFor(attackerDex, options.critBonus ?? 0)
   const crit = rng.next() < critChance
@@ -143,6 +147,9 @@ export function rollDamage(
   const variance = rng.nextInt(5) - 2
   let damage = Math.max(1, base + variance)
   if (crit) damage = Math.floor(damage * (1.5 + attackerDex * 0.01))
+  if (options.damageMultiplier && options.damageMultiplier > 1) {
+    damage = Math.max(1, Math.floor(damage * options.damageMultiplier))
+  }
 
   return { damage, crit, missed: false }
 }
@@ -251,6 +258,10 @@ export interface CombatActionResult {
   events: CombatEvent[]
 }
 
+function empoweredSuffix(multiplier: number): string {
+  return multiplier > 1 ? ' (empowered!)' : ''
+}
+
 export function trySecondWind(state: GameState): GameState {
   const knows = (state.player.knownSkills ?? []).includes('skill_second_wind')
   if (!knows || state.flags?.second_wind_used) return state
@@ -333,13 +344,17 @@ export function resolvePlayerCombatAction(
       const target = enc.enemies.find((e) => e.id === targetId)
       if (!target || target.hp <= 0) break
 
+      const { multiplier, encounter: encAfterBuff } = consumeDamageMultiplier(enc)
+      result.currentEncounter = { ...enc, ...encAfterBuff }
+
       const { damage, crit, missed } = rollDamage(
         playerStats.strength,
         target.stats.defense,
         playerStats.dexterity,
         getEffectiveAgility(target.stats, target.statusEffects),
         false,
-        rng
+        rng,
+        { damageMultiplier: multiplier > 1 ? multiplier : undefined }
       )
 
       if (missed) {
@@ -357,6 +372,7 @@ export function resolvePlayerCombatAction(
           e.id === targetId ? { ...e, hp: newHp } : e
         )
         result.currentEncounter!.enemies = enemies
+        const suffix = empoweredSuffix(multiplier)
         events.push({
           type: 'attack',
           source: result.player.id,
@@ -366,8 +382,8 @@ export function resolvePlayerCombatAction(
           amount: damage,
           crit,
           message: crit
-            ? `Critical hit! You strike ${target.name} for ${damage} damage!`
-            : `You attack ${target.name} for ${damage} damage!`,
+            ? `Critical hit! You strike ${target.name} for ${damage} damage!${suffix}`
+            : `You attack ${target.name} for ${damage} damage!${suffix}`,
         })
       }
       break
@@ -429,6 +445,8 @@ export function resolvePlayerCombatAction(
         ...result.player,
         energy: result.player.energy - SKILL_COSTS.skill_precise_shot,
       }
+      const { multiplier, encounter: encAfterBuff } = consumeDamageMultiplier(enc)
+      result.currentEncounter = { ...enc, ...encAfterBuff }
       const { damage, crit } = rollDamage(
         playerStats.strength,
         target.stats.defense,
@@ -436,12 +454,13 @@ export function resolvePlayerCombatAction(
         getEffectiveAgility(target.stats, target.statusEffects),
         false,
         rng,
-        { critBonus: 0.35, guaranteedHit: true }
+        { critBonus: 0.35, guaranteedHit: true, damageMultiplier: multiplier > 1 ? multiplier : undefined }
       )
       const newHp = Math.max(0, target.hp - damage)
       result.currentEncounter!.enemies = enc.enemies.map((e) =>
         e.id === targetId ? { ...e, hp: newHp } : e
       )
+      const suffix = empoweredSuffix(multiplier)
       events.push({
         type: 'skill',
         source: result.player.id,
@@ -451,8 +470,8 @@ export function resolvePlayerCombatAction(
         amount: damage,
         crit,
         message: crit
-          ? `Precise Shot crits ${target.name} for ${damage} damage!`
-          : `Precise Shot hits ${target.name} for ${damage} damage!`,
+          ? `Precise Shot crits ${target.name} for ${damage} damage!${suffix}`
+          : `Precise Shot hits ${target.name} for ${damage} damage!${suffix}`,
       })
       break
     }
@@ -468,13 +487,16 @@ export function resolvePlayerCombatAction(
         ...result.player,
         energy: result.player.energy - SKILL_COSTS.skill_bleed,
       }
+      const { multiplier, encounter: encAfterBuff } = consumeDamageMultiplier(enc)
+      result.currentEncounter = { ...enc, ...encAfterBuff }
       const { damage } = rollDamage(
         Math.floor(playerStats.strength * 0.7),
         target.stats.defense,
         playerStats.dexterity,
         getEffectiveAgility(target.stats, target.statusEffects),
         false,
-        rng
+        rng,
+        { damageMultiplier: multiplier > 1 ? multiplier : undefined }
       )
       const bleedPower = 3 + Math.floor(playerStats.dexterity * 0.2)
       const enemies = enc.enemies.map((e) => {
@@ -491,7 +513,7 @@ export function resolvePlayerCombatAction(
         targetName: target.name,
         amount: damage,
         status: 'bleed',
-        message: `Bleed cuts ${target.name} for ${damage} and leaves them bleeding!`,
+        message: `Bleed cuts ${target.name} for ${damage} and leaves them bleeding!${empoweredSuffix(multiplier)}`,
       })
       break
     }
@@ -507,13 +529,16 @@ export function resolvePlayerCombatAction(
         ...result.player,
         energy: result.player.energy - SKILL_COSTS.skill_hamstring,
       }
+      const { multiplier, encounter: encAfterBuff } = consumeDamageMultiplier(enc)
+      result.currentEncounter = { ...enc, ...encAfterBuff }
       const { damage } = rollDamage(
         Math.floor(playerStats.strength * 0.6),
         target.stats.defense,
         playerStats.dexterity,
         getEffectiveAgility(target.stats, target.statusEffects),
         false,
-        rng
+        rng,
+        { damageMultiplier: multiplier > 1 ? multiplier : undefined }
       )
       const slowPower = 4
       const enemies = enc.enemies.map((e) => {
@@ -530,7 +555,7 @@ export function resolvePlayerCombatAction(
         targetName: target.name,
         amount: damage,
         status: 'slow',
-        message: `Hamstring slows ${target.name} for ${damage} damage!`,
+        message: `Hamstring slows ${target.name} for ${damage} damage!${empoweredSuffix(multiplier)}`,
       })
       break
     }
@@ -546,6 +571,8 @@ export function resolvePlayerCombatAction(
         ...result.player,
         energy: result.player.energy - SKILL_COSTS.skill_power_strike,
       }
+      const { multiplier, encounter: encAfterBuff } = consumeDamageMultiplier(enc)
+      result.currentEncounter = { ...enc, ...encAfterBuff }
       const bonusDmg = Math.floor(playerStats.strength * 0.8)
       const { damage, crit } = rollDamage(
         playerStats.strength + bonusDmg,
@@ -553,7 +580,8 @@ export function resolvePlayerCombatAction(
         playerStats.dexterity,
         getEffectiveAgility(target.stats, target.statusEffects),
         false,
-        rng
+        rng,
+        { damageMultiplier: multiplier > 1 ? multiplier : undefined }
       )
       const newHp = Math.max(0, target.hp - damage)
       result.currentEncounter!.enemies = enc.enemies.map((e) =>
@@ -567,7 +595,7 @@ export function resolvePlayerCombatAction(
         targetName: target.name,
         amount: damage,
         crit,
-        message: `Power Strike hits ${target.name} for ${damage} damage!`,
+        message: `Power Strike hits ${target.name} for ${damage} damage!${empoweredSuffix(multiplier)}`,
       })
       break
     }
@@ -575,6 +603,8 @@ export function resolvePlayerCombatAction(
     case 'skill_cleave': {
       if (result.player.energy < SKILL_COSTS.skill_cleave) break
       result.player = { ...result.player, energy: result.player.energy - SKILL_COSTS.skill_cleave }
+      const { multiplier, encounter: encAfterBuff } = consumeDamageMultiplier(enc)
+      result.currentEncounter = { ...enc, ...encAfterBuff }
       const cleaveDmg = Math.floor(playerStats.strength * 0.6)
       result.currentEncounter!.enemies = enc.enemies.map((e) => {
         if (e.hp <= 0) return e
@@ -584,7 +614,8 @@ export function resolvePlayerCombatAction(
           playerStats.dexterity,
           getEffectiveAgility(e.stats, e.statusEffects),
           false,
-          rng
+          rng,
+          { damageMultiplier: multiplier > 1 ? multiplier : undefined }
         )
         return { ...e, hp: Math.max(0, e.hp - damage) }
       })
@@ -592,7 +623,7 @@ export function resolvePlayerCombatAction(
         type: 'skill',
         source: result.player.id,
         sourceName: result.player.name,
-        message: `Cleave sweeps all enemies for ${cleaveDmg} base damage!`,
+        message: `Cleave sweeps all enemies!${empoweredSuffix(multiplier)}`,
       })
       break
     }
@@ -624,10 +655,6 @@ export function resolvePlayerCombatAction(
       })
       return { state: result, events }
     }
-
-    case 'use_item':
-      // Handled in GameLoop with item consumption
-      break
   }
 
   persistRng()
@@ -832,11 +859,14 @@ export function createDefaultPlayer(overrides: Partial<Player> = {}): Player {
     stamina: DEFAULT_MAX_STAMINA,
     maxStamina: DEFAULT_MAX_STAMINA,
     inventory: [
-      { templateId: 'health_potion', quantity: 2 },
-      { templateId: 'rusty_shortsword', quantity: 1 },
-      { templateId: 'worn_tunic', quantity: 1 },
+      { templateId: 'health_potion', quantity: 2, quality: DEFAULT_QUALITY },
+      { templateId: 'rusty_shortsword', quantity: 1, quality: DEFAULT_QUALITY },
+      { templateId: 'worn_tunic', quantity: 1, quality: DEFAULT_QUALITY },
     ],
-    equipment: { weapon: 'rusty_shortsword', armor: 'worn_tunic' },
+    equipment: {
+      weapon: { templateId: 'rusty_shortsword', quality: DEFAULT_QUALITY },
+      armor: { templateId: 'worn_tunic', quality: DEFAULT_QUALITY },
+    },
     stats,
     statusEffects: [],
     unallocatedAttributePoints: 0,
@@ -844,6 +874,7 @@ export function createDefaultPlayer(overrides: Partial<Player> = {}): Player {
     knownSkills: [],
     skillPoints: 0,
     wounded: false,
+    professions: createDefaultProfessions(),
     ...overrides,
   }
 }

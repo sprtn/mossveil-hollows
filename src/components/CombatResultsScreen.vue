@@ -23,9 +23,15 @@
       <div v-if="results.lootGained.length > 0" class="results-section">
         <h2>Loot</h2>
         <div class="loot-list">
-          <div v-for="(item, index) in results.lootGained" :key="index" class="loot-item">
+          <div
+            v-for="(item, index) in results.lootGained"
+            :key="`${item.templateId}::${item.quality}::${index}`"
+            class="loot-item"
+          >
             <span class="loot-icon">{{ getItemIcon(item.templateId) }}</span>
-            <span class="loot-name">{{ getItemName(item.templateId) }}</span>
+            <span class="loot-name" :style="{ color: qualityColor(item.quality) }">
+              {{ formatItemName(getItemName(item.templateId), item.quality) }}
+            </span>
             <span v-if="item.quantity > 1" class="loot-quantity">x{{ item.quantity }}</span>
           </div>
         </div>
@@ -53,6 +59,7 @@ import type { Ref } from 'vue'
 import type { GameState } from '@/engine/GameLoopDesign'
 import { continueFromCombatResults } from '@/engine/GameLoop'
 import { getItemName, getItemTemplate } from '@/engine/ItemDatabase'
+import { formatItemName, qualityColor } from '@/utils/icons'
 
 const gameState = inject<Ref<GameState>>('gameState')!
 const dispatch = inject<(state: GameState) => void>('dispatch')!

@@ -39,12 +39,13 @@
         Return to {{ hubName }}
       </button>
       <button
-        v-if="!room.isHub && room.zoneId === 'forest'"
-        @click="handleGather"
+        v-for="node in gatherNodes"
+        :key="node.id"
+        @click="handleGather(node.id)"
         class="action-button"
-        :disabled="isNavigating || player.stamina <= 0"
+        :disabled="isNavigating || player.stamina <= 0 || nodeCharges(node) <= 0"
       >
-        Gather Wood
+        {{ gatherNodeLabel(node) }} ({{ nodeCharges(node) }}/{{ node.maxCharges }})
       </button>
       <button
         v-if="!room.isHub"
@@ -68,7 +69,12 @@ import { inject, computed, ref, watch } from 'vue'
 import type { Ref } from 'vue'
 import type { GameState } from '@/engine/GameLoopDesign'
 import type { RoomExit } from '@/engine/RoomSystem'
-import { exploreRoom, goToRoom, goBack, gatherMaterials, returnToHub } from '@/engine/GameLoop'
+import { exploreRoom, goToRoom, goBack, gatherFromNode, returnToHub } from '@/engine/GameLoop'
+import {
+  getGatherNodeLabel,
+  getGatherNodeRuntimeState,
+  type GatherNode,
+} from '@/engine/GatherNodes'
 import { hasItem } from '@/engine/ItemDatabase'
 import { loadRoom } from '@/engine/RoomManager'
 import { START_ROOM_ID, GAME_TITLE_MAIN } from '@/engine/gameConfig'
@@ -86,6 +92,16 @@ const explorationMessage = ref('')
 const roomNameCache = ref<Map<string, string>>(new Map())
 const hubName = GAME_TITLE_MAIN
 const showReturnHome = computed(() => !room.value.isHub)
+
+const gatherNodes = computed(() => room.value.gatherNodes ?? [])
+
+function gatherNodeLabel(node: GatherNode): string {
+  return getGatherNodeLabel(node)
+}
+
+function nodeCharges(node: GatherNode): number {
+  return getGatherNodeRuntimeState(gameState.value, node).charges
+}
 
 const availableExits = computed(() => {
   const exits = room.value.exits || []
@@ -126,8 +142,8 @@ watch(availableExits, (exits) => {
   exits.forEach((e) => getRoomName(e.targetRoomId))
 }, { immediate: true })
 
-function handleGather() {
-  dispatch(gatherMaterials(gameState.value))
+function handleGather(nodeId: string) {
+  dispatch(gatherFromNode(gameState.value, nodeId))
 }
 
 async function handleExplore() {

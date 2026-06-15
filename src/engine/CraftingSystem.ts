@@ -31,6 +31,14 @@ export function getRecipe(id: string): RecipeDef | undefined {
   return RECIPES.find((r) => r.id === id)
 }
 
+export function getAllRecipes(): RecipeDef[] {
+  return [...RECIPES]
+}
+
+export function totalRecipeMaterialCount(recipe: RecipeDef): number {
+  return Object.values(recipe.requires.materials).reduce((sum, qty) => sum + qty, 0)
+}
+
 export function isRecipeUnlocked(state: GameState, recipe: RecipeDef): boolean {
   if (!recipe.unlockedBy) return true
   if (recipe.unlockedBy.flag && !state.flags?.[recipe.unlockedBy.flag]) return false

@@ -1,1 +1,9 @@
-{"id":"boar_hide","name":"Boar Hide","description":"Thick hide from a forest boar.","type":"crafting","rarity":"common","stackable":true,"maxStackSize":99,"sellPrice":3}
+{
+  "id": "boar_hide",
+  "name": "Boar Hide",
+  "description": "Thick hide from a forest boar.",
+  "type": "crafting",
+  "stackable": true,
+  "maxStackSize": 99,
+  "sellPrice": 3
+}

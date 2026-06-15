@@ -15,13 +15,18 @@ import {
 } from './MarketCatalog'
 import { getIronLocalSupply, ensureMarketState } from './MarketSystem'
 import { getNpc } from './NpcData'
+import { DEFAULT_QUALITY, normalizeQuality, type Quality } from './Quality'
+import { rollVendorQuality } from './QualityRoll'
+import { SeededRandom } from './CombatEngine'
 
 const SEED_INVENTORY: Record<string, VendorInventoryEntry[]> = {
   sera_quartermaster: [
-    { templateId: 'health_potion', stock: 8 },
-    { templateId: 'antidote', stock: 5 },
-    { templateId: 'worn_tunic', stock: 2 },
-    { templateId: 'rusty_shortsword', stock: 2 },
+    { templateId: 'health_potion', stock: 6, quality: 'common' },
+    { templateId: 'health_potion', stock: 2, quality: 'fine' },
+    { templateId: 'antidote', stock: 5, quality: 'common' },
+    { templateId: 'worn_tunic', stock: 2, quality: 'common' },
+    { templateId: 'rusty_shortsword', stock: 1, quality: 'common' },
+    { templateId: 'rusty_shortsword', stock: 1, quality: 'poor' },
   ],
   garrick_smith: [],
 }
@@ -37,6 +42,26 @@ const RESTOCK_CAPS: Record<string, Record<string, number>> = {
     oak_spear: 2,
     wooden_stake: 3,
   },
+}
+
+function normalizeEntry(entry: VendorInventoryEntry): VendorInventoryEntry {
+  return {
+    ...entry,
+    quality: normalizeQuality(entry.quality ?? DEFAULT_QUALITY),
+  }
+}
+
+function entryMatches(
+  entry: VendorInventoryEntry,
+  templateId: string,
+  quality: Quality
+): boolean {
+  return entry.templateId === templateId && normalizeQuality(entry.quality) === quality
+}
+
+function vendorEntryKey(entry: VendorInventoryEntry): string {
+  const q = normalizeQuality(entry.quality)
+  return `${entry.templateId}::${q}`
 }
 
 export function getVendorTier(state: GameState, vendorId: string): number {
@@ -64,7 +89,7 @@ export function getVendorSellBonus(state: GameState, vendorId: string): number {
 function defaultVendorState(vendorId: string): VendorState {
   return {
     xp: 0,
-    inventory: [...(SEED_INVENTORY[vendorId] ?? [])],
+    inventory: (SEED_INVENTORY[vendorId] ?? []).map(normalizeEntry),
   }
 }
 
@@ -73,6 +98,11 @@ export function ensureVendorState(state: GameState): GameState {
   for (const vendorId of Object.keys(SEED_INVENTORY)) {
     if (!vendorState[vendorId]) {
       vendorState[vendorId] = defaultVendorState(vendorId)
+    } else {
+      vendorState[vendorId] = {
+        ...vendorState[vendorId]!,
+        inventory: vendorState[vendorId]!.inventory.map(normalizeEntry),
+      }
     }
   }
   return { ...state, vendorState }
@@ -89,18 +119,21 @@ export function getVendorInventory(
 export function getVendorStock(
   state: GameState,
   vendorId: string,
-  templateId: string
+  templateId: string,
+  quality: Quality = DEFAULT_QUALITY
 ): number {
-  const entry = getVendorInventory(state, vendorId).find((i) => i.templateId === templateId)
+  const q = normalizeQuality(quality)
+  const entry = getVendorInventory(state, vendorId).find((i) => entryMatches(i, templateId, q))
   return entry?.stock ?? 0
 }
 
 export function vendorHasStock(
   state: GameState,
   vendorId: string,
-  templateId: string
+  templateId: string,
+  quality: Quality = DEFAULT_QUALITY
 ): boolean {
-  return getVendorStock(state, vendorId, templateId) > 0
+  return getVendorStock(state, vendorId, templateId, quality) > 0
 }
 
 export function addVendorXp(
@@ -136,12 +169,14 @@ export function decrementVendorStock(
   state: GameState,
   vendorId: string,
   templateId: string,
-  qty = 1
+  qty = 1,
+  quality: Quality = DEFAULT_QUALITY
 ): GameState {
   const ensured = ensureVendorState(state)
   const vendor = ensured.vendorState![vendorId]!
+  const q = normalizeQuality(quality)
   const inventory = vendor.inventory.map((entry) => {
-    if (entry.templateId !== templateId) return entry
+    if (!entryMatches(entry, templateId, q)) return entry
     return { ...entry, stock: Math.max(0, entry.stock - qty) }
   })
   return {
@@ -171,21 +206,27 @@ export function getVendorBuyList(state: GameState, vendorId: string): VendorInve
 export function getVendorSellList(
   state: GameState,
   vendorId: string
-): Array<{ templateId: string; quantity: number }> {
+): Array<{ templateId: string; quantity: number; quality: Quality }> {
   const player = state.player
-  const results: Array<{ templateId: string; quantity: number }> = []
+  const results: Array<{ templateId: string; quantity: number; quality: Quality }> = []
 
   for (const item of player.inventory) {
     const template = getItemTemplate(item.templateId)
     if (!template?.sellPrice) continue
     if (!vendorAcceptsItem(vendorId, item.templateId)) continue
 
-    const isEquipped =
-      player.equipment.weapon === item.templateId ||
-      player.equipment.armor === item.templateId
-    const sellable = item.quantity - (isEquipped ? 1 : 0)
+    const w = player.equipment.weapon
+    const a = player.equipment.armor
+    const isThisEquipped =
+      (w?.templateId === item.templateId && w.quality === item.quality) ||
+      (a?.templateId === item.templateId && a.quality === item.quality)
+    const sellable = item.quantity - (isThisEquipped ? 1 : 0)
     if (sellable > 0) {
-      results.push({ templateId: item.templateId, quantity: sellable })
+      results.push({
+        templateId: item.templateId,
+        quantity: sellable,
+        quality: item.quality,
+      })
     }
   }
 
@@ -199,10 +240,11 @@ export function restockVendors(state: GameState): GameState {
   const workbench = getBuildingLevel(result, 'workbench')
   const seraTier = getVendorTier(result, 'sera_quartermaster')
   const garrickTier = getVendorTier(result, 'garrick_smith')
+  const day = result.day ?? 1
 
   for (const [vendorId, caps] of Object.entries(RESTOCK_CAPS)) {
     const vendor = { ...vendorState[vendorId]! }
-    const inventory = [...vendor.inventory]
+    const inventory = [...vendor.inventory.map(normalizeEntry)]
 
     for (const [templateId, cap] of Object.entries(caps)) {
       const category = getItemCategory(templateId)
@@ -221,11 +263,18 @@ export function restockVendors(state: GameState): GameState {
         }
       }
 
-      const existing = inventory.find((i) => i.templateId === templateId)
+      const totalStock = inventory
+        .filter((i) => i.templateId === templateId)
+        .reduce((s, i) => s + i.stock, 0)
+      if (totalStock >= maxStock) continue
+
+      const rng = new SeededRandom(day ^ templateId.length ^ vendorId.length)
+      const quality = rollVendorQuality(rng)
+      const existing = inventory.find((i) => entryMatches(i, templateId, quality))
       if (existing) {
         existing.stock = Math.min(maxStock, existing.stock + 1)
-      } else if (maxStock > 0) {
-        inventory.push({ templateId, stock: 1 })
+      } else {
+        inventory.push({ templateId, stock: 1, quality })
       }
     }
 
@@ -254,3 +303,5 @@ export function giveVendorXp(
     },
   }
 }
+
+export { vendorEntryKey }

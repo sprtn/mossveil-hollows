@@ -25,6 +25,7 @@ export const ITEM_MARKET_CATEGORY: Record<string, MarketCategory> = {
   oak_spear: 'wood_products',
   wooden_stake: 'wood_products',
   iron_ore: 'iron',
+  stone: 'iron',
   rusty_shortsword: 'iron_products',
   iron_sword: 'iron_products',
   steel_sword: 'iron_products',
@@ -48,6 +49,10 @@ export const ITEM_MARKET_CATEGORY: Record<string, MarketCategory> = {
   antidote: 'consumables',
   mana_potion: 'consumables',
   cleansing_draught: 'consumables',
+  green_herb: 'consumables',
+  moonshade_herb: 'consumables',
+  raw_fish: 'consumables',
+  fresh_produce: 'consumables',
 }
 
 export const MARKET_TUNING = {

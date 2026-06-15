@@ -16,7 +16,7 @@ export const statIcons = {
 } as const
 
 export const statDescriptions: Record<keyof typeof statIcons, string> = {
-  strength: 'Attack damage dealt in combat.',
+  strength: 'Strength — damage dealt with weapons and skills.',
   constitution: 'Max HP — each point adds 3 HP.',
   dexterity: 'Raises your critical hit chance and accuracy (hit chance).',
   agility: 'Raises evasion (chance enemies miss you), turn order, and extra-action chance.',
@@ -38,6 +38,11 @@ export const materialIcons: Record<string, string> = {
   cloth_scrap: '🧵',
   corrupted_sap: '🧪',
   iron_ore: '⛏️',
+  stone: '🪨',
+  green_herb: '🌿',
+  moonshade_herb: '🌙',
+  raw_fish: '🐟',
+  fresh_produce: '🥬',
 }
 
 export function materialIcon(id: string): string {
@@ -45,6 +50,7 @@ export function materialIcon(id: string): string {
 }
 
 import type { ItemTemplate } from '@/engine/GameLoopDesign'
+import { applyQualityToStat, DEFAULT_QUALITY, getQualityTier, type Quality } from '@/engine/Quality'
 
 const consumableEffectLabels: Record<string, string> = {
   heal_health: `${resourceIcons.hp} HP`,
@@ -52,30 +58,66 @@ const consumableEffectLabels: Record<string, string> = {
   remove_poison: 'Cure Poison',
 }
 
-/** Human-readable stat summary for an item, with icons. Empty string if no notable stats. */
-export function itemStatSummary(template: ItemTemplate | undefined): string {
+export function qualityLabel(quality: Quality = DEFAULT_QUALITY): string {
+  return getQualityTier(quality).label
+}
+
+export function qualityColor(quality: Quality = DEFAULT_QUALITY): string {
+  return getQualityTier(quality).color
+}
+
+export function formatItemName(
+  name: string,
+  quality: Quality = DEFAULT_QUALITY
+): string {
+  if (quality === DEFAULT_QUALITY) return name
+  return `${name} (${qualityLabel(quality)})`
+}
+
+/** Human-readable stat summary for an item at a given quality, with icons. */
+export function itemStatSummary(
+  template: ItemTemplate | undefined,
+  quality: Quality = DEFAULT_QUALITY
+): string {
   if (!template) return ''
   const parts: string[] = []
 
   if (template.type === 'weapon' && template.damageBonus) {
-    parts.push(`${statIcons.strength} +${template.damageBonus} ATK`)
+    const val = applyQualityToStat(template.damageBonus, quality)
+    parts.push(`${statIcons.strength} +${val} Strength`)
   }
   if (template.type === 'armor' && template.defenseBonus) {
-    parts.push(`${statIcons.defense} +${template.defenseBonus} DEF`)
+    const val = applyQualityToStat(template.defenseBonus, quality)
+    parts.push(`${statIcons.defense} +${val} DEF`)
   }
 
   if (template.statBonus) {
+    const statNames: Record<string, string> = {
+      strength: 'Strength',
+      constitution: 'Constitution',
+      dexterity: 'Dexterity',
+      agility: 'Agility',
+      defense: 'Defense',
+    }
     for (const [stat, value] of Object.entries(template.statBonus)) {
       if (!value) continue
+      const scaled = applyQualityToStat(value, quality)
+      if (scaled === 0) continue
       const icon = statIcons[stat as keyof typeof statIcons] ?? ''
-      const abbr = stat.slice(0, 3).toUpperCase()
-      parts.push(`${icon} ${value > 0 ? '+' : ''}${value} ${abbr}`)
+      const name = statNames[stat] ?? stat
+      parts.push(`${icon} ${scaled > 0 ? '+' : ''}${scaled} ${name}`)
     }
   }
 
   if (template.type === 'consumable' && template.effect) {
-    const label = consumableEffectLabels[template.effect] ?? template.effect.replace(/_/g, ' ')
-    parts.push(template.power ? `+${template.power} ${label}` : label)
+    if (template.effect === 'boost_damage') {
+      const pct = applyQualityToStat(template.power ?? 0, quality)
+      parts.push(`On use: +${pct}% next attack (in combat)`)
+    } else {
+      const label = consumableEffectLabels[template.effect] ?? template.effect.replace(/_/g, ' ')
+      const power = applyQualityToStat(template.power ?? 0, quality)
+      parts.push(power ? `+${power} ${label}` : label)
+    }
   }
 
   return parts.join('  ')

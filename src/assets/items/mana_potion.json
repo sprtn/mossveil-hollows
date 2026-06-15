@@ -3,7 +3,6 @@
   "name": "Mana Potion",
   "description": "Restores 3 energy when consumed.",
   "type": "consumable",
-  "rarity": "uncommon",
   "stackable": true,
   "maxStackSize": 10,
   "weight": 0.2,

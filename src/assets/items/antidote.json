@@ -3,7 +3,6 @@
   "name": "Antidote",
   "description": "Cures poison immediately. Essential for toxic encounters.",
   "type": "consumable",
-  "rarity": "uncommon",
   "stackable": true,
   "maxStackSize": 5,
   "weight": 0.1,

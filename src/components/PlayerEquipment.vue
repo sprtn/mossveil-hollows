@@ -7,8 +7,10 @@
         <span class="slot-label">Weapon</span>
         <div class="slot-content">
           <template v-if="weapon">
-            <span class="equipped-name">{{ getItemName(weapon) }}</span>
-            <span class="equipped-bonus">+{{ weaponBonus }} ATK</span>
+            <span class="equipped-name" :style="{ color: qualityColor(weapon.quality) }">
+              {{ formatItemName(getItemName(weapon.templateId), weapon.quality) }}
+            </span>
+            <span class="equipped-bonus">+{{ weaponBonus }} Strength</span>
             <button @click="unequip('weapon')" class="unequip-btn">Remove</button>
           </template>
           <span v-else class="empty-slot">None equipped</span>
@@ -19,7 +21,9 @@
         <span class="slot-label">Armor</span>
         <div class="slot-content">
           <template v-if="armor">
-            <span class="equipped-name">{{ getItemName(armor) }}</span>
+            <span class="equipped-name" :style="{ color: qualityColor(armor.quality) }">
+              {{ formatItemName(getItemName(armor.templateId), armor.quality) }}
+            </span>
             <span class="equipped-bonus">+{{ armorBonus }} DEF</span>
             <button @click="unequip('armor')" class="unequip-btn">Remove</button>
           </template>
@@ -30,7 +34,7 @@
 
     <div class="effective-stats">
       <h4>Effective Combat Stats</h4>
-      <div class="stat-row"><span>{{ statIcons.strength }} ATK</span><span>{{ effective.strength }}</span></div>
+      <div class="stat-row"><span>{{ statIcons.strength }} Strength</span><span>{{ effective.strength }}</span></div>
       <div class="stat-row"><span>{{ statIcons.defense }} DEF</span><span>{{ effective.defense }}</span></div>
       <div class="stat-row"><span>{{ statIcons.dexterity }} DEX</span><span>{{ effective.dexterity }}</span></div>
       <div class="stat-row"><span>{{ statIcons.agility }} AGI</span><span>{{ effective.agility }}</span></div>
@@ -49,7 +53,7 @@ import type { Ref } from 'vue'
 import type { GameState } from '@/engine/GameLoopDesign'
 import { unequipItemAction } from '@/engine/GameLoop'
 import { getItemName, getItemTemplate, getEffectiveStats, getEquipBonus } from '@/engine/ItemDatabase'
-import { statIcons } from '@/utils/icons'
+import { formatItemName, qualityColor, statIcons } from '@/utils/icons'
 import ResourceList from './ResourceList.vue'
 
 const gameState = inject<Ref<GameState>>('gameState')!
@@ -60,11 +64,15 @@ const armor = computed(() => gameState.value.player.equipment.armor)
 const effective = computed(() => getEffectiveStats(gameState.value.player))
 
 const weaponBonus = computed(() =>
-  weapon.value ? getEquipBonus(getItemTemplate(weapon.value)) : 0
+  weapon.value
+    ? getEquipBonus(getItemTemplate(weapon.value.templateId), weapon.value.quality)
+    : 0
 )
 
 const armorBonus = computed(() =>
-  armor.value ? getEquipBonus(getItemTemplate(armor.value)) : 0
+  armor.value
+    ? getEquipBonus(getItemTemplate(armor.value.templateId), armor.value.quality)
+    : 0
 )
 
 function unequip(slot: 'weapon' | 'armor') {
@@ -79,7 +87,7 @@ function unequip(slot: 'weapon' | 'armor') {
 .slot { background: #2a2a2a; padding: 14px; border-radius: 6px; }
 .slot-label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
 .slot-content { display: flex; align-items: center; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
-.equipped-name { font-weight: 600; color: #fff; font-size: 16px; }
+.equipped-name { font-weight: 600; font-size: 16px; }
 .equipped-bonus { color: #4caf50; font-size: 13px; }
 .empty-slot { color: #666; font-style: italic; }
 .unequip-btn { padding: 4px 10px; background: #555; border: none; border-radius: 4px; color: #fff; cursor: pointer; font-size: 12px; }

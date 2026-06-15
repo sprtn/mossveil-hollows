@@ -67,6 +67,7 @@
         :npc-id="craftNpc.id"
         :npc-name="craftNpc.name"
         @craft="handleCraft"
+        @selfCraft="handleSelfCraft"
       />
 
       <TrainPanel
@@ -142,37 +143,51 @@
       </div>
       <h4>Buy</h4>
       <div class="shop-list">
-        <div v-for="item in buyList" :key="item.templateId" class="shop-item">
+        <div
+          v-for="item in buyList"
+          :key="`${item.templateId}::${item.quality ?? 'common'}`"
+          class="shop-item"
+        >
           <div class="shop-item-info">
-            <span class="shop-item-name">
-              {{ getItemName(item.templateId) }} x{{ item.stock }} — {{ buyPrice(item.templateId) }}g
+            <span class="shop-item-name" :style="{ color: qualityColor(item.quality) }">
+              {{ formatItemName(getItemName(item.templateId), item.quality) }}
+              x{{ item.stock }} — {{ buyPrice(item.templateId, item.quality) }}g
             </span>
-            <span v-if="itemStats(item.templateId)" class="item-stats">{{ itemStats(item.templateId) }}</span>
+            <span v-if="itemStats(item.templateId, item.quality)" class="item-stats">
+              {{ itemStats(item.templateId, item.quality) }}
+            </span>
             <span v-if="itemDesc(item.templateId)" class="item-desc">{{ itemDesc(item.templateId) }}</span>
           </div>
           <button
-            @click="handleBuy(item.templateId)"
+            @click="handleBuy(item.templateId, item.quality)"
             class="shop-btn"
-            :disabled="player.gold < buyPrice(item.templateId)"
+            :disabled="player.gold < buyPrice(item.templateId, item.quality)"
           >Buy</button>
         </div>
         <div v-if="buyList.length === 0" class="empty">Nothing for sale right now.</div>
       </div>
       <h4>Sell</h4>
       <div class="shop-list">
-        <div v-for="item in sellList" :key="item.templateId" class="shop-item">
+        <div
+          v-for="item in sellList"
+          :key="`${item.templateId}::${item.quality}`"
+          class="shop-item"
+        >
           <div class="shop-item-info">
-            <span class="shop-item-name">
-              {{ getItemName(item.templateId) }} x{{ item.quantity }} — {{ sellPrice(item.templateId) }}g
+            <span class="shop-item-name" :style="{ color: qualityColor(item.quality) }">
+              {{ formatItemName(getItemName(item.templateId), item.quality) }}
+              x{{ item.quantity }} — {{ sellPrice(item.templateId, item.quality) }}g
             </span>
-            <span v-if="itemStats(item.templateId)" class="item-stats">{{ itemStats(item.templateId) }}</span>
+            <span v-if="itemStats(item.templateId, item.quality)" class="item-stats">
+              {{ itemStats(item.templateId, item.quality) }}
+            </span>
           </div>
-          <button @click="handleSell(item.templateId)" class="shop-btn">Sell</button>
+          <button @click="handleSell(item.templateId, item.quality)" class="shop-btn">Sell</button>
         </div>
         <div v-if="sellList.length === 0" class="empty">Nothing to sell here.</div>
       </div>
       <div v-if="pendingSwap" class="swap-prompt">
-        <p>Equip <strong>{{ getItemName(pendingSwap.templateId) }}</strong> (+{{ pendingSwap.newBonus }})?</p>
+        <p>Equip <strong>{{ formatItemName(getItemName(pendingSwap.templateId), pendingSwap.quality) }}</strong> (+{{ pendingSwap.newBonus }})?</p>
         <button @click="confirmSwap" class="shop-btn">Equip</button>
         <button @click="pendingSwap = null" class="shop-btn secondary">Keep</button>
       </div>
@@ -241,7 +256,7 @@ import { equipItemAction } from '@/engine/GameLoop'
 import {
   buyItem, sellItem, sellMaterialToMarket, buyMaterialFromMarket,
   useHealer, manualSave, restAtHub, useInn, sleepAtHome,
-  trainSkillPoint, trainLearnSkill, hubCraft, hubUpgradeBuilding,
+  trainSkillPoint, trainLearnSkill, hubCraft, hubSelfCraft, hubUpgradeBuilding,
   hubSetProductionEnabled, hubSetProductionLabour,
 } from '@/engine/HubActions'
 import { getMarketMaterialListings } from '@/engine/MarketSystem'
@@ -252,7 +267,8 @@ import { startDialogue } from '@/engine/DialogueSystem'
 import { getAllBuildings, canUpgradeBuilding, getBuildingLevel } from '@/engine/BuildingSystem'
 import { getActiveQuestStages } from '@/engine/QuestSystem'
 import { getMaterialCount } from '@/engine/Materials'
-import { materialIcon, resourceIcons, itemStatSummary } from '@/utils/icons'
+import { materialIcon, resourceIcons, itemStatSummary, formatItemName, qualityColor } from '@/utils/icons'
+import type { Quality } from '@/engine/Quality'
 import {
   getAvailableVendors,
   getVendorBuyList,
@@ -272,7 +288,14 @@ const activeTab = ref('services')
 const craftNpc = ref<NpcDef | null>(null)
 const trainNpc = ref<NpcDef | null>(null)
 const selectedVendor = ref('sera_quartermaster')
-const pendingSwap = ref<{ templateId: string; slot: 'weapon' | 'armor'; currentId: string; newBonus: number; currentBonus: number } | null>(null)
+const pendingSwap = ref<{
+  templateId: string
+  quality: Quality
+  slot: 'weapon' | 'armor'
+  currentId: string
+  newBonus: number
+  currentBonus: number
+} | null>(null)
 
 const tabs = [
   { id: 'services', label: 'Services' },
@@ -299,20 +322,24 @@ function vendorName(vendorId: string) {
   return getNpc(vendorId)?.name ?? vendorId
 }
 
-function buyPrice(templateId: string) {
+function buyPrice(templateId: string, quality?: Quality) {
   return getPrice(gameState.value, templateId, 'buy', {
     buyDiscount: getVendorBuyDiscount(gameState.value, selectedVendor.value),
+    quality,
   })
 }
 
-function sellPrice(templateId: string) {
+function sellPrice(templateId: string, quality?: Quality) {
   return getPrice(gameState.value, templateId, 'sell', {
     sellBonus: getVendorSellBonus(gameState.value, selectedVendor.value),
+    quality,
   })
 }
 
 function hasShard(id: string) { return hasItem(player.value, id) }
-function itemStats(id: string) { return itemStatSummary(getItemTemplate(id)) }
+function itemStats(id: string, quality?: Quality) {
+  return itemStatSummary(getItemTemplate(id), quality)
+}
 function itemDesc(id: string) { return getItemTemplate(id)?.description ?? '' }
 function buildingLevel(id: string) { return getBuildingLevel(gameState.value, id) }
 function canUpgrade(id: string) { return canUpgradeBuilding(gameState.value, id) }
@@ -330,6 +357,7 @@ function handleLearn(skillId: string) {
   dispatch(trainLearnSkill(gameState.value, skillId, trainNpc.value?.id))
 }
 function handleCraft(recipeId: string) { dispatch(hubCraft(gameState.value, recipeId)) }
+function handleSelfCraft(recipeId: string) { dispatch(hubSelfCraft(gameState.value, recipeId)) }
 function handleUpgrade(buildingId: string) { dispatch(hubUpgradeBuilding(gameState.value, buildingId)) }
 
 function talkTo(npc: NpcDef) {
@@ -394,21 +422,32 @@ function handleProductionLabour(buildingId: string, gold: number) {
   dispatch(hubSetProductionLabour(gameState.value, buildingId, gold))
 }
 
-function handleBuy(templateId: string) {
+function handleBuy(templateId: string, quality?: Quality) {
   const goldBefore = gameState.value.player.gold
-  let newState = buyItem(gameState.value, selectedVendor.value, templateId)
+  let newState = buyItem(gameState.value, selectedVendor.value, templateId, quality)
   if (newState.player.gold === goldBefore) return
   const template = getItemTemplate(templateId)
+  const boughtQuality = quality ?? 'common'
   if (template && (template.type === 'weapon' || template.type === 'armor')) {
     const slot: 'weapon' | 'armor' = template.type === 'weapon' ? 'weapon' : 'armor'
-    const equippedId = newState.player.equipment[slot]
-    if (!equippedId) {
-      newState = equipItemAction(newState, templateId)
-    } else if (equippedId !== templateId) {
-      const newBonus = getEquipBonus(template)
-      const currentBonus = getEquipBonus(getItemTemplate(equippedId))
+    const equipped = newState.player.equipment[slot]
+    if (!equipped) {
+      newState = equipItemAction(newState, templateId, boughtQuality)
+    } else if (equipped.templateId !== templateId || equipped.quality !== boughtQuality) {
+      const newBonus = getEquipBonus(template, boughtQuality)
+      const currentBonus = getEquipBonus(
+        getItemTemplate(equipped.templateId),
+        equipped.quality
+      )
       if (newBonus > currentBonus) {
-        pendingSwap.value = { templateId, slot, currentId: equippedId, newBonus, currentBonus }
+        pendingSwap.value = {
+          templateId,
+          quality: boughtQuality,
+          slot,
+          currentId: equipped.templateId,
+          newBonus,
+          currentBonus,
+        }
       }
     }
   }
@@ -417,12 +456,18 @@ function handleBuy(templateId: string) {
 
 function confirmSwap() {
   if (!pendingSwap.value) return
-  dispatch(equipItemAction(gameState.value, pendingSwap.value.templateId))
+  dispatch(
+    equipItemAction(
+      gameState.value,
+      pendingSwap.value.templateId,
+      pendingSwap.value.quality
+    )
+  )
   pendingSwap.value = null
 }
 
-function handleSell(templateId: string) {
-  dispatch(sellItem(gameState.value, selectedVendor.value, templateId))
+function handleSell(templateId: string, quality?: Quality) {
+  dispatch(sellItem(gameState.value, selectedVendor.value, templateId, quality))
 }
 
 function handleSellMaterial(materialId: string, qty: number) {

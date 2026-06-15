@@ -3,7 +3,6 @@
   "name": "Forest Shard",
   "description": "A glowing crystal fragment from the Forest Guardian. One of three keys to the final gate.",
   "type": "key",
-  "rarity": "rare",
   "stackable": false,
   "weight": 0.1
 }

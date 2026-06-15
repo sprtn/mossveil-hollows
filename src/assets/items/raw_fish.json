@@ -1,0 +1,9 @@
+{
+  "id": "raw_fish",
+  "name": "Raw Fish",
+  "description": "Fresh catch from forest streams.",
+  "type": "crafting",
+  "stackable": true,
+  "maxStackSize": 99,
+  "sellPrice": 2
+}

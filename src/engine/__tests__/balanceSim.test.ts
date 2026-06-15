@@ -101,14 +101,17 @@ function bossWinRate(equipped: boolean, runs = 100): number {
   for (let i = 0; i < runs; i++) {
     const overrides = equipped
       ? {
-          equipment: { weapon: 'oak_spear', armor: 'hide_jerkin' },
+          equipment: {
+            weapon: { templateId: 'oak_spear', quality: 'common' as const },
+            armor: { templateId: 'hide_jerkin', quality: 'common' as const },
+          },
           inventory: [
-            { templateId: 'oak_spear', quantity: 1 },
-            { templateId: 'hide_jerkin', quantity: 1 },
-            { templateId: 'health_potion', quantity: 3 },
+            { templateId: 'oak_spear', quantity: 1, quality: 'common' as const },
+            { templateId: 'hide_jerkin', quantity: 1, quality: 'common' as const },
+            { templateId: 'health_potion', quantity: 3, quality: 'common' as const },
           ],
         }
-      : { inventory: [{ templateId: 'health_potion', quantity: 2 }] }
+      : { inventory: [{ templateId: 'health_potion', quantity: 2, quality: 'common' as const }] }
 
     const result = simulateFight(overrides, forestGuardian, 1000 + i)
     if (result.won) wins++
@@ -138,8 +141,8 @@ describe('Balance Simulation', () => {
     let state = initGame(
       createDefaultPlayer({
         inventory: [
-          { templateId: 'oak_spear', quantity: 1 },
-          { templateId: 'hide_jerkin', quantity: 1 },
+          { templateId: 'oak_spear', quantity: 1, quality: 'common' as const },
+          { templateId: 'hide_jerkin', quantity: 1, quality: 'common' as const },
         ],
         equipment: {},
       }),

@@ -1,0 +1,9 @@
+{
+  "id": "moonshade_herb",
+  "name": "Moonshade Herb",
+  "description": "A rare herb that thrives in shadow and corrupted soil.",
+  "type": "crafting",
+  "stackable": true,
+  "maxStackSize": 99,
+  "sellPrice": 6
+}

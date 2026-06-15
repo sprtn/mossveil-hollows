@@ -5,6 +5,19 @@ function pct(n: number, decimals = 0): string {
   return `${(n * 100).toFixed(decimals)}%`
 }
 
+const STAT_LABELS: Record<PlayerStatKey, string> = {
+  strength: 'Strength',
+  constitution: 'Constitution',
+  dexterity: 'Dexterity',
+  agility: 'Agility',
+  defense: 'Defense',
+}
+
+/** Canonical display name for a player stat in the UI. */
+export function statLabel(stat: PlayerStatKey): string {
+  return STAT_LABELS[stat]
+}
+
 /**
  * Short combat-relevant readout shown inline under a stat (Dexterity / Agility).
  * Uses the live combat formulas so the numbers match what happens in battle.

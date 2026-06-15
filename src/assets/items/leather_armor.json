@@ -3,7 +3,6 @@
   "name": "Leather Armor",
   "description": "Light protective gear. Increases defense by 5.",
   "type": "armor",
-  "rarity": "common",
   "stackable": false,
   "weight": 2.0,
   "slot": "body",

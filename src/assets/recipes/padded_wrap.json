@@ -1,1 +1,23 @@
-{"id":"padded_wrap","name":"Padded Wrap","station":"workbench","npcId":"garrick_smith","requires":{"materials":{"cloth_scrap":4,"oak_wood":1},"gold":5},"output":{"itemId":"worn_tunic","qty":1},"unlockedBy":{"building":"workbench","buildingLevel":1}}
+{
+  "id": "padded_wrap",
+  "name": "Padded Wrap",
+  "station": "workbench",
+  "profession": "smithing",
+  "tier": 2,
+  "npcId": "garrick_smith",
+  "requires": {
+    "materials": {
+      "cloth_scrap": 4,
+      "oak_wood": 1
+    },
+    "gold": 5
+  },
+  "output": {
+    "itemId": "worn_tunic",
+    "qty": 1
+  },
+  "unlockedBy": {
+    "building": "workbench",
+    "buildingLevel": 1
+  }
+}

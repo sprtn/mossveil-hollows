@@ -1,1 +1,9 @@
-{"id":"corrupted_sap","name":"Corrupted Sap","description":"Dark sap oozing from tainted trees.","type":"crafting","rarity":"uncommon","stackable":true,"maxStackSize":99,"sellPrice":5}
+{
+  "id": "corrupted_sap",
+  "name": "Corrupted Sap",
+  "description": "Dark sap oozing from tainted trees.",
+  "type": "crafting",
+  "stackable": true,
+  "maxStackSize": 99,
+  "sellPrice": 5
+}

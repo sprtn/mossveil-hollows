@@ -1,0 +1,9 @@
+{
+  "id": "green_herb",
+  "name": "Green Herb",
+  "description": "Common medicinal leaves found in the forest.",
+  "type": "crafting",
+  "stackable": true,
+  "maxStackSize": 99,
+  "sellPrice": 2
+}

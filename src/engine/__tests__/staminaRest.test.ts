@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { initGame, enterRoom, exploreRoom, gatherMaterials, returnToHub } from '../GameLoop'
+import { initGame, enterRoom, exploreRoom, gatherFromNode, returnToHub } from '../GameLoop'
 import { createDefaultPlayer } from '../CombatEngine'
 import { restAtHub, useHealer } from '../HubActions'
 import type { Room } from '../GameLoopDesign'
@@ -22,8 +22,19 @@ const forestRoom: Room = {
   name: 'Forest',
   description: 'Woods',
   zoneId: 'forest',
+  difficulty: 1,
   encounters: [],
   exits: [{ direction: 'south', targetRoomId: 'town_hub' }],
+  gatherNodes: [
+    {
+      id: 'test_oak',
+      profession: 'forestry',
+      resource: 'oak_wood',
+      baseYield: 1,
+      maxCharges: 5,
+      regenPerDay: 3,
+    },
+  ],
 }
 
 const deepForestRoom: Room = {
@@ -85,7 +96,7 @@ describe('Stamina and Rest', () => {
     let state = initGame(createDefaultPlayer(), forestRoom)
     state = enterRoom(state, forestRoom)
     const staminaBefore = state.player.stamina
-    state = gatherMaterials(state)
+    state = gatherFromNode(state, 'test_oak')
     expect(state.player.materials?.oak_wood).toBeGreaterThan(0)
     expect(state.player.stamina).toBeLessThan(staminaBefore)
   })

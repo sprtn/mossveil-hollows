@@ -1,1 +1,11 @@
-{"id":"rusty_shortsword","name":"Rusty Shortsword","description":"A worn blade (+2 ATK). Better than nothing.","type":"weapon","rarity":"common","stackable":false,"damageBonus":2,"slot":"weapon","buyPrice":15,"sellPrice":5}
+{
+  "id": "rusty_shortsword",
+  "name": "Rusty Shortsword",
+  "description": "A worn blade (+2 ATK). Better than nothing.",
+  "type": "weapon",
+  "stackable": false,
+  "damageBonus": 2,
+  "slot": "weapon",
+  "buyPrice": 15,
+  "sellPrice": 5
+}

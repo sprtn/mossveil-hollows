@@ -3,7 +3,6 @@
   "name": "Steel Sword",
   "description": "A well-crafted steel blade. Increases attack by 11.",
   "type": "weapon",
-  "rarity": "uncommon",
   "stackable": false,
   "weight": 1.8,
   "damageBonus": 8,

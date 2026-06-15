@@ -15,6 +15,18 @@
       <span class="energy-text">⚡{{ player.energy }}/{{ player.maxEnergy }}</span>
     </div>
 
+    <div v-if="activeBuffs.length > 0 || secondWindStatus" class="combat-status-row">
+      <div v-for="buff in activeBuffs" :key="buff.id" class="status-badge buff">
+        {{ buff.label }}
+      </div>
+      <div v-if="secondWindStatus === 'ready'" class="status-badge second-wind" title="Passive: auto-revives you once per expedition when reduced to 0 HP">
+        Second Wind ready
+      </div>
+      <div v-else-if="secondWindStatus === 'used'" class="status-badge second-wind used">
+        Second Wind spent
+      </div>
+    </div>
+
     <div class="enemy-list">
       <div
         v-for="enemy in aliveEnemies"
@@ -38,7 +50,27 @@
     </div>
 
     <div class="combat-actions">
-      <div class="action-buttons">
+      <div class="action-tabs">
+        <button
+          :class="['tab-btn', { active: activeTab === 'actions' }]"
+          @click="activeTab = 'actions'"
+        >Actions</button>
+        <button
+          v-if="skills.length > 0"
+          :class="['tab-btn', { active: activeTab === 'skills' }]"
+          @click="activeTab = 'skills'"
+        >Skills</button>
+        <button
+          v-if="consumables.length > 0"
+          :class="['tab-btn', { active: activeTab === 'consumables' }]"
+          @click="activeTab = 'consumables'"
+        >Consumables</button>
+      </div>
+
+      <p v-if="consumableUsedThisTurn" class="consumable-hint">Consumable used this turn — take your action.</p>
+      <p v-else-if="activeTab === 'consumables'" class="consumable-hint">Use one consumable, then attack, skill, or defend.</p>
+
+      <div v-show="activeTab === 'actions'" class="action-buttons">
         <button @click="handleAttack" class="action-button primary" :disabled="isBusy || !canAttack">
           {{ attackLabel }}
         </button>
@@ -46,7 +78,7 @@
         <button @click="handleFlee" class="action-button danger" :disabled="isBusy">Flee</button>
       </div>
 
-      <div class="skill-buttons">
+      <div v-show="activeTab === 'skills'" class="skill-buttons">
         <button
           v-for="skill in skills"
           :key="skill.action"
@@ -59,15 +91,19 @@
         </button>
       </div>
 
-      <div v-if="consumables.length > 0" class="item-buttons">
+      <div v-show="activeTab === 'consumables'" class="item-buttons">
         <button
           v-for="item in consumables"
-          :key="item.templateId"
-          @click="handleUseItem(item.templateId)"
+          :key="`${item.templateId}::${item.quality}`"
+          @click="handleUseConsumable(item)"
           class="action-button item-btn"
-          :disabled="isBusy"
+          :disabled="consumableUsedThisTurn"
+          :title="consumableDescription(item)"
         >
-          {{ getItemName(item.templateId) }} (x{{ item.quantity }})
+          <span :style="{ color: qualityColor(item.quality) }">
+            {{ formatItemName(getItemName(item.templateId), item.quality) }}
+          </span>
+          (x{{ item.quantity }})
         </button>
       </div>
     </div>
@@ -87,10 +123,11 @@
 <script setup lang="ts">
 import { inject, computed, ref, watch } from 'vue'
 import type { Ref } from 'vue'
-import type { GameState, PlayerAction, CombatEvent, Enemy } from '@/engine/GameLoopDesign'
-import { playerAction } from '@/engine/GameLoop'
+import type { GameState, PlayerAction, CombatEvent, Enemy, InventoryItem } from '@/engine/GameLoopDesign'
+import { playerAction, useCombatConsumable } from '@/engine/GameLoop'
 import { getItemName, getItemTemplate } from '@/engine/ItemDatabase'
 import { getAllSkills } from '@/engine/SkillSystem'
+import { formatItemName, itemStatSummary, qualityColor } from '@/utils/icons'
 
 const gameState = inject<Ref<GameState>>('gameState')!
 const dispatch = inject<(state: GameState) => void>('dispatch')!
@@ -112,6 +149,19 @@ interface LogEntry {
 const actionLog = ref<LogEntry[]>([])
 const isBusy = ref(false)
 const selectedTarget = ref<string | null>(null)
+const activeTab = ref<'actions' | 'skills' | 'consumables'>('actions')
+
+const activeBuffs = computed(() => encounter.value?.combatBuffs ?? [])
+const consumableUsedThisTurn = computed(() => encounter.value?.consumableUsedThisTurn ?? false)
+
+const knowsSecondWind = computed(() =>
+  (player.value.knownSkills ?? []).includes('skill_second_wind')
+)
+const secondWindUsed = computed(() => gameState.value.flags?.second_wind_used ?? false)
+const secondWindStatus = computed<'ready' | 'used' | null>(() => {
+  if (!knowsSecondWind.value) return null
+  return secondWindUsed.value ? 'used' : 'ready'
+})
 
 const knownSkillIds = computed(() => new Set(player.value.knownSkills ?? []))
 
@@ -165,6 +215,17 @@ function hasPoison(enemy: Enemy) {
 function selectEnemyTarget(enemyId: string) {
   if (isBusy.value || aliveEnemies.value.length <= 1) return
   selectedTarget.value = selectedTarget.value === enemyId ? null : enemyId
+}
+
+function consumableDescription(item: InventoryItem): string {
+  const t = getItemTemplate(item.templateId)
+  const stats = itemStatSummary(t, item.quality)
+  return stats ? `${t?.description ?? ''} — ${stats}` : (t?.description ?? '')
+}
+
+function logConsumableEvent(message: string) {
+  actionLog.value.unshift({ message, type: 'player' })
+  if (actionLog.value.length > 12) actionLog.value = actionLog.value.slice(0, 12)
 }
 
 function classifyEvent(event: CombatEvent): LogEntry['type'] {
@@ -233,8 +294,15 @@ function handleSkill(action: PlayerAction) {
   runAction(action, { targetId })
 }
 
-function handleUseItem(templateId: string) {
-  runAction('use_item', { itemId: templateId })
+function handleUseConsumable(item: InventoryItem) {
+  if (consumableUsedThisTurn.value) return
+  const newState = useCombatConsumable(gameState.value, item.templateId, item.quality)
+  if (newState === gameState.value) return
+  const events = newState.currentEncounter?.lastEvents ?? []
+  dispatch(newState)
+  for (const event of events) {
+    logConsumableEvent(event.message)
+  }
 }
 </script>
 
@@ -271,15 +339,15 @@ function handleUseItem(templateId: string) {
 }
 .status-badge.poison { background: #4a2a4a; color: #ce93d8; }
 .status-badge.stun { background: #4a4a2a; color: #ffd54f; }
+.status-badge.buff { background: #2a3a4a; color: #81d4fa; border: 1px solid #4fc3f7; }
+.status-badge.second-wind { background: #2a3a2a; color: #a5d6a7; border: 1px solid #66bb6a; }
+.status-badge.second-wind.used { background: #2a2a2a; color: #888; border-color: #555; }
 
-.player-combat-bar {
+.combat-status-row {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: #1a2a1a;
-  border-radius: 8px;
-  border-left: 4px solid #4caf50;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
 }
 
 .energy-text { color: #ce93d8; font-weight: 600; }
@@ -335,6 +403,46 @@ function handleUseItem(templateId: string) {
 .enemy-status { font-size: 12px; color: #ce93d8; margin-top: 4px; }
 
 .combat-actions { background: #2a2a2a; padding: 16px; border-radius: 8px; display: flex; flex-direction: column; gap: 12px; }
+
+.action-tabs {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.tab-btn {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #1a1a1a;
+  color: #aaa;
+  border: 1px solid #444;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+}
+.tab-btn.active {
+  background: #3a3a3a;
+  color: #fff;
+  border-bottom-color: #3a3a3a;
+}
+
+.consumable-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  color: #aaa;
+}
+
+.player-combat-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #1a2a1a;
+  border-radius: 8px;
+  border-left: 4px solid #4caf50;
+}
 
 .action-buttons, .skill-buttons, .item-buttons {
   display: flex;

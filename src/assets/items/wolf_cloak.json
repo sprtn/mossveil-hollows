@@ -3,10 +3,11 @@
   "name": "Wolf Pelt Cloak",
   "description": "Wolf-hide cloak (+2 DEF, +1 AGI).",
   "type": "armor",
-  "rarity": "uncommon",
   "stackable": false,
   "defenseBonus": 2,
-  "statBonus": { "agility": 1 },
+  "statBonus": {
+    "agility": 1
+  },
   "slot": "armor",
   "sellPrice": 12
 }

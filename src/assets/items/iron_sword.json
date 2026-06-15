@@ -3,7 +3,6 @@
   "name": "Iron Sword",
   "description": "A sturdy iron blade. Increases attack by 7.",
   "type": "weapon",
-  "rarity": "common",
   "stackable": false,
   "weight": 1.5,
   "damageBonus": 5,

@@ -3,7 +3,6 @@
   "name": "Guardian Amulet",
   "description": "A powerful ancient amulet. Increases defense by 16.",
   "type": "armor",
-  "rarity": "rare",
   "stackable": false,
   "weight": 0.5,
   "slot": "body",

@@ -6,6 +6,25 @@
   "picture": "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&q=80",
   "zoneId": "cave",
   "difficulty": 3,
+  "gatherNodes": [
+    {
+      "id": "cave_deep_ore",
+      "profession": "mining",
+      "resource": "iron_ore",
+      "baseYield": 2,
+      "bonusDrops": [{ "item": "crystal_sliver", "chance": 0.12 }],
+      "maxCharges": 6,
+      "regenPerDay": 3
+    },
+    {
+      "id": "cave_deep_stone",
+      "profession": "mining",
+      "resource": "stone",
+      "baseYield": 2,
+      "maxCharges": 6,
+      "regenPerDay": 3
+    }
+  ],
   "exits": [
     {
       "direction": "south",

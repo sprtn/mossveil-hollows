@@ -8,6 +8,7 @@ import type {
   Encounter,
   EncounterResult,
   GameState,
+  InventoryItem,
   Player,
   PlayerAction,
   PlayerActionOptions,
@@ -30,10 +31,13 @@ import {
   applyConsumableEffect,
   getItemTemplate,
   hasItem,
+  pickBestQualityStack,
+  pickWorstQualityStack,
   removeItemFromInventory,
 } from './ItemDatabase'
+import { DEFAULT_QUALITY, type Quality } from './Quality'
+import { itemTypeRollsQuality, rollLootQuality } from './QualityRoll'
 import {
-  calculateTurnOrder,
   executeEnemyTurns,
   resolvePlayerCombatAction,
   SeededRandom,
@@ -44,6 +48,7 @@ import {
   rollExtraActionChance,
   trySecondWind,
 } from './CombatEngine'
+import { addCombatBuff, createCombatBuffFromItem } from './combatBuffs'
 import { getEffectiveStats } from './ItemDatabase'
 import {
   FINAL_BOSS_ENEMY_ID,
@@ -62,15 +67,12 @@ import { getEffectiveMaxHp, applyWounded, clampPlayerHp } from './PlayerStats'
 import { addMaterial } from './Materials'
 import { pickRandomEvent, startEvent } from './EventSystem'
 import { checkAndAdvanceQuests } from './QuestSystem'
-import { getBuildingLevel } from './BuildingSystem'
+import { gatherFromNode } from './GatherNodes'
+
+export { gatherFromNode } from './GatherNodes'
 
 function convertRoom(roomSystemRoom: RoomSystemRoom): Room {
-  const r = roomSystemRoom as RoomSystemRoom & {
-    picture?: string
-    isHub?: boolean
-    isFinalBoss?: boolean
-    zoneId?: string
-  }
+  const r = roomSystemRoom
   return {
     id: r.id,
     name: r.name,
@@ -81,6 +83,8 @@ function convertRoom(roomSystemRoom: RoomSystemRoom): Room {
     isHub: r.isHub,
     isFinalBoss: r.isFinalBoss,
     zoneId: r.zoneId,
+    difficulty: r.difficulty ?? 0,
+    gatherNodes: r.gatherNodes ?? [],
   }
 }
 
@@ -225,30 +229,6 @@ export function exploreRoom(state: GameState): GameState {
   }
 }
 
-export function gatherMaterials(state: GameState): GameState {
-  if (state.phase !== 'room_exploring') return state
-  if (state.currentRoom.isHub) return state
-  if (state.currentRoom.zoneId !== 'forest') return state
-  if (state.player.stamina <= 0) {
-    return { ...state, statusMessage: 'Too exhausted to gather.' }
-  }
-
-  const campLevel = getBuildingLevel(state, 'logging_camp')
-  const seed = getStateSeed(state, (state.moveCount ?? 0) * 2000)
-  const rng = new SeededRandom(seed)
-  const baseQty = rng.next() < 0.5 ? 1 : 2
-  const qty = baseQty + (campLevel > 0 ? 1 : 0)
-
-  let player = drainStamina(state.player, 1)
-  player = addMaterial(player, 'oak_wood', qty)
-
-  return {
-    ...state,
-    player,
-    statusMessage: `Gathered ${qty} oak wood.`,
-  }
-}
-
 export async function goToRoom(state: GameState, targetRoomId: string): Promise<GameState> {
   if (state.phase !== 'room_exploring') return state
 
@@ -325,7 +305,6 @@ export async function returnToHub(state: GameState): Promise<GameState> {
 }
 
 export function triggerEncounter(state: GameState, enemies: Enemy[]): GameState {
-  const turnOrder = calculateTurnOrder([state.player, ...enemies])
   const seed = getStateSeed(state, state.turnCount)
   const encounterId = `enc_${state.currentRoom.id}_${state.turnCount}_${seed}`
   const rngState = Math.abs(
@@ -335,14 +314,14 @@ export function triggerEncounter(state: GameState, enemies: Enemy[]): GameState 
   const encounter: Encounter = {
     id: encounterId,
     enemies: enemies.map((e) => ({ ...e, statusEffects: e.statusEffects ?? [] })),
-    turnOrder,
-    currentTurnIndex: 0,
     roundNumber: 1,
     rngState,
     combatLog: [],
     playerDefending: false,
     playerBracing: false,
     playerBonusAction: false,
+    combatBuffs: [],
+    consumableUsedThisTurn: false,
   }
 
   let player = state.player
@@ -403,6 +382,7 @@ function advanceCombatRound(state: GameState, events: CombatEvent[]): GameState 
       roundNumber: enc.roundNumber + 1,
       playerDefending: false,
       playerBracing: false,
+      consumableUsedThisTurn: false,
     },
   }
   const { fast } = splitEnemiesByInitiative(playerAgi, updated.currentEncounter!.enemies)
@@ -436,6 +416,7 @@ function maybeGrantPlayerBonusAction(state: GameState): GameState {
       ...enc,
       rngState: rng.seed,
       playerBonusAction: true,
+      consumableUsedThisTurn: false,
       lastEvents: [
         {
           type: 'skill',
@@ -445,6 +426,69 @@ function maybeGrantPlayerBonusAction(state: GameState): GameState {
         },
         ...(enc.lastEvents ?? []),
       ],
+    },
+  }
+}
+
+/** Use a consumable during combat without ending the player's turn. */
+export function useCombatConsumable(
+  state: GameState,
+  templateId: string,
+  quality?: Quality
+): GameState {
+  if (!state.currentEncounter || state.phase !== 'encounter_action') return state
+  const enc = state.currentEncounter
+  if (enc.consumableUsedThisTurn) return state
+  if (!hasItem(state.player, templateId)) return state
+
+  const template = getItemTemplate(templateId)
+  if (!template || template.type !== 'consumable') return state
+
+  // Consume lowest-quality stack first when not specified.
+  const consumeQuality =
+    quality ?? pickWorstQualityStack(state.player.inventory, templateId) ?? DEFAULT_QUALITY
+  if (!hasItem(state.player, templateId, consumeQuality)) return state
+
+  let updatedEnc: Encounter = enc
+  let updatedPlayer = state.player
+  let message: string
+
+  if (template.effect === 'boost_damage') {
+    const buff = createCombatBuffFromItem(template, consumeQuality)
+    if (!buff) return state
+    updatedEnc = addCombatBuff(enc, buff)
+    message = `You ready ${template.name} — ${buff.label}.`
+  } else {
+    const applied = applyConsumableEffect(state.player, template, consumeQuality)
+    updatedPlayer = clampPlayerHp(applied.player)
+    message = applied.message
+  }
+
+  const events: CombatEvent[] = [
+    {
+      type: 'use_item',
+      source: state.player.id,
+      sourceName: state.player.name,
+      message,
+    },
+  ]
+
+  return {
+    ...state,
+    player: {
+      ...updatedPlayer,
+      inventory: removeItemFromInventory(
+        updatedPlayer.inventory,
+        templateId,
+        1,
+        consumeQuality
+      ),
+    },
+    currentEncounter: {
+      ...updatedEnc,
+      consumableUsedThisTurn: true,
+      lastEvents: events,
+      combatLog: [message, ...(enc.combatLog ?? [])].slice(0, 50),
     },
   }
 }
@@ -464,49 +508,6 @@ export function playerAction(
       player: applyWounded(result.player),
     }
     return result
-  }
-
-  if (action === 'use_item') {
-    const templateId = options.itemId
-    if (!templateId || !hasItem(state.player, templateId)) return state
-    const template = getItemTemplate(templateId)
-    if (!template || template.type !== 'consumable') return state
-
-    const { player: healedPlayer, message } = applyConsumableEffect(state.player, template)
-    const events: CombatEvent[] = [
-      {
-        type: 'use_item',
-        source: state.player.id,
-        sourceName: state.player.name,
-        message,
-      },
-    ]
-
-    let result: GameState = {
-      ...state,
-      player: {
-        ...clampPlayerHp(healedPlayer),
-        inventory: removeItemFromInventory(healedPlayer.inventory, templateId, 1),
-      },
-    }
-
-    const allEnemiesDead = result.currentEncounter?.enemies.every((e) => e.hp <= 0)
-    if (allEnemiesDead) return endEncounter(result, 'win', events)
-
-    const playerAgi = getEffectiveAgility(
-      getEffectiveStats(result.player),
-      result.player.statusEffects
-    )
-    const { slow } = splitEnemiesByInitiative(playerAgi, result.currentEncounter!.enemies)
-    result = finishEnemyPhase(result, events, slow)
-    if (result.phase === 'game_over' || result.phase === 'combat_results') return result
-
-    if (!result.currentEncounter?.playerBonusAction) {
-      result = maybeGrantPlayerBonusAction(result)
-      if (result.currentEncounter?.playerBonusAction) return result
-    }
-
-    return advanceCombatRound(result, events)
   }
 
   const combatResult = resolvePlayerCombatAction(state, action, options)
@@ -535,9 +536,13 @@ export function playerAction(
 
 export { executeEnemyTurns }
 
-export function useItem(state: GameState, templateId: string): GameState {
+export function useItem(
+  state: GameState,
+  templateId: string,
+  quality?: Quality
+): GameState {
   if (state.phase === 'encounter_action') {
-    return playerAction(state, 'use_item', { itemId: templateId })
+    return useCombatConsumable(state, templateId, quality)
   }
 
   const template = getItemTemplate(templateId)
@@ -545,24 +550,46 @@ export function useItem(state: GameState, templateId: string): GameState {
     return state
   }
 
-  const { player: updatedPlayer } = applyConsumableEffect(state.player, template)
+  const consumeQuality =
+    quality ?? pickWorstQualityStack(state.player.inventory, templateId) ?? DEFAULT_QUALITY
+  if (!hasItem(state.player, templateId, consumeQuality)) return state
+
+  const { player: updatedPlayer } = applyConsumableEffect(
+    state.player,
+    template,
+    consumeQuality
+  )
   return {
     ...state,
     player: clampPlayerHp({
       ...updatedPlayer,
-      inventory: removeItemFromInventory(updatedPlayer.inventory, templateId, 1),
+      inventory: removeItemFromInventory(
+        updatedPlayer.inventory,
+        templateId,
+        1,
+        consumeQuality
+      ),
     }),
   }
 }
 
-export function equipItemAction(state: GameState, templateId: string): GameState {
+export function equipItemAction(
+  state: GameState,
+  templateId: string,
+  quality?: Quality
+): GameState {
   const template = getItemTemplate(templateId)
   if (!template || !hasItem(state.player, templateId)) return state
   if (template.type !== 'weapon' && template.type !== 'armor') return state
 
+  const q =
+    quality ?? pickBestQualityStack(state.player.inventory, templateId) ?? DEFAULT_QUALITY
+  if (!hasItem(state.player, templateId, q)) return state
+
   const equipment = { ...state.player.equipment }
-  if (template.type === 'weapon') equipment.weapon = templateId
-  else equipment.armor = templateId
+  const ref = { templateId, quality: q }
+  if (template.type === 'weapon') equipment.weapon = ref
+  else equipment.armor = ref
 
   return { ...state, player: { ...state.player, equipment } }
 }
@@ -612,14 +639,23 @@ function detectZoneBossDefeated(enemies: Enemy[], zoneId?: string): ZoneId | nul
 
 function resolveEnemyLoot(
   enemy: Enemy,
-  rng: SeededRandom
-): Array<{ templateId: string; quantity: number }> {
+  rng: SeededRandom,
+  roomDifficulty = 0
+): InventoryItem[] {
   if (!enemy.loot?.length) return []
-  const drops: Array<{ templateId: string; quantity: number }> = []
+  const drops: InventoryItem[] = []
   for (const drop of enemy.loot) {
     const chance = drop.chance ?? 1
     if (rng.next() < chance) {
-      drops.push({ templateId: drop.templateId, quantity: drop.quantity })
+      const template = getItemTemplate(drop.templateId)
+      const quality = itemTypeRollsQuality(template?.type)
+        ? rollLootQuality(rng, roomDifficulty)
+        : DEFAULT_QUALITY
+      drops.push({
+        templateId: drop.templateId,
+        quantity: drop.quantity,
+        quality,
+      })
     }
   }
   return drops
@@ -637,7 +673,7 @@ export function endEncounter(
   let newLastHealing = state.lastHealingOpportunity
   let totalXp = 0
   let totalGold = 0
-  const totalLoot: Array<{ templateId: string; quantity: number }> = []
+  const totalLoot: InventoryItem[] = []
   let levelsGained = 0
   let zonesCleared = [...(state.zonesCleared || [])]
   let finalBossDefeated = state.finalBossDefeated ?? false
@@ -650,10 +686,11 @@ export function endEncounter(
     const lootRng = new SeededRandom(
       generateCombatSeed(state, state.turnCount) ^ state.currentEncounter.enemies.length
     )
+    const roomDifficulty = state.currentRoom.difficulty ?? 0
     for (const enemy of state.currentEncounter.enemies) {
       totalXp += enemy.xpReward || 0
       totalGold += enemy.goldReward ?? 0
-      totalLoot.push(...resolveEnemyLoot(enemy, lootRng))
+      totalLoot.push(...resolveEnemyLoot(enemy, lootRng, roomDifficulty))
       flags[`defeated_${enemy.id}`] = true
     }
 
@@ -704,7 +741,8 @@ export function endEncounter(
       updatedPlayer.inventory = addItemToInventory(
         updatedPlayer.inventory,
         drop.templateId,
-        drop.quantity
+        drop.quantity,
+        drop.quality
       )
       const template = getItemTemplate(drop.templateId)
       if (template?.type === 'crafting') {
@@ -719,8 +757,13 @@ export function endEncounter(
     if (zoneCleared && !zonesCleared.includes(zoneCleared)) {
       zonesCleared.push(zoneCleared)
       const shardId = ZONE_SHARD_IDS[zoneCleared]
-      updatedPlayer.inventory = addItemToInventory(updatedPlayer.inventory, shardId, 1)
-      totalLoot.push({ templateId: shardId, quantity: 1 })
+      updatedPlayer.inventory = addItemToInventory(
+        updatedPlayer.inventory,
+        shardId,
+        1,
+        DEFAULT_QUALITY
+      )
+      totalLoot.push({ templateId: shardId, quantity: 1, quality: DEFAULT_QUALITY })
 
       if (!bossesDefeated.includes(ZONE_BOSS_IDS[zoneCleared])) {
         bossesDefeated.push(ZONE_BOSS_IDS[zoneCleared])
@@ -762,7 +805,11 @@ export function endEncounter(
     result,
     xpGained: totalXp,
     goldGained: totalGold,
-    lootGained: totalLoot.map((d) => ({ templateId: d.templateId, quantity: d.quantity })),
+    lootGained: totalLoot.map((d) => ({
+      templateId: d.templateId,
+      quantity: d.quantity,
+      quality: d.quality,
+    })),
     combatLog,
     levelsGained,
     events,

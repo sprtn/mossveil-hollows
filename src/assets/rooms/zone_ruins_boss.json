@@ -6,6 +6,17 @@
   "picture": "https://images.unsplash.com/photo-1518173944277-3d9b4b0e8f3e?w=800&q=80",
   "zoneId": "ruins",
   "difficulty": 5,
+  "gatherNodes": [
+    {
+      "id": "ruins_boss_sacred_herb",
+      "profession": "herbalism",
+      "resource": "moonshade_herb",
+      "baseYield": 2,
+      "minLevel": 5,
+      "maxCharges": 3,
+      "regenPerDay": 2
+    }
+  ],
   "exits": [
     {
       "direction": "south",

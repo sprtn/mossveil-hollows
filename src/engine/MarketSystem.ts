@@ -11,6 +11,7 @@ import {
   type MarketCategory,
 } from './MarketCatalog'
 import { getItemTemplate, getItemName } from './ItemDatabase'
+import { applyQualityToPrice, DEFAULT_QUALITY, normalizeQuality, type Quality } from './Quality'
 import { getMaterialCount } from './Materials'
 
 function defaultCategoryState(): MarketCategoryState {
@@ -158,14 +159,16 @@ export function getPrice(
   state: GameState,
   templateId: string,
   mode: 'buy' | 'sell',
-  modifiers?: { buyDiscount?: number; sellBonus?: number }
+  modifiers?: { buyDiscount?: number; sellBonus?: number; quality?: Quality }
 ): number {
   const template = getItemTemplate(templateId)
   if (!template) return 0
 
-  const base = mode === 'buy' ? template.buyPrice : template.sellPrice
-  if (base === undefined) return 0
+  const quality = normalizeQuality(modifiers?.quality ?? DEFAULT_QUALITY)
+  const rawBase = mode === 'buy' ? template.buyPrice : template.sellPrice
+  if (rawBase === undefined) return 0
 
+  const base = applyQualityToPrice(rawBase, quality)
   let price = base * getMarketMultiplier(state, templateId)
 
   if (mode === 'buy') {

@@ -6,6 +6,32 @@
   "picture": "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=80",
   "zoneId": "forest",
   "difficulty": 1,
+  "gatherNodes": [
+    {
+      "id": "forest_entrance_oak",
+      "profession": "forestry",
+      "resource": "oak_wood",
+      "baseYield": 1,
+      "maxCharges": 8,
+      "regenPerDay": 3
+    },
+    {
+      "id": "forest_entrance_herbs",
+      "profession": "herbalism",
+      "resource": "green_herb",
+      "baseYield": 1,
+      "maxCharges": 6,
+      "regenPerDay": 2
+    },
+    {
+      "id": "forest_entrance_stream",
+      "profession": "farming_fishing",
+      "resource": "raw_fish",
+      "baseYield": 1,
+      "maxCharges": 5,
+      "regenPerDay": 2
+    }
+  ],
   "exits": [
     {
       "direction": "south",

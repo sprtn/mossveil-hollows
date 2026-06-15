@@ -4,6 +4,8 @@
  */
 
 import type { OutcomeEffect, OutcomeRequirement } from './Outcomes'
+import type { Quality } from './Quality'
+import type { ProfessionId } from './Professions'
 
 export interface EventChoice {
   text: string
@@ -26,6 +28,9 @@ export interface RecipeDef {
   id: string
   name: string
   station: 'workbench' | 'forge' | 'alchemy'
+  profession: ProfessionId
+  /** Recipe complexity tier for stamina/XP scaling (1 = simple). */
+  tier: number
   npcId?: string
   requires: {
     materials: Record<string, number>
@@ -91,6 +96,7 @@ export interface MarketCategoryState {
 export interface VendorInventoryEntry {
   templateId: string
   stock: number
+  quality?: Quality
 }
 
 export interface VendorState {

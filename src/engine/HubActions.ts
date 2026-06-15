@@ -25,6 +25,7 @@ import { saveGame } from './saveGame'
 import { getEffectiveMaxHp, applyWoundedClear } from './PlayerStats'
 import { learnSkill, buySkillPoint } from './SkillSystem'
 import { placeCraftOrder } from './CraftOrderSystem'
+import { selfCraft } from './SelfCraft'
 import { advanceDay } from './DayAdvance'
 import { upgradeBuilding, getBuildingLevel } from './BuildingSystem'
 import {
@@ -46,6 +47,8 @@ import { vendorAcceptsItem, getItemCategory } from './MarketCatalog'
 import { setProductionEnabled, setProductionLabour } from './EconomyTick'
 import { getMaterialCount, addMaterial } from './Materials'
 import { appendStatus } from './statusMessages'
+import type { Quality } from './Quality'
+import { DEFAULT_QUALITY } from './Quality'
 
 export function sellMaterialToMarket(
   state: GameState,
@@ -108,15 +111,21 @@ export function buyMaterialFromMarket(
   return recordTrade(result, materialId, buyQty, 'buy')
 }
 
-export function buyItem(state: GameState, vendorId: string, templateId: string): GameState {
+export function buyItem(
+  state: GameState,
+  vendorId: string,
+  templateId: string,
+  quality: Quality = DEFAULT_QUALITY
+): GameState {
   const template = getItemTemplate(templateId)
   if (!template || template.buyPrice === undefined) return state
 
   let result = ensureVendorState(ensureMarketState(state))
-  if (!vendorHasStock(result, vendorId, templateId)) return result
+  if (!vendorHasStock(result, vendorId, templateId, quality)) return result
 
   const price = getPrice(result, templateId, 'buy', {
     buyDiscount: getVendorBuyDiscount(result, vendorId),
+    quality,
   })
   if (result.player.gold < price) return result
 
@@ -125,31 +134,40 @@ export function buyItem(state: GameState, vendorId: string, templateId: string):
     player: {
       ...result.player,
       gold: result.player.gold - price,
-      inventory: addItemToInventory(result.player.inventory, templateId, 1),
+      inventory: addItemToInventory(result.player.inventory, templateId, 1, quality),
     },
   }
-  result = decrementVendorStock(result, vendorId, templateId, 1)
+  result = decrementVendorStock(result, vendorId, templateId, 1, quality)
   result = recordTrade(result, templateId, 1, 'buy')
   result = addVendorXp(result, vendorId, price)
   return result
 }
 
-export function sellItem(state: GameState, vendorId: string, templateId: string): GameState {
+export function sellItem(
+  state: GameState,
+  vendorId: string,
+  templateId: string,
+  quality: Quality = DEFAULT_QUALITY
+): GameState {
   const template = getItemTemplate(templateId)
   if (!template || template.sellPrice === undefined) return state
   if (!vendorAcceptsItem(vendorId, templateId)) return state
 
-  const owned = getInventoryQuantity(state.player, templateId)
+  const owned = getInventoryQuantity(state.player, templateId, quality)
   if (owned <= 0) return state
 
+  const w = state.player.equipment.weapon
+  const a = state.player.equipment.armor
   const isEquipped =
-    state.player.equipment.weapon === templateId || state.player.equipment.armor === templateId
+    (w?.templateId === templateId && w.quality === quality) ||
+    (a?.templateId === templateId && a.quality === quality)
   const reserved = isEquipped ? 1 : 0
   if (owned - reserved <= 0) return state
 
   let result = ensureVendorState(ensureMarketState(state))
   const price = getPrice(result, templateId, 'sell', {
     sellBonus: getVendorSellBonus(result, vendorId),
+    quality,
   })
 
   result = {
@@ -157,7 +175,7 @@ export function sellItem(state: GameState, vendorId: string, templateId: string)
     player: {
       ...result.player,
       gold: result.player.gold + price,
-      inventory: removeItemFromInventory(result.player.inventory, templateId, 1),
+      inventory: removeItemFromInventory(result.player.inventory, templateId, 1, quality),
     },
   }
   result = recordTrade(result, templateId, 1, 'sell')
@@ -308,6 +326,10 @@ export function trainLearnSkill(state: GameState, skillId: string, trainerId?: s
 
 export function hubCraft(state: GameState, recipeId: string): GameState {
   return placeCraftOrder(state, recipeId)
+}
+
+export function hubSelfCraft(state: GameState, recipeId: string): GameState {
+  return selfCraft(state, recipeId)
 }
 
 export function hubUpgradeBuilding(state: GameState, buildingId: string): GameState {

@@ -1,1 +1,11 @@
-{"id":"worn_tunic","name":"Worn Tunic","description":"Threadbare cloth (+1 DEF).","type":"armor","rarity":"common","stackable":false,"defenseBonus":1,"slot":"armor","buyPrice":10,"sellPrice":3}
+{
+  "id": "worn_tunic",
+  "name": "Worn Tunic",
+  "description": "Threadbare cloth (+1 DEF).",
+  "type": "armor",
+  "stackable": false,
+  "defenseBonus": 1,
+  "slot": "armor",
+  "buyPrice": 10,
+  "sellPrice": 3
+}

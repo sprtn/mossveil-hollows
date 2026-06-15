@@ -3,7 +3,6 @@
   "name": "Crystal Sliver",
   "description": "A shard of luminescent crystal shed by cave slimes.",
   "type": "crafting",
-  "rarity": "uncommon",
   "stackable": true,
   "maxStackSize": 20,
   "sellPrice": 10

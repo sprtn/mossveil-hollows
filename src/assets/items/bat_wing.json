@@ -3,7 +3,6 @@
   "name": "Bat Wing",
   "description": "Leathery wing membrane from a cave bat.",
   "type": "crafting",
-  "rarity": "common",
   "stackable": true,
   "maxStackSize": 99,
   "sellPrice": 3

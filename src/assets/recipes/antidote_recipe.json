@@ -1,1 +1,23 @@
-{"id":"antidote_recipe","name":"Antidote","station":"alchemy","npcId":"maren_healer","requires":{"materials":{"spider_silk":2,"cloth_scrap":1},"gold":5},"output":{"itemId":"antidote","qty":1},"unlockedBy":{"building":"workbench","buildingLevel":1}}
+{
+  "id": "antidote_recipe",
+  "name": "Antidote",
+  "station": "alchemy",
+  "profession": "alchemy",
+  "tier": 2,
+  "npcId": "maren_healer",
+  "requires": {
+    "materials": {
+      "spider_silk": 2,
+      "cloth_scrap": 1
+    },
+    "gold": 5
+  },
+  "output": {
+    "itemId": "antidote",
+    "qty": 1
+  },
+  "unlockedBy": {
+    "building": "workbench",
+    "buildingLevel": 1
+  }
+}

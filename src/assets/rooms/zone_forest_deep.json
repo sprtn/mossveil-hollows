@@ -6,6 +6,33 @@
   "picture": "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?w=800&q=80",
   "zoneId": "forest",
   "difficulty": 2,
+  "gatherNodes": [
+    {
+      "id": "forest_deep_oak",
+      "profession": "forestry",
+      "resource": "oak_wood",
+      "baseYield": 2,
+      "maxCharges": 8,
+      "regenPerDay": 3
+    },
+    {
+      "id": "forest_deep_herbs",
+      "profession": "herbalism",
+      "resource": "green_herb",
+      "baseYield": 2,
+      "bonusDrops": [{ "item": "moonshade_herb", "chance": 0.08 }],
+      "maxCharges": 6,
+      "regenPerDay": 2
+    },
+    {
+      "id": "forest_deep_forage",
+      "profession": "farming_fishing",
+      "resource": "fresh_produce",
+      "baseYield": 2,
+      "maxCharges": 6,
+      "regenPerDay": 2
+    }
+  ],
   "exits": [
     {
       "direction": "south",

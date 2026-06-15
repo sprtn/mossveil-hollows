@@ -6,6 +6,28 @@
   "picture": "https://images.unsplash.com/photo-1448375244129-9c16e9cc1d9f?w=800&q=80",
   "zoneId": "forest",
   "difficulty": 2,
+  "gatherNodes": [
+    {
+      "id": "forest_cache_sap",
+      "profession": "herbalism",
+      "resource": "green_herb",
+      "baseYield": 2,
+      "bonusDrops": [
+        { "item": "corrupted_sap", "chance": 0.15 },
+        { "item": "moonshade_herb", "chance": 0.1 }
+      ],
+      "maxCharges": 6,
+      "regenPerDay": 2
+    },
+    {
+      "id": "forest_cache_oak",
+      "profession": "forestry",
+      "resource": "oak_wood",
+      "baseYield": 2,
+      "maxCharges": 6,
+      "regenPerDay": 2
+    }
+  ],
   "exits": [
     {
       "direction": "west",

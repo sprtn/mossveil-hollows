@@ -3,7 +3,6 @@
   "name": "Iron Plate Armor",
   "description": "Heavy protective gear. Increases defense by 10.",
   "type": "armor",
-  "rarity": "uncommon",
   "stackable": false,
   "weight": 5.0,
   "slot": "body",

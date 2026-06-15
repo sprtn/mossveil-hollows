@@ -1,9 +1,8 @@
 {
   "id": "canine_tooth",
   "name": "Canine Tooth",
-  "description": "A wolf's fang — a prized hunter's trophy.",
+  "description": "A wolf's fang \u2014 a prized hunter's trophy.",
   "type": "crafting",
-  "rarity": "uncommon",
   "stackable": true,
   "maxStackSize": 20,
   "sellPrice": 14

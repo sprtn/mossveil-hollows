@@ -3,7 +3,6 @@
   "name": "Troll Tusk",
   "description": "A massive tusk wrenched from a cave troll. Proof of a hard fight.",
   "type": "crafting",
-  "rarity": "rare",
   "stackable": true,
   "maxStackSize": 10,
   "sellPrice": 22

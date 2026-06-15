@@ -3,7 +3,6 @@
   "name": "Legendary Sword",
   "description": "An ancient, powerful blade imbued with magic. Increases attack by 20.",
   "type": "weapon",
-  "rarity": "legendary",
   "stackable": false,
   "weight": 2.0,
   "damageBonus": 15,

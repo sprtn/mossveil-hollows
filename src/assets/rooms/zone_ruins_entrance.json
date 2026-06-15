@@ -6,6 +6,25 @@
   "picture": "https://images.unsplash.com/photo-1518173944277-3d9b4b0e8f3e?w=800&q=80",
   "zoneId": "ruins",
   "difficulty": 3,
+  "gatherNodes": [
+    {
+      "id": "ruins_entrance_herbs",
+      "profession": "herbalism",
+      "resource": "moonshade_herb",
+      "baseYield": 1,
+      "maxCharges": 4,
+      "regenPerDay": 2
+    },
+    {
+      "id": "ruins_entrance_ore",
+      "profession": "mining",
+      "resource": "iron_ore",
+      "baseYield": 1,
+      "bonusDrops": [{ "item": "tarnished_coin", "chance": 0.1 }],
+      "maxCharges": 4,
+      "regenPerDay": 2
+    }
+  ],
   "exits": [
     {
       "direction": "east",

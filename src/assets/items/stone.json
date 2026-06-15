@@ -1,0 +1,9 @@
+{
+  "id": "stone",
+  "name": "Stone",
+  "description": "Rough stone for building and basic crafting.",
+  "type": "crafting",
+  "stackable": true,
+  "maxStackSize": 99,
+  "sellPrice": 1
+}

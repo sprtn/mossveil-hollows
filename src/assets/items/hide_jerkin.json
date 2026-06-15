@@ -1,1 +1,10 @@
-{"id":"hide_jerkin","name":"Hide Jerkin","description":"Boar-hide armor (+3 DEF).","type":"armor","rarity":"uncommon","stackable":false,"defenseBonus":3,"slot":"armor","sellPrice":18}
+{
+  "id": "hide_jerkin",
+  "name": "Hide Jerkin",
+  "description": "Boar-hide armor (+3 DEF).",
+  "type": "armor",
+  "stackable": false,
+  "defenseBonus": 3,
+  "slot": "armor",
+  "sellPrice": 18
+}

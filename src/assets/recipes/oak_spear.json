@@ -1,1 +1,22 @@
-{"id":"oak_spear","name":"Oak Spear","station":"workbench","npcId":"garrick_smith","requires":{"materials":{"oak_wood":4},"gold":10},"output":{"itemId":"oak_spear","qty":1},"unlockedBy":{"building":"workbench","buildingLevel":1}}
+{
+  "id": "oak_spear",
+  "name": "Oak Spear",
+  "station": "workbench",
+  "profession": "fletching",
+  "tier": 2,
+  "npcId": "garrick_smith",
+  "requires": {
+    "materials": {
+      "oak_wood": 4
+    },
+    "gold": 10
+  },
+  "output": {
+    "itemId": "oak_spear",
+    "qty": 1
+  },
+  "unlockedBy": {
+    "building": "workbench",
+    "buildingLevel": 1
+  }
+}

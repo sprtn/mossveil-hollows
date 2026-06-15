@@ -3,6 +3,7 @@
  */
 
 import type { EncounterDef } from './GameLoopDesign'
+import type { GatherNode } from './GatherNodes'
 
 export type ExitDirection = 'north' | 'south' | 'east' | 'west' | 'up' | 'down'
 
@@ -32,4 +33,5 @@ export interface Room {
     atmosphere?: string
   }
   difficulty?: number
+  gatherNodes?: GatherNode[]
 }

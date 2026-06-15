@@ -37,7 +37,7 @@
           @mouseleave="hideTooltip"
         >
           <div class="stat-entry-header">
-            <span class="stat-name">{{ statIcons[stat] }} {{ statLabel(stat) }}</span>
+            <span class="stat-name">{{ statIcons[stat] }} {{ statLabelFor(stat) }}</span>
             <button v-if="unallocatedPoints > 0" @click="allocatePoint(stat)" class="allocate-button">+</button>
           </div>
           <span class="stat-value">
@@ -82,7 +82,7 @@ import { START_ROOM_ID } from '@/engine/gameConfig'
 import { loadRoom } from '@/engine/RoomManager'
 import { getEffectiveStats } from '@/engine/ItemDatabase'
 import { statIcons, statDescriptions, resourceIcons } from '@/utils/icons'
-import { derivedStatText, derivedStatProjection } from '@/engine/statDisplay'
+import { derivedStatText, derivedStatProjection, statLabel } from '@/engine/statDisplay'
 import ResourceList from './ResourceList.vue'
 
 const statKeys: PlayerStatKey[] = ['strength', 'constitution', 'dexterity', 'agility', 'defense']
@@ -101,8 +101,8 @@ const tooltipVisible = ref(false)
 const tooltipText = ref('')
 const tooltipStyle = ref({ top: '0px', left: '0px' })
 
-function statLabel(stat: PlayerStatKey): string {
-  return stat.charAt(0).toUpperCase() + stat.slice(1)
+function statLabelFor(stat: PlayerStatKey): string {
+  return statLabel(stat)
 }
 
 function statModifier(stat: PlayerStatKey): number {

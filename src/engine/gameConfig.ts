@@ -6,7 +6,7 @@ export const GAME_TITLE_SUB = 'Shards of the Shadow'
 export const START_ROOM_ID = 'town_hub'
 export const FINAL_BOSS_ENEMY_ID = 'shadow_lord'
 export const SAVE_KEY = 'strat_rpg_save'
-export const SAVE_VERSION = 5
+export const SAVE_VERSION = 6
 
 export const ZONE_IDS = ['forest', 'cave', 'ruins'] as const
 export type ZoneId = (typeof ZONE_IDS)[number]

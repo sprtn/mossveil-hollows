@@ -1,1 +1,9 @@
-{"id":"spider_silk","name":"Spider Silk","description":"Sticky silk from giant spiders.","type":"crafting","rarity":"common","stackable":true,"maxStackSize":99,"sellPrice":2}
+{
+  "id": "spider_silk",
+  "name": "Spider Silk",
+  "description": "Sticky silk from giant spiders.",
+  "type": "crafting",
+  "stackable": true,
+  "maxStackSize": 99,
+  "sellPrice": 2
+}

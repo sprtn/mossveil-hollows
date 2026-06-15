@@ -45,6 +45,17 @@
           <span v-if="derived(stat)" class="stat-derived">{{ derived(stat) }}</span>
         </div>
       </div>
+
+      <div class="professions-section">
+        <h4 class="subsection-title">Professions</h4>
+        <div class="professions-list">
+          <div v-for="prof in professionRows" :key="prof.id" class="profession-row">
+            <span class="profession-name">{{ prof.name }}</span>
+            <span class="profession-level">Lv {{ prof.level }}</span>
+            <span class="profession-xp">{{ prof.xp }} XP</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <Teleport to="body">
@@ -62,8 +73,9 @@ import type { Ref } from 'vue'
 import type { GameState, PlayerStatKey } from '@/engine/GameLoopDesign'
 import { allocateAttributePoint } from '@/engine/GameLoop'
 import { getEffectiveStats } from '@/engine/ItemDatabase'
-import { derivedStatText, derivedStatProjection } from '@/engine/statDisplay'
+import { derivedStatText, derivedStatProjection, statLabel } from '@/engine/statDisplay'
 import { resourceIcons, statIcons, statDescriptions } from '@/utils/icons'
+import { PROFESSION_IDS, PROFESSIONS } from '@/engine/Professions'
 
 const gameState = inject<Ref<GameState>>('gameState')!
 const dispatch = inject<(state: GameState) => void>('dispatch')!
@@ -72,6 +84,18 @@ const player = computed(() => gameState.value.player)
 const effectiveStats = computed(() => getEffectiveStats(player.value))
 const unallocatedPoints = computed(() => player.value.unallocatedAttributePoints || 0)
 const statKeys: PlayerStatKey[] = ['strength', 'constitution', 'dexterity', 'agility', 'defense']
+
+const professionRows = computed(() =>
+  PROFESSION_IDS.map((id) => {
+    const state = player.value.professions?.[id] ?? { level: 1, xp: 0 }
+    return {
+      id,
+      name: PROFESSIONS[id].name,
+      level: state.level,
+      xp: state.xp,
+    }
+  })
+)
 
 const hpPercent = computed(() => (player.value.hp / player.value.maxHp) * 100)
 const hpColor = computed(() => {
@@ -84,10 +108,6 @@ const hpColor = computed(() => {
 const tooltipVisible = ref(false)
 const tooltipText = ref('')
 const tooltipStyle = ref({ top: '0px', left: '0px' })
-
-function statLabel(stat: PlayerStatKey): string {
-  return stat.charAt(0).toUpperCase() + stat.slice(1)
-}
 
 function derived(stat: PlayerStatKey): string {
   return derivedStatText(stat, effectiveStats.value[stat])
@@ -130,5 +150,20 @@ function allocatePoint(stat: PlayerStatKey) {
 .stat-item .stat-derived { display: block; margin-top: 4px; font-size: 10px; color: #8fbf7a; font-weight: 600; }
 .allocate-button { background: #4caf50; color: #fff; border: none; border-radius: 4px; width: 22px; height: 22px; cursor: pointer; }
 .attribute-points-banner { padding: 10px; background: #2a4a2a; border: 2px solid #4caf50; border-radius: 6px; color: #4caf50; font-weight: 600; }
+.professions-section { margin-top: 4px; }
+.subsection-title { margin: 0 0 8px; font-size: 14px; color: #81c784; font-weight: 600; }
+.professions-list { display: flex; flex-direction: column; gap: 4px; }
+.profession-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  padding: 6px 10px;
+  background: #2a2a2a;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.profession-name { color: #ccc; }
+.profession-level { color: #fff; font-weight: 600; }
+.profession-xp { color: #888; min-width: 56px; text-align: right; }
 .tooltip { position: fixed; padding: 8px 12px; background: #1a1a1a; color: #fff; font-size: 11px; line-height: 1.4; white-space: pre-line; border: 1px solid #444; border-radius: 4px; max-width: 240px; z-index: 10000; pointer-events: none; }
 </style>

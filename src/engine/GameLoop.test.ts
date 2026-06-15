@@ -124,12 +124,15 @@ describe('Game Loop', () => {
   describe('equipItemAction', () => {
     it('should equip weapon from inventory', () => {
       const player = createDefaultPlayer({
-        inventory: [{ templateId: 'iron_sword', quantity: 1 }],
+        inventory: [{ templateId: 'iron_sword', quantity: 1, quality: 'common' }],
       })
       const room = createTestRoom()
       let state = enterRoom(initGame(player, room), room)
       state = equipItemAction(state, 'iron_sword')
-      expect(state.player.equipment.weapon).toBe('iron_sword')
+      expect(state.player.equipment.weapon).toEqual({
+        templateId: 'iron_sword',
+        quality: 'common',
+      })
     })
   })
 })

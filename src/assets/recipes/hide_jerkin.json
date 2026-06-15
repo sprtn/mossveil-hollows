@@ -1,1 +1,23 @@
-{"id":"hide_jerkin","name":"Hide Jerkin","station":"workbench","npcId":"garrick_smith","requires":{"materials":{"boar_hide":3,"spider_silk":1},"gold":10},"output":{"itemId":"hide_jerkin","qty":1},"unlockedBy":{"building":"workbench","buildingLevel":1}}
+{
+  "id": "hide_jerkin",
+  "name": "Hide Jerkin",
+  "station": "workbench",
+  "profession": "smithing",
+  "tier": 3,
+  "npcId": "garrick_smith",
+  "requires": {
+    "materials": {
+      "boar_hide": 3,
+      "spider_silk": 1
+    },
+    "gold": 10
+  },
+  "output": {
+    "itemId": "hide_jerkin",
+    "qty": 1
+  },
+  "unlockedBy": {
+    "building": "workbench",
+    "buildingLevel": 1
+  }
+}

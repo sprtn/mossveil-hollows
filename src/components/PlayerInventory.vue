@@ -5,9 +5,16 @@
     <div v-if="inventory.length === 0" class="empty-inventory">Your inventory is empty.</div>
 
     <div v-else class="inventory-list">
-      <div v-for="item in inventory" :key="item.templateId" class="inventory-item">
+      <div
+        v-for="item in inventory"
+        :key="`${item.templateId}::${item.quality}`"
+        class="inventory-item"
+      >
         <div class="item-info">
-          <div class="item-name">{{ getItemName(item.templateId) }}</div>
+          <div class="item-name" :style="{ color: qualityColor(item.quality) }">
+            {{ formatItemName(getItemName(item.templateId), item.quality) }}
+          </div>
+          <div v-if="itemStats(item)" class="item-stats">{{ itemStats(item) }}</div>
           <div class="item-type">{{ getItemType(item.templateId) }}</div>
           <div v-if="getItemDescription(item.templateId)" class="item-desc">
             {{ getItemDescription(item.templateId) }}
@@ -17,18 +24,18 @@
           <span class="item-quantity">x{{ item.quantity }}</span>
           <button
             v-if="isConsumable(item.templateId)"
-            @click="useItemHandler(item.templateId)"
+            @click="useItemHandler(item)"
             class="use-button"
           >
             Use
           </button>
           <button
             v-if="isEquippable(item.templateId)"
-            @click="equipHandler(item.templateId)"
+            @click="equipHandler(item)"
             class="equip-button"
-            :disabled="isEquipped(item.templateId)"
+            :disabled="isEquipped(item)"
           >
-            {{ isEquipped(item.templateId) ? 'Equipped' : 'Equip' }}
+            {{ isEquipped(item) ? 'Equipped' : 'Equip' }}
           </button>
         </div>
       </div>
@@ -39,9 +46,10 @@
 <script setup lang="ts">
 import { inject, computed } from 'vue'
 import type { Ref } from 'vue'
-import type { GameState } from '@/engine/GameLoopDesign'
+import type { GameState, InventoryItem } from '@/engine/GameLoopDesign'
 import { useItem, equipItemAction } from '@/engine/GameLoop'
 import { getItemName, getItemTemplate } from '@/engine/ItemDatabase'
+import { formatItemName, itemStatSummary, qualityColor } from '@/utils/icons'
 
 const gameState = inject<Ref<GameState>>('gameState')!
 const dispatch = inject<(state: GameState) => void>('dispatch')!
@@ -57,6 +65,10 @@ function getItemDescription(id: string) {
   return getItemTemplate(id)?.description ?? ''
 }
 
+function itemStats(item: InventoryItem) {
+  return itemStatSummary(getItemTemplate(item.templateId), item.quality)
+}
+
 function isConsumable(id: string) {
   return getItemTemplate(id)?.type === 'consumable'
 }
@@ -66,16 +78,21 @@ function isEquippable(id: string) {
   return t?.type === 'weapon' || t?.type === 'armor'
 }
 
-function isEquipped(id: string) {
-  return equipment.value.weapon === id || equipment.value.armor === id
+function isEquipped(item: InventoryItem) {
+  const w = equipment.value.weapon
+  const a = equipment.value.armor
+  return (
+    (w?.templateId === item.templateId && w.quality === item.quality) ||
+    (a?.templateId === item.templateId && a.quality === item.quality)
+  )
 }
 
-function useItemHandler(templateId: string) {
-  dispatch(useItem(gameState.value, templateId))
+function useItemHandler(item: InventoryItem) {
+  dispatch(useItem(gameState.value, item.templateId, item.quality))
 }
 
-function equipHandler(templateId: string) {
-  dispatch(equipItemAction(gameState.value, templateId))
+function equipHandler(item: InventoryItem) {
+  dispatch(equipItemAction(gameState.value, item.templateId, item.quality))
 }
 </script>
 
@@ -85,7 +102,8 @@ function equipHandler(templateId: string) {
 .empty-inventory { text-align: center; padding: 32px; color: #666; font-style: italic; }
 .inventory-list { display: flex; flex-direction: column; gap: 12px; }
 .inventory-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #2a2a2a; border-radius: 6px; border: 1px solid #444; }
-.item-name { font-weight: 600; color: #fff; font-size: 16px; margin-bottom: 4px; }
+.item-name { font-weight: 600; font-size: 16px; margin-bottom: 4px; }
+.item-stats { font-size: 12px; color: #4caf50; font-weight: 600; margin-bottom: 4px; }
 .item-type { font-size: 12px; color: #888; text-transform: capitalize; margin-bottom: 4px; }
 .item-desc { font-size: 12px; color: #aaa; }
 .item-actions { display: flex; align-items: center; gap: 8px; }

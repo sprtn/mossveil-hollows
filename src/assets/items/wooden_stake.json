@@ -1,1 +1,12 @@
-{"id":"wooden_stake","name":"Wooden Stake","description":"A sharpened stake. +50% damage vs bosses for one hit.","type":"consumable","rarity":"common","stackable":true,"maxStackSize":10,"effect":"boost_damage","power":50,"buyPrice":12,"sellPrice":5}
+{
+  "id": "wooden_stake",
+  "name": "Wooden Stake",
+  "description": "A sharpened stake. Use in combat for +50% damage on your next attack.",
+  "type": "consumable",
+  "stackable": true,
+  "maxStackSize": 10,
+  "effect": "boost_damage",
+  "power": 50,
+  "buyPrice": 12,
+  "sellPrice": 5
+}

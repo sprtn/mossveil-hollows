@@ -2,7 +2,10 @@
  * Core Game Loop Design - unified types for the finite RPG
  */
 
+import type { Quality } from './Quality'
+import type { ProfessionId, ProfessionState } from './Professions'
 import type { RoomExit } from './RoomSystem'
+import type { GatherNode, GatherNodeRuntimeState } from './GatherNodes'
 import type {
   ActiveEventState,
   CraftOrder,
@@ -28,7 +31,6 @@ export type EncounterResult = 'win' | 'loss' | 'flee'
 
 export type PlayerAction =
   | 'attack'
-  | 'use_item'
   | 'defend'
   | 'flee'
   | 'skill_power_strike'
@@ -52,7 +54,6 @@ export interface PlayerStats {
 }
 
 export type ItemType = 'weapon' | 'armor' | 'consumable' | 'key' | 'quest' | 'crafting'
-export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
 export type ItemEffect = 'heal_health' | 'restore_energy' | 'remove_poison' | 'boost_damage' | 'boost_defense'
 export type StatusType = 'poison' | 'stun' | 'bleed' | 'slow'
 export type EnemyArchetype = 'attacker' | 'defender' | 'caster'
@@ -63,7 +64,6 @@ export interface ItemTemplate {
   name: string
   description: string
   type: ItemType
-  rarity: ItemRarity
   stackable: boolean
   maxStackSize?: number
   power?: number
@@ -76,15 +76,22 @@ export interface ItemTemplate {
   sellPrice?: number
 }
 
-/** Runtime inventory entry */
+/** Runtime inventory entry — stacks merge on (templateId, quality). */
 export interface InventoryItem {
   templateId: string
   quantity: number
+  quality: Quality
+}
+
+/** Equipped gear references a specific template + quality instance. */
+export interface EquipmentRef {
+  templateId: string
+  quality: Quality
 }
 
 export interface EquipmentSlots {
-  weapon?: string
-  armor?: string
+  weapon?: EquipmentRef
+  armor?: EquipmentRef
 }
 
 export interface StatusEffect {
@@ -114,6 +121,7 @@ export interface Player {
   knownSkills: string[]
   skillPoints: number
   wounded: boolean
+  professions: Record<ProfessionId, ProfessionState>
 }
 
 export interface LootDrop {
@@ -149,6 +157,8 @@ export interface Room {
   isFinalBoss?: boolean
   picture?: string
   zoneId?: string
+  difficulty?: number
+  gatherNodes?: GatherNode[]
 }
 
 export interface EncounterDef {
@@ -181,11 +191,16 @@ export interface CombatEvent {
   message: string
 }
 
+export interface CombatBuff {
+  id: string
+  label: string
+  damageMultiplier?: number
+  sourceItemId?: string
+}
+
 export interface Encounter {
   id: string
   enemies: Enemy[]
-  turnOrder: string[]
-  currentTurnIndex: number
   roundNumber: number
   rngState: number
   result?: EncounterResult
@@ -193,6 +208,8 @@ export interface Encounter {
   playerDefending?: boolean
   playerBracing?: boolean
   playerBonusAction?: boolean
+  consumableUsedThisTurn?: boolean
+  combatBuffs?: CombatBuff[]
   combatLog?: string[]
   lastEvents?: CombatEvent[]
 }
@@ -242,6 +259,7 @@ export interface GameState {
   vendorState?: Record<string, VendorState>
   productionState?: Record<string, ProductionBuildingState>
   pendingHubPanel?: { panel: 'train' | 'craft' | 'shop'; npcId: string }
+  gatherNodeState?: Record<string, GatherNodeRuntimeState>
 }
 
 export interface PlayerActionOptions {

@@ -1,9 +1,8 @@
 {
   "id": "boar_tusk",
   "name": "Boar Tusk",
-  "description": "A curved tusk from a forest boar — rare and valuable.",
+  "description": "A curved tusk from a forest boar \u2014 rare and valuable.",
   "type": "crafting",
-  "rarity": "uncommon",
   "stackable": true,
   "maxStackSize": 20,
   "sellPrice": 16

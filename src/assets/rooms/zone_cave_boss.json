@@ -6,6 +6,18 @@
   "picture": "https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=800&q=80",
   "zoneId": "cave",
   "difficulty": 4,
+  "gatherNodes": [
+    {
+      "id": "cave_boss_crystal",
+      "profession": "mining",
+      "resource": "crystal_sliver",
+      "baseYield": 1,
+      "bonusDrops": [{ "item": "iron_ore", "chance": 0.25 }],
+      "minLevel": 4,
+      "maxCharges": 4,
+      "regenPerDay": 2
+    }
+  ],
   "exits": [
     {
       "direction": "south",

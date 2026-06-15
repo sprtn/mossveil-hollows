@@ -9,6 +9,9 @@ import { consolidateInventory } from './ItemDatabase'
 import { ensureMarketState, ensureMarketMaterialStock } from './MarketSystem'
 import { ensureVendorState } from './VendorSystem'
 import { ensureProductionState } from './EconomyTick'
+import { normalizePlayerProfessions } from './Professions'
+import { normalizeGatherNodeState } from './GatherNodes'
+import { migrateParsedSave } from './saveMigration'
 
 function getStorage(): Storage | null {
   try {
@@ -43,12 +46,17 @@ export function loadGame(): { state: GameState | null; versionMismatch: boolean 
   try {
     const raw = storage.getItem(SAVE_KEY)
     if (!raw) return { state: null, versionMismatch: false }
-    const parsed = JSON.parse(raw) as GameState & { saveVersion?: number }
+    let parsed = JSON.parse(raw) as GameState & { saveVersion?: number }
     if (!parsed.player || !parsed.currentRoom) return { state: null, versionMismatch: false }
 
-    if (parsed.saveVersion !== SAVE_VERSION) {
+    const savedVersion = parsed.saveVersion ?? 0
+    if (savedVersion > SAVE_VERSION) {
       clearSave()
       return { state: null, versionMismatch: true }
+    }
+
+    if (savedVersion < SAVE_VERSION) {
+      parsed = migrateParsedSave(parsed, savedVersion) as typeof parsed
     }
 
     const meta = getDefaultGameMeta()
@@ -64,6 +72,7 @@ export function loadGame(): { state: GameState | null; versionMismatch: boolean 
         wounded: parsed.player.wounded ?? false,
         stamina: parsed.player.stamina ?? parsed.player.maxStamina ?? 10,
         maxStamina: parsed.player.maxStamina ?? 10,
+        professions: normalizePlayerProfessions(parsed.player),
       },
       quests: parsed.quests ?? meta.quests,
       flags: parsed.flags ?? meta.flags,
@@ -77,6 +86,7 @@ export function loadGame(): { state: GameState | null; versionMismatch: boolean 
       marketMaterialStock: parsed.marketMaterialStock ?? meta.marketMaterialStock,
       vendorState: parsed.vendorState ?? meta.vendorState,
       productionState: parsed.productionState ?? meta.productionState,
+      gatherNodeState: normalizeGatherNodeState(parsed),
       currentEncounter: undefined,
       combatResults: undefined,
       activeEvent: undefined,

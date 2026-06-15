@@ -1,1 +1,9 @@
-{"id":"oak_wood","name":"Oak Wood","description":"Sturdy oak timber for crafting.","type":"crafting","rarity":"common","stackable":true,"maxStackSize":99,"sellPrice":1}
+{
+  "id": "oak_wood",
+  "name": "Oak Wood",
+  "description": "Sturdy oak timber for crafting.",
+  "type": "crafting",
+  "stackable": true,
+  "maxStackSize": 99,
+  "sellPrice": 1
+}
