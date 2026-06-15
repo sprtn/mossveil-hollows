@@ -47,7 +47,7 @@ export function qualityFloorForLevel(professionLevel: number): Quality {
   return floor
 }
 
-export function selfCraftQualityCeiling(professionLevel: number): Quality {
+export function selfCraftQualityCeiling(_professionLevel: number): Quality {
   return SELF_CRAFT_ROLL_CEILING
 }
 

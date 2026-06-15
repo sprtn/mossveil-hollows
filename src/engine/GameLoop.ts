@@ -67,7 +67,6 @@ import { getEffectiveMaxHp, applyWounded, clampPlayerHp } from './PlayerStats'
 import { addMaterial } from './Materials'
 import { pickRandomEvent, startEvent } from './EventSystem'
 import { checkAndAdvanceQuests } from './QuestSystem'
-import { gatherFromNode } from './GatherNodes'
 
 export { gatherFromNode } from './GatherNodes'
 

@@ -2,7 +2,7 @@
  * Save version migrations — incremental upgrades without wiping player progress.
  */
 
-import type { EquipmentRef, EquipmentSlots, GameState, InventoryItem, Player } from './GameLoopDesign'
+import type { EquipmentRef, EquipmentSlots, InventoryItem, Player } from './GameLoopDesign'
 import { DEFAULT_QUALITY, normalizeQuality } from './Quality'
 
 type LegacyEquipmentSlot = string | EquipmentRef | undefined

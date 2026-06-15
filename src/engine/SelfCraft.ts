@@ -5,7 +5,6 @@
 
 import type { GameState } from './GameLoopDesign'
 import type { RecipeDef } from './ContentSchemas'
-import type { ProfessionId } from './Professions'
 import {
   getRecipe,
   isRecipeUnlocked,

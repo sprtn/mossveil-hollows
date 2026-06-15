@@ -56,7 +56,10 @@ export function loadGame(): { state: GameState | null; versionMismatch: boolean 
     }
 
     if (savedVersion < SAVE_VERSION) {
-      parsed = migrateParsedSave(parsed, savedVersion) as typeof parsed
+      parsed = migrateParsedSave(
+        parsed as unknown as Record<string, unknown>,
+        savedVersion
+      ) as unknown as GameState & { saveVersion?: number }
     }
 
     const meta = getDefaultGameMeta()
