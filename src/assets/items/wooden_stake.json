@@ -1,7 +1,7 @@
 {
   "id": "wooden_stake",
   "name": "Wooden Stake",
-  "description": "A sharpened stake. Use in combat to boost your next attack.",
+  "description": "A sharpened stake. Use in combat to boost damage on your next attack against any foe.",
   "type": "consumable",
   "stackable": true,
   "maxStackSize": 10,
