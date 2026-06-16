@@ -50,18 +50,12 @@
     </div>
 
     <div class="combat-actions">
-      <div class="action-tabs">
+      <div v-if="consumables.length > 0" class="action-tabs">
         <button
-          :class="['tab-btn', { active: activeTab === 'actions' }]"
-          @click="activeTab = 'actions'"
+          :class="['tab-btn', { active: activeTab === 'main' }]"
+          @click="activeTab = 'main'"
         >Actions</button>
         <button
-          v-if="skills.length > 0"
-          :class="['tab-btn', { active: activeTab === 'skills' }]"
-          @click="activeTab = 'skills'"
-        >Skills</button>
-        <button
-          v-if="consumables.length > 0"
           :class="['tab-btn', { active: activeTab === 'consumables' }]"
           @click="activeTab = 'consumables'"
         >Consumables</button>
@@ -70,15 +64,12 @@
       <p v-if="consumableUsedThisTurn" class="consumable-hint">Consumable used this turn — take your action.</p>
       <p v-else-if="activeTab === 'consumables'" class="consumable-hint">Use one consumable, then attack, skill, or defend.</p>
 
-      <div v-show="activeTab === 'actions'" class="action-buttons">
+      <div v-show="activeTab === 'main'" class="action-buttons">
         <button @click="handleAttack" class="action-button primary" :disabled="isBusy || !canAttack">
           {{ attackLabel }}
         </button>
         <button @click="handleDefend" class="action-button" :disabled="isBusy">Defend</button>
         <button @click="handleFlee" class="action-button danger" :disabled="isBusy">Flee</button>
-      </div>
-
-      <div v-show="activeTab === 'skills'" class="skill-buttons">
         <button
           v-for="skill in skills"
           :key="skill.action"
@@ -108,10 +99,17 @@
       </div>
     </div>
 
-    <div v-if="actionLog.length > 0" class="action-log">
+    <div v-if="pinnedPlayerLines.length > 0 || actionLog.length > 0" class="action-log">
+      <div
+        v-for="(entry, index) in pinnedPlayerLines"
+        :key="`pin-${index}`"
+        :class="['action-log-entry', 'player', 'pinned', { crit: entry.crit }]"
+      >
+        {{ entry.message }}
+      </div>
       <div
         v-for="(entry, index) in actionLog"
-        :key="index"
+        :key="`log-${index}`"
         :class="['action-log-entry', entry.type, { crit: entry.crit }]"
       >
         {{ entry.message }}
@@ -128,6 +126,13 @@ import { playerAction, useCombatConsumable } from '@/engine/GameLoop'
 import { getItemName, getItemTemplate } from '@/engine/ItemDatabase'
 import { getAllSkills } from '@/engine/SkillSystem'
 import { formatItemName, itemStatSummary, qualityColor } from '@/utils/icons'
+import {
+  classifyCombatEvent,
+  combatEventsToPinnedEntries,
+  partitionCombatEvents,
+  trimCombatLog,
+  type CombatLogEntry,
+} from '@/utils/combatLog'
 
 const gameState = inject<Ref<GameState>>('gameState')!
 const dispatch = inject<(state: GameState) => void>('dispatch')!
@@ -140,16 +145,13 @@ const playerHpPct = computed(() => (player.value.hp / player.value.maxHp) * 100)
 const playerPoisoned = computed(() => player.value.statusEffects?.some((s) => s.type === 'poison'))
 const playerStunned = computed(() => player.value.statusEffects?.some((s) => s.type === 'stun'))
 
-interface LogEntry {
-  message: string
-  type: 'player' | 'enemy' | 'system'
-  crit?: boolean
-}
+interface LogEntry extends CombatLogEntry {}
 
 const actionLog = ref<LogEntry[]>([])
+const pinnedPlayerLines = ref<LogEntry[]>([])
 const isBusy = ref(false)
 const selectedTarget = ref<string | null>(null)
-const activeTab = ref<'actions' | 'skills' | 'consumables'>('actions')
+const activeTab = ref<'main' | 'consumables'>('main')
 
 const activeBuffs = computed(() => encounter.value?.combatBuffs ?? [])
 const consumableUsedThisTurn = computed(() => encounter.value?.consumableUsedThisTurn ?? false)
@@ -201,8 +203,10 @@ const attackLabel = computed(() => {
 
 watch(() => encounter.value?.id, () => {
   actionLog.value = []
+  pinnedPlayerLines.value = []
   isBusy.value = false
   selectedTarget.value = null
+  activeTab.value = 'main'
   if (aliveEnemies.value.length === 1 && aliveEnemies.value[0]) {
     selectedTarget.value = aliveEnemies.value[0].id
   }
@@ -224,31 +228,34 @@ function consumableDescription(item: InventoryItem): string {
 }
 
 function logConsumableEvent(message: string) {
-  actionLog.value.unshift({ message, type: 'player' })
-  if (actionLog.value.length > 12) actionLog.value = actionLog.value.slice(0, 12)
+  pinnedPlayerLines.value = [{ message, type: 'player', pinned: true }]
+  actionLog.value = trimCombatLog(actionLog.value)
 }
 
 function classifyEvent(event: CombatEvent): LogEntry['type'] {
-  if (event.source === player.value.id) return 'player'
-  if (event.source === 'status') return 'system'
-  return 'enemy'
+  return classifyCombatEvent(event, player.value.id)
 }
 
-function displayEvents(events: CombatEvent[], delay = 0) {
-  events.forEach((event, i) => {
+/** Animate enemy/system lines only — input readiness is not tied to these timers. */
+function displayEvents(events: CombatEvent[]) {
+  const playerId = player.value.id
+  const { playerEvents, otherEvents } = partitionCombatEvents(events, playerId)
+
+  // Pin player-authored lines for this turn so enemy flood cannot bury them.
+  if (playerEvents.length > 0) {
+    pinnedPlayerLines.value = combatEventsToPinnedEntries(playerEvents)
+  }
+
+  otherEvents.forEach((event, i) => {
     setTimeout(() => {
       actionLog.value.unshift({
         message: event.message,
         type: classifyEvent(event),
         crit: event.crit,
       })
-      if (actionLog.value.length > 12) actionLog.value = actionLog.value.slice(0, 12)
-      if (i === events.length - 1) {
-        setTimeout(() => { isBusy.value = false }, 200)
-      }
-    }, delay + i * 300)
+      actionLog.value = trimCombatLog(actionLog.value)
+    }, i * 150)
   })
-  if (events.length === 0) isBusy.value = false
 }
 
 function runAction(action: PlayerAction, options: { targetId?: string; itemId?: string } = {}) {
@@ -256,22 +263,31 @@ function runAction(action: PlayerAction, options: { targetId?: string; itemId?: 
   isBusy.value = true
 
   const prevPhase = gameState.value.phase
-  const newState = playerAction(gameState.value, action, options)
+  try {
+    const newState = playerAction(gameState.value, action, options)
+    const events = newState.combatResults?.events ?? newState.currentEncounter?.lastEvents ?? []
 
-  const events = newState.combatResults?.events ?? newState.currentEncounter?.lastEvents ?? []
-
-  if (newState.phase !== prevPhase) {
     dispatch(newState)
-    if (events.length) displayEvents(events)
-    else isBusy.value = false
-    return
-  }
 
-  dispatch(newState)
-  displayEvents(events)
-  selectedTarget.value = null
-  if (aliveEnemies.value.length === 1 && aliveEnemies.value[0]) {
-    selectedTarget.value = aliveEnemies.value[0].id
+    if (events.length) {
+      displayEvents(events)
+    }
+
+    if (newState.phase === 'encounter_action') {
+      selectedTarget.value = null
+      if (aliveEnemies.value.length === 1 && aliveEnemies.value[0]) {
+        selectedTarget.value = aliveEnemies.value[0].id
+      }
+    }
+
+    if (newState.phase !== prevPhase) {
+      return
+    }
+  } catch (err) {
+    console.error('Combat action failed:', err)
+  } finally {
+    // Engine resolve is synchronous — re-enable input immediately, not when log animation ends.
+    isBusy.value = false
   }
 }
 
@@ -488,6 +504,7 @@ function handleUseConsumable(item: InventoryItem) {
   animation: slideIn 0.3s ease;
 }
 .action-log-entry.player { background: #2a4a2a; color: #4caf50; border-left: 3px solid #4caf50; }
+.action-log-entry.player.pinned { box-shadow: 0 0 0 1px rgba(76, 175, 80, 0.35); }
 .action-log-entry.enemy { background: #4a2a2a; color: #ff6666; border-left: 3px solid #ff4444; }
 .action-log-entry.system { background: #3a3a2a; color: #ffd54f; border-left: 3px solid #ffd54f; }
 .action-log-entry.crit { font-weight: 700; text-shadow: 0 0 6px rgba(255, 215, 0, 0.5); }

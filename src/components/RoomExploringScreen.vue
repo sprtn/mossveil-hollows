@@ -42,10 +42,10 @@
         v-for="node in gatherNodes"
         :key="node.id"
         @click="handleGather(node.id)"
-        class="action-button"
+        :class="['action-button', { 'gather-risky': isNodeRisky(node) }]"
         :disabled="isNavigating || player.stamina <= 0 || nodeCharges(node) <= 0"
       >
-        {{ gatherNodeLabel(node) }} ({{ nodeCharges(node) }}/{{ node.maxCharges }})
+        {{ gatherNodeLabel(node) }} ({{ nodeCharges(node) }}/{{ node.maxCharges }})<span v-if="isNodeRisky(node)" class="danger-hint"> ⚠</span>
       </button>
       <button
         v-if="!room.isHub"
@@ -75,6 +75,7 @@ import {
   getGatherNodeRuntimeState,
   type GatherNode,
 } from '@/engine/GatherNodes'
+import { isRoomGatherDangerous } from '@/engine/GatherDanger'
 import { hasItem } from '@/engine/ItemDatabase'
 import { loadRoom } from '@/engine/RoomManager'
 import { START_ROOM_ID, GAME_TITLE_MAIN } from '@/engine/gameConfig'
@@ -101,6 +102,10 @@ function gatherNodeLabel(node: GatherNode): string {
 
 function nodeCharges(node: GatherNode): number {
   return getGatherNodeRuntimeState(gameState.value, node).charges
+}
+
+function isNodeRisky(node: GatherNode): boolean {
+  return isRoomGatherDangerous(room.value) || (node.bonusDrops?.length ?? 0) > 0
 }
 
 const availableExits = computed(() => {
@@ -204,6 +209,8 @@ async function handleReturnHome() {
 .action-button.return-home { border-color: #c9a55c; color: #e8d9b0; }
 .action-button.return-home:hover:not(:disabled) { background: #4a4030; border-color: #c9a55c; }
 .action-button:disabled { opacity: 0.6; cursor: not-allowed; }
+.action-button.gather-risky:not(:disabled) { border-color: #8d6e3a; }
+.danger-hint { color: #c9a55c; font-size: 12px; }
 .exploration-message { padding: 16px; background: #3a3a3a; color: #aaa; border-radius: 8px; border-left: 4px solid #666; font-style: italic; text-align: center; }
 .stamina-hint { font-size: 13px; color: #888; }
 .wounded-tag { color: #f44336; margin-left: 8px; font-weight: 600; }

@@ -13,6 +13,13 @@ import {
   PROFESSIONS,
   type ProfessionId,
 } from './Professions'
+import {
+  applyGatherStaminaCost,
+  buildPendingGather,
+  rollGatherDangerTriggered,
+  getNodeRichness,
+  GATHER_DANGER_TRIGGER_MESSAGE,
+} from './GatherDanger'
 
 // --- Tunable placeholders for playtest tuning ---
 
@@ -89,10 +96,6 @@ export function getGatherNodeLabel(node: GatherNode): string {
 
 export function findGatherNode(room: Room, nodeId: string): GatherNode | undefined {
   return room.gatherNodes?.find((n) => n.id === nodeId)
-}
-
-function drainStamina(player: GameState['player'], amount: number): GameState['player'] {
-  return { ...player, stamina: Math.max(0, player.stamina - amount) }
 }
 
 function gatherSeed(state: GameState, nodeId: string): number {
@@ -260,14 +263,30 @@ export function gatherFromNode(state: GameState, nodeId: string): GameState {
 
   const rng = new SeededRandom(gatherSeed(working, nodeId))
   const roll = rollGatherYield(node, professionLevel, rng, loggingCampBonus)
+  const xpGain = GATHER_XP_BASE + (roll.bonusItems.length > 0 ? GATHER_XP_BONUS_DROP : 0)
 
-  let player = drainStamina(working.player, GATHER_STAMINA_COST)
+  // Stamina is always spent — the player attempted the labor.
+  working = applyGatherStaminaCost(working, GATHER_STAMINA_COST)
+
+  const roomDifficulty = working.currentRoom.difficulty ?? 0
+  const richness = getNodeRichness(node)
+  const dangerRoll = new SeededRandom(gatherSeed(working, nodeId) ^ 0x9e3779b9)
+  if (roomDifficulty > 0 && rollGatherDangerTriggered(roomDifficulty, richness, dangerRoll)) {
+    const pending = buildPendingGather(node, working.currentRoom, roll, xpGain, 'combat')
+    return {
+      ...working,
+      pendingGather: pending,
+      statusMessage: GATHER_DANGER_TRIGGER_MESSAGE,
+      gatherDangerInterrupt: true,
+    }
+  }
+
+  let player = working.player
   player = addMaterial(player, node.resource, roll.primaryQty)
   for (const bonus of roll.bonusItems) {
     player = addMaterial(player, bonus.item, bonus.qty)
   }
 
-  const xpGain = GATHER_XP_BASE + (roll.bonusItems.length > 0 ? GATHER_XP_BONUS_DROP : 0)
   const xpResult = grantProfessionXp(player, node.profession, xpGain)
   player = xpResult.player
 

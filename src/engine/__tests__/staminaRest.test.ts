@@ -93,8 +93,9 @@ describe('Stamina and Rest', () => {
   })
 
   it('gather adds oak wood and costs stamina', () => {
-    let state = initGame(createDefaultPlayer(), forestRoom)
-    state = enterRoom(state, forestRoom)
+    const safeForest = { ...forestRoom, difficulty: 0 }
+    let state = initGame(createDefaultPlayer(), safeForest)
+    state = enterRoom(state, safeForest)
     const staminaBefore = state.player.stamina
     state = gatherFromNode(state, 'test_oak')
     expect(state.player.materials?.oak_wood).toBeGreaterThan(0)

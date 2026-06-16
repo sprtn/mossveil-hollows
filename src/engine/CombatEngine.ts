@@ -658,8 +658,15 @@ export function resolvePlayerCombatAction(
   }
 
   persistRng()
-  if (enc.playerBonusAction) {
-    enc.playerBonusAction = false
+  // Clear on the live encounter object (spread-replace skills swap currentEncounter).
+  if (result.currentEncounter?.playerBonusAction) {
+    result = {
+      ...result,
+      currentEncounter: {
+        ...result.currentEncounter,
+        playerBonusAction: false,
+      },
+    }
   }
 
   return { state: result, events }

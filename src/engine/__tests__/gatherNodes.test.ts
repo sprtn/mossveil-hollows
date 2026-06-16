@@ -1,10 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { createDefaultPlayer } from '../CombatEngine'
-import { initGame, enterRoom } from '../GameLoop'
+import { initGame, enterRoom, gatherFromNode } from '../GameLoop'
 import { advanceDay } from '../DayAdvance'
 import { normalizePlayerProfessions } from '../Professions'
 import {
-  gatherFromNode,
   scaledGatherYield,
   scaledBonusChance,
   rollGatherYield,
@@ -20,7 +19,7 @@ const forestRoom: Room = {
   name: 'Forest',
   description: 'Woods',
   zoneId: 'forest',
-  difficulty: 1,
+  difficulty: 0,
   encounters: [],
   exits: [],
   gatherNodes: [
@@ -50,7 +49,7 @@ const caveRoom: Room = {
   name: 'Cave',
   description: 'Cave',
   zoneId: 'cave',
-  difficulty: 2,
+  difficulty: 0,
   encounters: [],
   exits: [],
   gatherNodes: [

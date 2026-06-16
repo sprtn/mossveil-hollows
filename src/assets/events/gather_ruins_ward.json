@@ -1,0 +1,29 @@
+{
+  "id": "gather_ruins_ward",
+  "title": "Ancient Ward",
+  "text": "Glowing sigils flare as your tools disturb the rubble.",
+  "zone": "ruins",
+  "gatherHazard": true,
+  "weight": 3,
+  "choices": [
+    {
+      "text": "Disarm the ward carefully",
+      "requires": [{ "kind": "stat_at_least", "stat": "dexterity", "value": 10 }],
+      "outcomes": [{ "kind": "resolve_gather", "result": "secure" }],
+      "resultText": "The ward fades — you claim the salvage intact."
+    },
+    {
+      "text": "Force through the ward",
+      "outcomes": [
+        { "kind": "damage", "amount": 6 },
+        { "kind": "resolve_gather", "result": "forfeit" }
+      ],
+      "resultText": "Arcane backlash scatters your haul across the stones."
+    },
+    {
+      "text": "Back away slowly",
+      "outcomes": [{ "kind": "resolve_gather", "result": "forfeit" }],
+      "resultText": "You withdraw before the ward can do worse."
+    }
+  ]
+}

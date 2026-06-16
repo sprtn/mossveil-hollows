@@ -1,0 +1,26 @@
+{
+  "id": "gather_cave_rockslide",
+  "title": "Rockslide!",
+  "text": "Loose stone groans overhead as your pick strikes the vein.",
+  "zone": "cave",
+  "gatherHazard": true,
+  "weight": 3,
+  "choices": [
+    {
+      "text": "Shelter and wait it out",
+      "outcomes": [
+        { "kind": "damage", "amount": 3 },
+        { "kind": "resolve_gather", "result": "secure" }
+      ],
+      "resultText": "Dust settles — bruised, but you keep what you mined."
+    },
+    {
+      "text": "Sprint for the ore",
+      "outcomes": [
+        { "kind": "damage", "amount": 8 },
+        { "kind": "resolve_gather", "result": "forfeit" }
+      ],
+      "resultText": "The slide buries your haul. You barely escape the rubble."
+    }
+  ]
+}

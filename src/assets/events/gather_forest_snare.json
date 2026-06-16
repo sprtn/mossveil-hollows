@@ -1,0 +1,23 @@
+{
+  "id": "gather_forest_snare",
+  "title": "Entangling Roots",
+  "text": "Corrupted vines lash toward your hands as you reach for the harvest.",
+  "zone": "forest",
+  "gatherHazard": true,
+  "weight": 3,
+  "choices": [
+    {
+      "text": "Cut free with care",
+      "outcomes": [{ "kind": "resolve_gather", "result": "secure" }],
+      "resultText": "You slice through the snare and secure what you gathered."
+    },
+    {
+      "text": "Rip away blindly",
+      "outcomes": [
+        { "kind": "damage", "amount": 5 },
+        { "kind": "resolve_gather", "result": "forfeit" }
+      ],
+      "resultText": "Thorns tear at you — the harvest scatters into the undergrowth."
+    }
+  ]
+}

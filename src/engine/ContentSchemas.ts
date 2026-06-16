@@ -21,6 +21,8 @@ export interface EventCard {
   zone: string
   weight: number
   once?: boolean
+  /** When true, offered during gather-danger rolls in this zone. */
+  gatherHazard?: boolean
   choices: EventChoice[]
 }
 

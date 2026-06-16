@@ -1,0 +1,20 @@
+{
+  "id": "gather_cave_gas",
+  "title": "Toxic Fumes",
+  "text": "A pocket of stale air hisses from the wall — your torch sputters.",
+  "zone": "cave",
+  "gatherHazard": true,
+  "weight": 2,
+  "choices": [
+    {
+      "text": "Hold your breath and finish",
+      "outcomes": [{ "kind": "resolve_gather", "result": "secure" }],
+      "resultText": "You snatch the ore and stumble back to fresher air."
+    },
+    {
+      "text": "Retreat immediately",
+      "outcomes": [{ "kind": "resolve_gather", "result": "forfeit" }],
+      "resultText": "You abandon the vein before the fumes overwhelm you."
+    }
+  ]
+}

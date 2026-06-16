@@ -65,10 +65,54 @@ import { saveGame, clearSave } from './saveGame'
 import { getDefaultGameMeta } from './Outcomes'
 import { getEffectiveMaxHp, applyWounded, clampPlayerHp } from './PlayerStats'
 import { addMaterial } from './Materials'
-import { pickRandomEvent, startEvent } from './EventSystem'
+import { pickRandomEvent, startEvent, pickGatherHazardEvent } from './EventSystem'
+import { resolvePendingGatherAfterCombat, forfeitPendingGather, type PendingGather } from './GatherDanger'
+import {
+  gatherDangerSeed,
+  pickGatherEncounter,
+  rollGatherDangerKind,
+  GATHER_DANGER_TRIGGER_MESSAGE,
+} from './GatherDanger'
+import { gatherFromNode as gatherFromNodeCore } from './GatherNodes'
 import { checkAndAdvanceQuests } from './QuestSystem'
 
-export { gatherFromNode } from './GatherNodes'
+export function gatherFromNode(state: GameState, nodeId: string): GameState {
+  let next = gatherFromNodeCore(state, nodeId)
+  if (!next.gatherDangerInterrupt || !next.pendingGather) {
+    return next
+  }
+  return triggerGatherDanger(next, next.pendingGather, nodeId)
+}
+
+export function triggerGatherDanger(
+  state: GameState,
+  pending: PendingGather,
+  nodeId: string
+): GameState {
+  const rng = new SeededRandom(gatherDangerSeed(state, nodeId))
+  const hazardEvent = pickGatherHazardEvent(state, state.currentRoom.zoneId ?? 'forest')
+  const withPending: GameState = {
+    ...state,
+    gatherDangerInterrupt: undefined,
+    statusMessage: GATHER_DANGER_TRIGGER_MESSAGE,
+  }
+
+  const useHazard =
+    hazardEvent !== null && rollGatherDangerKind(rng) === 'hazard'
+
+  if (useHazard && hazardEvent) {
+    return startEvent(
+      { ...withPending, pendingGather: { ...pending, source: 'hazard' } },
+      hazardEvent
+    )
+  }
+
+  const enemies = pickGatherEncounter(state.currentRoom, rng)
+  return triggerEncounter(
+    { ...withPending, pendingGather: { ...pending, source: 'combat' }, forcedEncounter: true },
+    enemies
+  )
+}
 
 function convertRoom(roomSystemRoom: RoomSystemRoom): Room {
   const r = roomSystemRoom
@@ -388,7 +432,7 @@ function advanceCombatRound(state: GameState, events: CombatEvent[]): GameState 
   return finishEnemyPhase(updated, events, fast)
 }
 
-function maybeGrantPlayerBonusAction(state: GameState): GameState {
+export function maybeGrantPlayerBonusAction(state: GameState): GameState {
   if (!state.currentEncounter) return state
   const enc = state.currentEncounter
   const playerStats = getEffectiveStats(state.player)
@@ -423,7 +467,6 @@ function maybeGrantPlayerBonusAction(state: GameState): GameState {
           sourceName: state.player.name,
           message: 'Your agility grants an extra action!',
         },
-        ...(enc.lastEvents ?? []),
       ],
     },
   }
@@ -833,6 +876,13 @@ export function endEncounter(
 
   newState = checkAndAdvanceQuests(newState)
 
+  if (state.pendingGather && result !== 'win') {
+    newState = forfeitPendingGather(
+      newState,
+      result === 'flee' ? 'You fled — the harvest scatters.' : 'Defeated — the harvest is lost.'
+    )
+  }
+
   if (phase === 'victory') {
     clearSave()
   } else if (result === 'win' && state.currentRoom.isHub) {
@@ -846,7 +896,10 @@ export function continueFromCombatResults(state: GameState): GameState {
   if (state.finalBossDefeated) {
     return { ...state, phase: 'victory', combatResults: undefined }
   }
-  return { ...state, phase: 'room_exploring', combatResults: undefined }
+  const resolved = state.pendingGather
+    ? resolvePendingGatherAfterCombat(state)
+    : state
+  return { ...resolved, phase: 'room_exploring', combatResults: undefined }
 }
 
 export async function startGameFromRoom(roomId: string, player: Player): Promise<GameState> {

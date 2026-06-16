@@ -6,6 +6,7 @@ import type { Quality } from './Quality'
 import type { ProfessionId, ProfessionState } from './Professions'
 import type { RoomExit } from './RoomSystem'
 import type { GatherNode, GatherNodeRuntimeState } from './GatherNodes'
+import type { PendingGather } from './GatherDanger'
 import type {
   ActiveEventState,
   CraftOrder,
@@ -260,6 +261,10 @@ export interface GameState {
   productionState?: Record<string, ProductionBuildingState>
   pendingHubPanel?: { panel: 'train' | 'craft' | 'shop'; npcId: string }
   gatherNodeState?: Record<string, GatherNodeRuntimeState>
+  /** Held harvest when gather danger interrupts — granted only on success. */
+  pendingGather?: PendingGather
+  /** Set when a gather roll triggered danger; resolved by gatherFromNode wrapper. */
+  gatherDangerInterrupt?: boolean
 }
 
 export interface PlayerActionOptions {

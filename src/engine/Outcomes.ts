@@ -17,6 +17,7 @@ import { getBuildingLevel } from './BuildingSystem'
 import { getCraftOrdersForNpc } from './CraftOrderSystem'
 import { getVendorTier, giveVendorXp } from './VendorSystem'
 import { recordMaterialSale, ensureMarketState } from './MarketSystem'
+import { securePendingGather, forfeitPendingGather } from './GatherDanger'
 
 export type OutcomeEffect =
   | { kind: 'give_item'; itemId: string; qty: number }
@@ -43,6 +44,7 @@ export type OutcomeEffect =
   | { kind: 'give_vendor_xp'; vendorId: string; amount: number }
   | { kind: 'record_market_sale'; materialId: string; qty: number }
   | { kind: 'open_hub_panel'; panel: 'train' | 'craft' | 'shop'; npcId: string }
+  | { kind: 'resolve_gather'; result: 'secure' | 'forfeit' }
 
 export type OutcomeRequirement =
   | { kind: 'has_item'; itemId: string; qty?: number }
@@ -240,6 +242,14 @@ function applySingleOutcome(state: GameState, effect: OutcomeEffect): GameState 
       break
     case 'open_hub_panel':
       next.pendingHubPanel = { panel: effect.panel, npcId: effect.npcId }
+      break
+    case 'resolve_gather':
+      if (effect.result === 'secure') {
+        next = securePendingGather(next)
+      } else {
+        next = forfeitPendingGather(next)
+      }
+      player = next.player
       break
   }
 
