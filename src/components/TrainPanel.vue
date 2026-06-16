@@ -2,37 +2,55 @@
   <div class="train-panel panel">
     <h4>{{ npcName }} — Training</h4>
     <p v-if="trainerLine" class="trainer-line">{{ trainerLine }}</p>
-    <p class="train-hint">Buy skill points with gold, then learn combat techniques.</p>
-    <p class="train-meta">
-      <strong>Points:</strong> {{ gameState.player.skillPoints ?? 0 }} ·
-      <strong>Gold:</strong> {{ gameState.player.gold }}g
+    <p class="train-hint">
+      Each attempt costs gold and advances one day. Success is a stat-based roll — failure spends both with no progress saved.
     </p>
-    <button
-      class="btn btn-primary"
-      :disabled="gameState.player.gold < trainingCost"
-      @click="$emit('buyPoint')"
-    >
-      Buy Skill Point ({{ trainingCost }}g)
-    </button>
+    <p class="train-meta">
+      <strong>Gold:</strong> {{ gameState.player.gold }}g ·
+      <strong>Day:</strong> {{ gameState.day ?? 1 }}
+    </p>
+
+    <p v-if="lastResult" class="train-result" :class="lastResult.success ? 'success' : 'failure'">
+      {{ lastResult.message }}
+    </p>
+
+    <div v-if="confirmSkillId" class="confirm-box panel-inset">
+      <p>
+        Train <strong>{{ confirmSkillName }}</strong>?
+        Costs <strong>{{ confirmGold }}g</strong> and <strong>1 day</strong>
+        ({{ confirmChance }}% success).
+      </p>
+      <div class="confirm-actions">
+        <button class="btn btn-primary" @click="confirmAttempt">Confirm</button>
+        <button class="btn" @click="cancelConfirm">Cancel</button>
+      </div>
+    </div>
 
     <div v-for="branch in branches" :key="branch" class="skill-branch-group">
       <h5 class="branch-title">{{ branchLabel(branch) }}</h5>
       <div v-for="skill in skillsByBranch(branch)" :key="skill.id" class="skill-card panel-inset">
         <div class="skill-info">
           <strong>{{ skill.name }}</strong>
-          <span class="skill-meta">
-            {{ skill.cost }} pt · {{ skill.energyCost }} energy
-          </span>
+          <span class="skill-meta">{{ skill.energyCost }} energy in combat</span>
           <p class="skill-desc">{{ skill.description }}</p>
+          <template v-if="preview(skill.id)">
+            <p class="skill-stat">
+              {{ statLabel(preview(skill.id)!.governingStat) }}:
+              {{ preview(skill.id)!.currentStat }}
+              (need {{ preview(skill.id)!.minStat }}+ for {{ formatPct(preview(skill.id)!.chance) }} chance)
+            </p>
+            <p class="skill-cost">{{ preview(skill.id)!.goldCost }}g · 1 day per attempt</p>
+          </template>
           <p v-if="skill.requires.length" class="skill-req">
             Requires: {{ formatRequires(skill.requires) }}
           </p>
+          <p v-if="lockReason(skill.id)" class="skill-lock">{{ lockReason(skill.id) }}</p>
         </div>
         <button
           class="btn"
           :class="skillButtonClass(skill.id)"
-          :disabled="!canLearn(skill.id)"
-          @click="$emit('learn', skill.id)"
+          :disabled="!canAttempt(skill.id) || !!confirmSkillId"
+          @click="requestAttempt(skill.id)"
         >
           {{ skillButtonLabel(skill.id) }}
         </button>
@@ -42,11 +60,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { GameState } from '@/engine/GameLoopDesign'
 import type { SkillDef } from '@/engine/ContentSchemas'
-import { getAllSkills, canLearnSkill, getSkill } from '@/engine/SkillSystem'
-import { TRAINING_COST } from '@/engine/gameConfig'
+import { getAllSkills, getSkill, getTrainingPreview } from '@/engine/SkillSystem'
 
 const props = defineProps<{
   gameState: GameState
@@ -54,18 +71,33 @@ const props = defineProps<{
   npcName: string
 }>()
 
-defineEmits<{ buyPoint: []; learn: [skillId: string] }>()
+const emit = defineEmits<{
+  attemptTraining: [skillId: string]
+}>()
+
+const confirmSkillId = ref<string | null>(null)
+const lastResult = ref<{ success: boolean; message: string } | null>(null)
 
 const trainerLine = computed(() => {
   if (props.npcId === 'captain_bryn') {
-    return '"Steel your nerves and spend your points wisely — techniques win battles."'
+    return '"Steel your nerves — the body learns what the mind refuses to skip."'
   }
   return ''
 })
 
-const trainingCost = TRAINING_COST
 const allSkills = getAllSkills()
 const branches = ['might', 'survival', 'hunter'] as const
+
+const confirmSkill = computed(() =>
+  confirmSkillId.value ? getSkill(confirmSkillId.value) : undefined
+)
+const confirmSkillName = computed(() => confirmSkill.value?.name ?? '')
+const confirmGold = computed(() => confirmSkill.value?.training?.goldCost ?? 0)
+const confirmChance = computed(() => {
+  if (!confirmSkillId.value) return 0
+  const p = getTrainingPreview(props.gameState.player, getSkill(confirmSkillId.value)!)
+  return Math.round(p.chance * 100)
+})
 
 function skillsByBranch(branch: SkillDef['branch']): SkillDef[] {
   return allSkills.filter((s) => s.branch === branch)
@@ -83,25 +115,86 @@ function isKnown(skillId: string): boolean {
   return (props.gameState.player.knownSkills ?? []).includes(skillId)
 }
 
-function canLearn(skillId: string): boolean {
-  return canLearnSkill(props.gameState, skillId)
+function preview(skillId: string) {
+  const skill = getSkill(skillId)
+  if (!skill?.training) return null
+  return getTrainingPreview(props.gameState.player, skill)
+}
+
+function statLabel(stat: string): string {
+  const labels: Record<string, string> = {
+    strength: 'Strength',
+    constitution: 'Constitution',
+    dexterity: 'Dexterity',
+    agility: 'Agility',
+    defense: 'Defense',
+  }
+  return labels[stat] ?? stat
+}
+
+function formatPct(chance: number): string {
+  return String(Math.round(chance * 100))
+}
+
+function lockReason(skillId: string): string | null {
+  const p = preview(skillId)
+  if (!p || p.attemptable) return null
+  switch (p.lockedReason) {
+    case 'known':
+      return 'Already mastered.'
+    case 'missing_prereq':
+      return 'Prerequisites not met.'
+    case 'stat_too_low':
+      return `${statLabel(p.governingStat)} too low (need ${p.minStat}+).`
+    case 'cant_afford':
+      return `Need ${p.goldCost}g.`
+    default:
+      return 'Cannot train.'
+  }
+}
+
+function canAttempt(skillId: string): boolean {
+  const p = preview(skillId)
+  return p?.attemptable ?? false
 }
 
 function skillButtonLabel(skillId: string): string {
   if (isKnown(skillId)) return 'Known'
-  const skill = getSkill(skillId)
-  if (!skill) return 'Learn'
-  const reqsMet = skill.requires.every((r) => isKnown(r))
-  if (!reqsMet) return 'Locked'
-  if ((props.gameState.player.skillPoints ?? 0) < skill.cost) return 'Need points'
-  return 'Learn'
+  if (!canAttempt(skillId)) return 'Locked'
+  return 'Attempt Training'
 }
 
 function skillButtonClass(skillId: string): string {
   if (isKnown(skillId)) return 'btn-known'
-  if (!canLearn(skillId)) return 'btn-locked'
+  if (!canAttempt(skillId)) return 'btn-locked'
   return 'btn-primary'
 }
+
+function requestAttempt(skillId: string) {
+  if (!canAttempt(skillId)) return
+  confirmSkillId.value = skillId
+  lastResult.value = null
+}
+
+function cancelConfirm() {
+  confirmSkillId.value = null
+}
+
+function confirmAttempt() {
+  if (!confirmSkillId.value) return
+  const skillId = confirmSkillId.value
+  confirmSkillId.value = null
+  emit('attemptTraining', skillId)
+}
+
+/** Called by parent after hubAttemptTraining resolves. */
+function showResult(success: boolean, skillName: string) {
+  lastResult.value = success
+    ? { success: true, message: `You train hard… and master ${skillName}!` }
+    : { success: false, message: `You drill all day, but ${skillName} won't come together. The day is spent.` }
+}
+
+defineExpose({ showResult })
 </script>
 
 <style scoped>
@@ -110,6 +203,12 @@ function skillButtonClass(skillId: string): string {
 .trainer-line { font-size: 13px; color: var(--color-text-soft); font-style: italic; margin: 0 0 8px; line-height: 1.4; }
 .train-hint { color: var(--color-text-muted); font-size: 13px; margin-bottom: 8px; }
 .train-meta { margin-bottom: 12px; color: var(--color-text); }
+.train-result { padding: 10px; margin-bottom: 12px; border-radius: 4px; font-size: 13px; }
+.train-result.success { background: rgba(80, 160, 80, 0.15); color: var(--color-success, #6a6); }
+.train-result.failure { background: rgba(160, 80, 80, 0.15); color: var(--color-warning); }
+.confirm-box { padding: 12px; margin-bottom: 16px; }
+.confirm-box p { margin: 0 0 10px; font-size: 13px; }
+.confirm-actions { display: flex; gap: 8px; }
 .skill-branch-group { margin-top: 16px; }
 .branch-title {
   margin: 0 0 8px;
@@ -129,8 +228,11 @@ function skillButtonClass(skillId: string): string {
 }
 .skill-info { flex: 1; }
 .skill-meta { display: block; font-size: 12px; color: var(--color-text-muted); margin: 4px 0; }
+.skill-stat { font-size: 12px; color: var(--color-text); margin: 4px 0; }
+.skill-cost { font-size: 12px; color: var(--color-accent-warm); margin: 2px 0; }
 .skill-desc { font-size: 13px; color: var(--color-text-soft); margin: 4px 0; }
 .skill-req { font-size: 12px; color: var(--color-warning); margin: 4px 0 0; }
+.skill-lock { font-size: 12px; color: var(--color-text-muted); margin: 4px 0 0; font-style: italic; }
 .btn-known { opacity: 0.6; cursor: default; }
 .btn-locked { opacity: 0.5; cursor: not-allowed; }
 </style>

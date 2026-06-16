@@ -275,16 +275,25 @@ export type SkillCombatDef = {
   passive?: { hook: 'on_lethal'; effects: SkillEffect[] }
 }
 
+export type SkillTrainingDef = {
+  governingStat: PlayerStatKey
+  minStat: number
+  maxStat: number
+  goldCost: number
+  /** Stage 3 replaces provisional tuning; marks placeholder data in JSON. */
+  provisional?: boolean
+}
+
 export interface SkillDef {
   id: string
   name: string
   branch: 'might' | 'survival' | 'hunter'
   description: string
   requires: string[]
-  cost: number
   energyCost: number
   action?: string
   combat?: SkillCombatDef
+  training?: SkillTrainingDef
 }
 
 export interface ActiveEventState {

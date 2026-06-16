@@ -120,7 +120,6 @@ export interface Player {
   unallocatedAttributePoints: number
   materials: Record<string, number>
   knownSkills: string[]
-  skillPoints: number
   wounded: boolean
   professions: Record<ProfessionId, ProfessionState>
   /** Highest recipe tier unlocked per crafting profession (tier 1 default). */

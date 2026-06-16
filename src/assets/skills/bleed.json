@@ -4,9 +4,15 @@
   "branch": "hunter",
   "description": "Apply stacking bleed damage.",
   "requires": ["skill_precise_shot"],
-  "cost": 2,
   "energyCost": 3,
   "action": "skill_bleed",
+  "training": {
+    "provisional": true,
+    "governingStat": "dexterity",
+    "minStat": 10,
+    "maxStat": 20,
+    "goldCost": 30
+  },
   "combat": {
     "activatable": true,
     "targetMode": "single_enemy",

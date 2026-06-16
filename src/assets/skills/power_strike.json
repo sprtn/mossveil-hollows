@@ -4,9 +4,15 @@
   "branch": "might",
   "description": "A devastating single-target blow.",
   "requires": [],
-  "cost": 1,
   "energyCost": 2,
   "action": "skill_power_strike",
+  "training": {
+    "provisional": true,
+    "governingStat": "strength",
+    "minStat": 8,
+    "maxStat": 18,
+    "goldCost": 18
+  },
   "combat": {
     "activatable": true,
     "targetMode": "single_enemy",

@@ -4,9 +4,15 @@
   "branch": "might",
   "description": "Sweep all enemies.",
   "requires": ["skill_power_strike"],
-  "cost": 2,
   "energyCost": 3,
   "action": "skill_cleave",
+  "training": {
+    "provisional": true,
+    "governingStat": "strength",
+    "minStat": 10,
+    "maxStat": 20,
+    "goldCost": 28
+  },
   "combat": {
     "activatable": true,
     "targetMode": "all_enemies",

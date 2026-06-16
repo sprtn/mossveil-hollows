@@ -6,7 +6,7 @@ export const GAME_TITLE_SUB = 'Shards of the Shadow'
 export const START_ROOM_ID = 'town_hub'
 export const FINAL_BOSS_ENEMY_ID = 'shadow_lord'
 export const SAVE_KEY = 'strat_rpg_save'
-export const SAVE_VERSION = 8
+export const SAVE_VERSION = 9
 
 export const ZONE_IDS = ['forest', 'cave', 'ruins'] as const
 export type ZoneId = (typeof ZONE_IDS)[number]
@@ -65,9 +65,10 @@ export const INN_HP_PERCENT = 1.0
 /** Wounded status */
 export const WOUNDED_MAX_HP_PENALTY = 0.2
 
-/** Training */
-export const TRAINING_COST = 15
-export const TRAINING_SKILL_POINT_COST = 1
+/** Training — stat-based skill acquisition (gold + day per attempt). */
+export const TRAINING_DAYS_PER_ATTEMPT = 1
+/** Success chance at exactly minStat (linear ramp to 100% at maxStat). */
+export const TRAINING_MIN_SUCCESS_PCT = 0.08
 
 /** Event chance on explore (after combat check) */
 export const EVENT_CHANCE_ON_EXPLORE = 0.35

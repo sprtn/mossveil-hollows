@@ -23,7 +23,7 @@ import {
 } from './gameConfig'
 import { saveGame } from './saveGame'
 import { getEffectiveMaxHp, applyWoundedClear } from './PlayerStats'
-import { learnSkill, buySkillPoint } from './SkillSystem'
+import { attemptTraining } from './SkillTraining'
 import { placeCraftOrder } from './CraftOrderSystem'
 import { selfCraft } from './SelfCraft'
 import {
@@ -305,28 +305,29 @@ export function sleepAtHome(state: GameState): GameState {
   return newState
 }
 
-export function trainSkillPoint(state: GameState, trainerId?: string): GameState {
+export function hubAttemptTraining(
+  state: GameState,
+  skillId: string,
+  trainerId?: string,
+  roll?: number
+): GameState {
   if (!state.currentRoom.isHub) return state
-  const result = buySkillPoint(state)
-  if (result.player.skillPoints > state.player.skillPoints) {
-    const message = trainerId === 'captain_bryn'
-      ? "Captain Bryn wipes his brow. 'Good. One more technique awaits — choose wisely.'"
-      : 'Training complete — skill point gained.'
-    return { ...result, statusMessage: message }
-  }
-  return result
-}
+  const { state: result, outcome } = attemptTraining(state, skillId, roll)
+  if (!outcome) return state
 
-export function trainLearnSkill(state: GameState, skillId: string, trainerId?: string): GameState {
-  const result = learnSkill(state, skillId)
-  if (result.player.knownSkills.length > state.player.knownSkills.length) {
-    const skillName = skillId.replace('skill_', '').replace(/_/g, ' ')
-    const message = trainerId === 'captain_bryn'
-      ? `Captain Bryn nods. 'Well learned — ${skillName} will serve you in the wild.'`
-      : `Learned ${skillName}.`
-    return { ...result, statusMessage: message }
+  const pct = Math.round(outcome.chance * 100)
+  let message: string
+  if (outcome.success) {
+    message = trainerId === 'captain_bryn'
+      ? `You train hard under Bryn's eye… and master ${outcome.skillName}! (${pct}% chance)`
+      : `Training succeeds — you learned ${outcome.skillName}! (${pct}% chance)`
+  } else {
+    message = trainerId === 'captain_bryn'
+      ? `You drill all day with Bryn, but ${outcome.skillName} won't stick. The ${outcome.goldSpent}g and the day are spent. (${pct}% chance)`
+      : `Training failed — ${outcome.skillName} eludes you. ${outcome.goldSpent}g and a day lost. (${pct}% chance)`
   }
-  return result
+  saveGame(result)
+  return { ...result, statusMessage: message }
 }
 
 export function hubCraft(state: GameState, recipeId: string): GameState {

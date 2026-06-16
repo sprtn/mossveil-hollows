@@ -75,7 +75,6 @@ export function loadGame(): { state: GameState | null; versionMismatch: boolean 
         inventory: consolidateInventory(parsed.player.inventory ?? []),
         materials: parsed.player.materials ?? {},
         knownSkills: parsed.player.knownSkills ?? [],
-        skillPoints: parsed.player.skillPoints ?? 0,
         wounded: parsed.player.wounded ?? false,
         stamina: parsed.player.stamina ?? parsed.player.maxStamina ?? 10,
         maxStamina: parsed.player.maxStamina ?? 10,

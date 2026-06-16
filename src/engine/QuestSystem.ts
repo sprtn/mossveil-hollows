@@ -32,9 +32,6 @@ export function describeRewards(_state: GameState, effects: OutcomeEffect[]): st
       case 'take_item':
         parts.push(`-${effect.qty} ${getItemName(effect.itemId)}`)
         break
-      case 'give_skill_point':
-        parts.push(`+${effect.amount} skill point${effect.amount === 1 ? '' : 's'}`)
-        break
       case 'heal':
         parts.push(`+${effect.amount} HP`)
         break

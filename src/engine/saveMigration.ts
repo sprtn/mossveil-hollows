@@ -102,6 +102,13 @@ export function migrateSaveV8(parsed: Record<string, unknown>): {
   return computeMigrationTrainingState(flags, townBuildings, getAllRecipes())
 }
 
+/** v9 → drop legacy skillPoints; knownSkills preserved. */
+export function migrateSaveV9(parsed: Record<string, unknown>): { player: Player } {
+  const raw = (parsed.player ?? {}) as Player & { skillPoints?: number }
+  const { skillPoints: _dropped, ...rest } = raw
+  return { player: rest as Player }
+}
+
 export function migrateParsedSave(
   parsed: Record<string, unknown>,
   fromVersion: number
@@ -129,6 +136,11 @@ export function migrateParsedSave(
         purchasedRecipes: migrated.purchasedRecipes,
       },
     }
+  }
+
+  if (fromVersion < 9) {
+    const migrated = migrateSaveV9(current)
+    current = { ...current, player: migrated.player }
   }
 
   return current

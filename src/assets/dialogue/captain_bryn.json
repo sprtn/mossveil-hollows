@@ -52,39 +52,10 @@
     },
     {
       "id": "training_intro",
-      "text": "'Discipline wins wars. Pay fifteen gold for a skill point, then pick a technique from my regimen. I don't let green recruits waste coin.'",
+      "text": "'Discipline wins wars. Drill with me — pay gold, spend a day, and prove your body knows the technique. No guarantees. Open the regimen when you're ready.'",
       "responses": [
         {
-          "text": "Pay for a skill point (15g).",
-          "requires": [{ "kind": "gold_at_least", "amount": 15 }],
-          "outcomes": [
-            { "kind": "take_gold", "amount": 15 },
-            { "kind": "give_skill_point", "amount": 1 }
-          ],
-          "next": "training_success"
-        },
-        {
-          "text": "Show me the full training regimen.",
-          "outcomes": [{ "kind": "open_hub_panel", "panel": "train", "npcId": "captain_bryn" }]
-        },
-        { "text": "Back", "next": "start" }
-      ]
-    },
-    {
-      "id": "training_success",
-      "text": "'That's the discipline I expect. You've earned a skill point — spend it on a technique that'll keep you alive out there.'",
-      "responses": [
-        {
-          "text": "Train again (15g).",
-          "requires": [{ "kind": "gold_at_least", "amount": 15 }],
-          "outcomes": [
-            { "kind": "take_gold", "amount": 15 },
-            { "kind": "give_skill_point", "amount": 1 }
-          ],
-          "next": "training_success"
-        },
-        {
-          "text": "Show me the techniques.",
+          "text": "Show me the training regimen.",
           "outcomes": [{ "kind": "open_hub_panel", "panel": "train", "npcId": "captain_bryn" }]
         },
         { "text": "Back", "next": "start" }

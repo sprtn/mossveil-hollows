@@ -4,9 +4,15 @@
   "branch": "survival",
   "description": "Cleanse poison without an item.",
   "requires": ["skill_bandage"],
-  "cost": 2,
   "energyCost": 2,
   "action": "skill_antidote_lore",
+  "training": {
+    "provisional": true,
+    "governingStat": "constitution",
+    "minStat": 10,
+    "maxStat": 20,
+    "goldCost": 25
+  },
   "combat": {
     "activatable": true,
     "targetMode": "self",

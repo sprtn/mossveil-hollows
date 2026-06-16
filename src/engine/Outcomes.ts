@@ -38,7 +38,6 @@ export type OutcomeEffect =
   | { kind: 'advance_quest'; questId: string; stageId?: string }
   | { kind: 'learn_skill'; skillId: string }
   | { kind: 'unlock_area'; areaId: string }
-  | { kind: 'give_skill_point'; amount: number }
   | { kind: 'clear_wounded' }
   | { kind: 'set_wounded' }
   | { kind: 'restore_stamina'; amount: number }
@@ -207,9 +206,6 @@ function applySingleOutcome(state: GameState, effect: OutcomeEffect): GameState 
       next.areasUnlocked = [...areas]
       break
     }
-    case 'give_skill_point':
-      player.skillPoints = (player.skillPoints ?? 0) + effect.amount
-      break
     case 'clear_wounded':
       player = applyWoundedClear(player)
       break

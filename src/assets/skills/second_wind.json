@@ -1,1 +1,16 @@
-{"id":"skill_second_wind","name":"Second Wind","branch":"survival","description":"Revive once per expedition when defeated.","requires":["skill_antidote_lore"],"cost":3,"energyCost":4,"action":"skill_second_wind"}
+{
+  "id": "skill_second_wind",
+  "name": "Second Wind",
+  "branch": "survival",
+  "description": "Revive once per expedition when defeated.",
+  "requires": ["skill_antidote_lore"],
+  "energyCost": 4,
+  "action": "skill_second_wind",
+  "training": {
+    "provisional": true,
+    "governingStat": "constitution",
+    "minStat": 12,
+    "maxStat": 22,
+    "goldCost": 40
+  }
+}

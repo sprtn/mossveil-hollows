@@ -4,9 +4,15 @@
   "branch": "survival",
   "description": "Heal yourself in combat.",
   "requires": [],
-  "cost": 1,
   "energyCost": 2,
   "action": "skill_bandage",
+  "training": {
+    "provisional": true,
+    "governingStat": "constitution",
+    "minStat": 8,
+    "maxStat": 18,
+    "goldCost": 15
+  },
   "combat": {
     "activatable": true,
     "targetMode": "self",

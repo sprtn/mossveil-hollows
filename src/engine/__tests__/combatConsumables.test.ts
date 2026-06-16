@@ -64,6 +64,10 @@ describe('combat consumables', () => {
     const playerId = state.player.id
     const hpBefore = state.currentEncounter!.enemies[0]!.hp
     state = useCombatConsumable(state, 'wooden_stake')
+    state = {
+      ...state,
+      currentEncounter: { ...state.currentEncounter!, rngState: 100 },
+    }
     state = playerAction(state, 'attack', { targetId: enemyId })
     const events = state.currentEncounter?.lastEvents ?? state.combatResults?.events ?? []
     expect(state.currentEncounter?.combatBuffs ?? []).toHaveLength(0)

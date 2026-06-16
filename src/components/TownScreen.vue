@@ -77,11 +77,11 @@
 
       <TrainPanel
         v-if="trainNpc"
+        ref="trainPanelRef"
         :game-state="gameState"
         :npc-id="trainNpc.id"
         :npc-name="trainNpc.name"
-        @buy-point="handleTrain"
-        @learn="handleLearn"
+        @attempt-training="handleAttemptTraining"
       />
 
       <ProfessionTrainPanel
@@ -270,7 +270,7 @@ import { equipItemAction } from '@/engine/GameLoop'
 import {
   buyItem, sellItem, sellMaterialToMarket, buyMaterialFromMarket,
   useHealer, manualSave, restAtHub, useInn, sleepAtHome,
-  trainSkillPoint, trainLearnSkill, hubCraft, hubSelfCraft, hubUpgradeBuilding,
+  hubAttemptTraining, hubCraft, hubSelfCraft, hubUpgradeBuilding,
   hubSetProductionEnabled, hubSetProductionLabour,
   hubUnlockProfessionTier, hubPurchaseRecipe,
 } from '@/engine/HubActions'
@@ -293,6 +293,7 @@ import {
 } from '@/engine/VendorSystem'
 import { getPrice } from '@/engine/MarketSystem'
 import { getTrainerProfession } from '@/engine/ProfessionTraining'
+import { getSkill } from '@/engine/SkillSystem'
 import CraftPanel from './CraftPanel.vue'
 import TrainPanel from './TrainPanel.vue'
 import ProfessionTrainPanel from './ProfessionTrainPanel.vue'
@@ -304,6 +305,7 @@ const dispatch = inject<(state: GameState) => void>('dispatch')!
 const activeTab = ref('services')
 const craftNpc = ref<NpcDef | null>(null)
 const trainNpc = ref<NpcDef | null>(null)
+const trainPanelRef = ref<InstanceType<typeof TrainPanel> | null>(null)
 const professionTrainNpc = ref<NpcDef | null>(null)
 const selectedVendor = ref('sera_quartermaster')
 const pendingSwap = ref<{
@@ -368,11 +370,13 @@ function handleInn() { dispatch(useInn(gameState.value)) }
 function handleSleepHome() { dispatch(sleepAtHome(gameState.value)) }
 function handleHeal() { dispatch(useHealer(gameState.value)) }
 function handleSave() { dispatch(manualSave(gameState.value)) }
-function handleTrain() {
-  dispatch(trainSkillPoint(gameState.value, trainNpc.value?.id))
-}
-function handleLearn(skillId: string) {
-  dispatch(trainLearnSkill(gameState.value, skillId, trainNpc.value?.id))
+function handleAttemptTraining(skillId: string) {
+  const skill = getSkill(skillId)
+  const knownBefore = (gameState.value.player.knownSkills ?? []).includes(skillId)
+  const newState = hubAttemptTraining(gameState.value, skillId, trainNpc.value?.id)
+  dispatch(newState)
+  const success = !knownBefore && (newState.player.knownSkills ?? []).includes(skillId)
+  trainPanelRef.value?.showResult(success, skill?.name ?? skillId)
 }
 function handleUnlockTier(tier: number) {
   const npcId = professionTrainNpc.value?.id

@@ -4,9 +4,15 @@
   "branch": "hunter",
   "description": "Stun an enemy.",
   "requires": ["skill_bleed"],
-  "cost": 2,
   "energyCost": 3,
   "action": "skill_hamstring",
+  "training": {
+    "provisional": true,
+    "governingStat": "dexterity",
+    "minStat": 11,
+    "maxStat": 21,
+    "goldCost": 35
+  },
   "combat": {
     "activatable": true,
     "targetMode": "single_enemy",

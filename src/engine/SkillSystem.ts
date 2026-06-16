@@ -1,10 +1,10 @@
 /**
- * Skill tree system — learn and use skills.
+ * Skill tree system — registry and training entry points.
  */
 
 import type { GameState } from './GameLoopDesign'
 import type { SkillDef } from './ContentSchemas'
-import { TRAINING_COST, TRAINING_SKILL_POINT_COST } from './gameConfig'
+import { canAttemptTraining } from './SkillTraining'
 
 import powerStrike from '../assets/skills/power_strike.json'
 import cleave from '../assets/skills/cleave.json'
@@ -15,6 +15,14 @@ import secondWind from '../assets/skills/second_wind.json'
 import preciseShot from '../assets/skills/precise_shot.json'
 import bleed from '../assets/skills/bleed.json'
 import hamstring from '../assets/skills/hamstring.json'
+
+export {
+  attemptTraining,
+  canAttemptTraining,
+  computeTrainingChance,
+  getTrainingPreview,
+} from './SkillTraining'
+export type { TrainingAttemptOutcome, TrainingLockReason, TrainingPreview } from './SkillTraining'
 
 const SKILLS: SkillDef[] = [
   powerStrike as SkillDef,
@@ -49,36 +57,7 @@ export function getAllSkills(): SkillDef[] {
   return SKILLS
 }
 
+/** Alias for TrainPanel compatibility during migration. */
 export function canLearnSkill(state: GameState, skillId: string): boolean {
-  const skill = getSkill(skillId)
-  if (!skill) return false
-  if ((state.player.knownSkills ?? []).includes(skillId)) return false
-  if ((state.player.skillPoints ?? 0) < skill.cost) return false
-  return skill.requires.every((req) => (state.player.knownSkills ?? []).includes(req))
-}
-
-export function learnSkill(state: GameState, skillId: string): GameState {
-  if (!canLearnSkill(state, skillId)) return state
-  const skill = getSkill(skillId)!
-  const known = [...(state.player.knownSkills ?? []), skillId]
-  return {
-    ...state,
-    player: {
-      ...state.player,
-      knownSkills: known,
-      skillPoints: (state.player.skillPoints ?? 0) - skill.cost,
-    },
-  }
-}
-
-export function buySkillPoint(state: GameState): GameState {
-  if (state.player.gold < TRAINING_COST) return state
-  return {
-    ...state,
-    player: {
-      ...state.player,
-      gold: state.player.gold - TRAINING_COST,
-      skillPoints: (state.player.skillPoints ?? 0) + TRAINING_SKILL_POINT_COST,
-    },
-  }
+  return canAttemptTraining(state, skillId)
 }

@@ -4,9 +4,15 @@
   "branch": "hunter",
   "description": "High critical hit chance.",
   "requires": [],
-  "cost": 2,
   "energyCost": 2,
   "action": "skill_precise_shot",
+  "training": {
+    "provisional": true,
+    "governingStat": "dexterity",
+    "minStat": 9,
+    "maxStat": 19,
+    "goldCost": 22
+  },
   "combat": {
     "activatable": true,
     "targetMode": "single_enemy",

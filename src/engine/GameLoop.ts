@@ -826,7 +826,6 @@ export function endEncounter(
         getEffectiveMaxHp({ ...updatedPlayer, maxHp: newMaxHp, wounded: updatedPlayer.wounded })
       )
       updatedPlayer.maxEnergy = Math.min(10, 6 + Math.floor(newLevel / 3))
-      updatedPlayer.skillPoints = (updatedPlayer.skillPoints ?? 0) + levelsGained
       updatedPlayer.stats = {
         strength: baseStr + (updatedPlayer.stats.strength - oldBaseStr),
         constitution: baseCon + (updatedPlayer.stats.constitution - oldBaseCon),

@@ -644,7 +644,6 @@ export function createDefaultPlayer(overrides: Partial<Player> = {}): Player {
     unallocatedAttributePoints: 0,
     materials: {},
     knownSkills: [],
-    skillPoints: 0,
     wounded: false,
     professions: createDefaultProfessions(),
     unlockedProfessionTiers: createDefaultUnlockedProfessionTiers(),
