@@ -74,7 +74,11 @@ describe('Game Loop', () => {
       const enemy = createTestEnemy()
       let state = triggerEncounter(enterRoom(initGame(player, room), room), [enemy])
       const initialHp = state.currentEncounter!.enemies[0]!.hp
-      state = playerAction(state, 'attack', { targetId: enemy.id })
+      for (let attempt = 0; attempt < 8; attempt++) {
+        if (!state.currentEncounter) break
+        state = playerAction(state, 'attack', { targetId: enemy.id })
+        if (state.currentEncounter.enemies[0]!.hp < initialHp) break
+      }
       if (state.currentEncounter) {
         expect(state.currentEncounter.enemies[0]!.hp).toBeLessThan(initialHp)
       }

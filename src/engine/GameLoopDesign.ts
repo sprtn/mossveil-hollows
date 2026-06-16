@@ -184,6 +184,7 @@ export interface CombatEvent {
     | 'status_tick'
     | 'flee'
     | 'miss'
+    /** Combat log only — consumables are applied via useCombatConsumable, not PlayerAction. */
     | 'use_item'
     | 'stun_skip'
   source: string

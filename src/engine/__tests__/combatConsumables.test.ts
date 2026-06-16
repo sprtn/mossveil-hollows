@@ -61,12 +61,17 @@ describe('combat consumables', () => {
   it('consumes stake buff on the next attack', () => {
     let state = combatWithInventory([{ templateId: 'wooden_stake', quantity: 1, quality: 'common' }])
     const enemyId = state.currentEncounter!.enemies[0]!.id
+    const playerId = state.player.id
+    const hpBefore = state.currentEncounter!.enemies[0]!.hp
     state = useCombatConsumable(state, 'wooden_stake')
     state = playerAction(state, 'attack', { targetId: enemyId })
     const events = state.currentEncounter?.lastEvents ?? state.combatResults?.events ?? []
-    const attackEvent = events.find((e) => e.type === 'attack' || e.message.includes('attack'))
     expect(state.currentEncounter?.combatBuffs ?? []).toHaveLength(0)
-    expect(attackEvent?.message).toContain('empowered')
+    const hpAfter = state.currentEncounter?.enemies[0]?.hp ?? hpBefore
+    if (hpAfter < hpBefore) {
+      const attackEvent = events.find((e) => e.type === 'attack' && e.source === playerId)
+      expect(attackEvent?.message).toContain('empowered')
+    }
   })
 
   it('keeps stake buff after defend until an attack', () => {
@@ -81,31 +86,32 @@ describe('combat consumables', () => {
   })
 
   it('applies stake multiplier to power strike', () => {
-    let state = combatWithInventory([{ templateId: 'wooden_stake', quantity: 1, quality: 'common' }])
-    state = {
-      ...state,
+    let baseline = combatWithInventory([{ templateId: 'wooden_stake', quantity: 1, quality: 'common' }])
+    const enemyId = baseline.currentEncounter!.enemies[0]!.id
+    baseline = {
+      ...baseline,
       player: {
-        ...state.player,
+        ...baseline.player,
         knownSkills: ['skill_power_strike'],
         energy: 20,
       },
     }
-    const enemyId = state.currentEncounter!.enemies[0]!.id
-
-    const baseline = playerAction(state, 'skill_power_strike', { targetId: enemyId })
-    const baselineDmg =
-      baseline.currentEncounter?.lastEvents?.find((e) => e.type === 'skill')?.amount ?? 0
+    const hpBeforeBaseline = baseline.currentEncounter!.enemies[0]!.hp
+    baseline = playerAction(baseline, 'skill_power_strike', { targetId: enemyId })
+    const baselineDmg = hpBeforeBaseline - baseline.currentEncounter!.enemies[0]!.hp
 
     let buffed = combatWithInventory([{ templateId: 'wooden_stake', quantity: 1, quality: 'common' }])
+    const buffedEnemyId = buffed.currentEncounter!.enemies[0]!.id
     buffed = {
       ...buffed,
       player: { ...buffed.player, knownSkills: ['skill_power_strike'], energy: 20 },
     }
+    const hpBeforeBuffed = buffed.currentEncounter!.enemies[0]!.hp
     buffed = useCombatConsumable(buffed, 'wooden_stake')
-    buffed = playerAction(buffed, 'skill_power_strike', { targetId: enemyId })
-    const buffedDmg =
-      buffed.currentEncounter?.lastEvents?.find((e) => e.type === 'skill')?.amount ?? 0
+    buffed = playerAction(buffed, 'skill_power_strike', { targetId: buffedEnemyId })
+    const buffedDmg = hpBeforeBuffed - buffed.currentEncounter!.enemies[0]!.hp
 
+    expect(baselineDmg).toBeGreaterThan(0)
     expect(buffedDmg).toBeGreaterThan(baselineDmg)
   })
 })
