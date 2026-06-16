@@ -1,1 +1,26 @@
-{"id":"skill_cleave","name":"Cleave","branch":"might","description":"Sweep all enemies.","requires":["skill_power_strike"],"cost":2,"energyCost":3,"action":"skill_cleave"}
+{
+  "id": "skill_cleave",
+  "name": "Cleave",
+  "branch": "might",
+  "description": "Sweep all enemies.",
+  "requires": ["skill_power_strike"],
+  "cost": 2,
+  "energyCost": 3,
+  "action": "skill_cleave",
+  "combat": {
+    "activatable": true,
+    "targetMode": "all_enemies",
+    "effects": [
+      {
+        "kind": "damage",
+        "scaling": { "mode": "stat_times", "stat": "strength", "multiplier": 0.6 },
+        "consumeDamageBuff": true
+      }
+    ],
+    "log": {
+      "eventType": "skill",
+      "message": "Cleave sweeps all enemies!{empowered}",
+      "aggregate": true
+    }
+  }
+}

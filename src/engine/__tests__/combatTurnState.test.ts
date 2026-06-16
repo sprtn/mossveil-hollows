@@ -35,12 +35,15 @@ function combatWithBonusAction() {
     energy: 20,
     stats: { strength: 14, defense: 5, constitution: 10, dexterity: 10, agility: 8 },
   })
-  let state = triggerEncounter(enterRoom(initGame(player, testRoom), testRoom), [testEnemy()])
+  let state = triggerEncounter(enterRoom(initGame(player, testRoom), testRoom), [
+    { ...testEnemy(), stats: { ...testEnemy().stats, agility: 24 } },
+  ])
   return {
     ...state,
     currentEncounter: {
       ...state.currentEncounter!,
       playerBonusAction: true,
+      rngState: 100,
     },
   }
 }

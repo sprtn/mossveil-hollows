@@ -15,9 +15,11 @@ import type {
   StatusType,
 } from './GameLoopDesign'
 import { getEffectiveStats } from './ItemDatabase'
-import { SKILL_COSTS, DEFAULT_MAX_ENERGY, DEFAULT_MAX_STAMINA } from './gameConfig'
+import { DEFAULT_MAX_ENERGY, DEFAULT_MAX_STAMINA } from './gameConfig'
 import { calculateMaxHp, getBaseStatsForLevel } from './ProgressionSystem'
 import { consumeDamageMultiplier } from './combatBuffs'
+import { resolveSkillEffects } from './SkillEffects'
+import { getSkillByAction } from './SkillSystem'
 import { DEFAULT_QUALITY } from './Quality'
 import { createDefaultProfessions } from './Professions'
 import { createDefaultUnlockedProfessionTiers } from './ProfessionTraining'
@@ -401,252 +403,6 @@ export function resolvePlayerCombatAction(
       break
     }
 
-    case 'skill_brace': {
-      if (result.player.energy < SKILL_COSTS.skill_brace) break
-      result.player = {
-        ...result.player,
-        energy: result.player.energy - SKILL_COSTS.skill_brace,
-      }
-      enc.playerBracing = true
-      const heal = 8 + Math.floor(playerStats.defense * 0.3)
-      result.player.hp = Math.min(result.player.maxHp, result.player.hp + heal)
-      events.push({
-        type: 'defend',
-        source: result.player.id,
-        sourceName: result.player.name,
-        message: `You brace yourself and recover ${heal} HP.`,
-      })
-      break
-    }
-
-    case 'skill_antidote_lore': {
-      if (result.player.energy < SKILL_COSTS.skill_antidote_lore) break
-      result.player = {
-        ...result.player,
-        energy: result.player.energy - SKILL_COSTS.skill_antidote_lore,
-        statusEffects: result.player.statusEffects.filter((s) => s.type !== 'poison'),
-      }
-      events.push({
-        type: 'heal',
-        source: result.player.id,
-        sourceName: result.player.name,
-        message: 'Antidote Lore purges the poison from your veins.',
-      })
-      break
-    }
-
-    case 'skill_precise_shot': {
-      if (result.player.energy < SKILL_COSTS.skill_precise_shot) break
-      const targetId = options.targetId ?? enc.enemies.find((e) => e.hp > 0)?.id
-      if (!targetId) break
-      const target = enc.enemies.find((e) => e.id === targetId)
-      if (!target || target.hp <= 0) break
-
-      result.player = {
-        ...result.player,
-        energy: result.player.energy - SKILL_COSTS.skill_precise_shot,
-      }
-      const { multiplier, encounter: encAfterBuff } = consumeDamageMultiplier(enc)
-      result.currentEncounter = { ...enc, ...encAfterBuff }
-      const { damage, crit } = rollDamage(
-        playerStats.strength,
-        target.stats.defense,
-        playerStats.dexterity,
-        getEffectiveAgility(target.stats, target.statusEffects),
-        false,
-        rng,
-        { critBonus: 0.35, guaranteedHit: true, damageMultiplier: multiplier > 1 ? multiplier : undefined }
-      )
-      const newHp = Math.max(0, target.hp - damage)
-      result.currentEncounter!.enemies = enc.enemies.map((e) =>
-        e.id === targetId ? { ...e, hp: newHp } : e
-      )
-      const suffix = empoweredSuffix(multiplier)
-      events.push({
-        type: 'skill',
-        source: result.player.id,
-        sourceName: result.player.name,
-        target: targetId,
-        targetName: target.name,
-        amount: damage,
-        crit,
-        message: crit
-          ? `Precise Shot crits ${target.name} for ${damage} damage!${suffix}`
-          : `Precise Shot hits ${target.name} for ${damage} damage!${suffix}`,
-      })
-      break
-    }
-
-    case 'skill_bleed': {
-      if (result.player.energy < SKILL_COSTS.skill_bleed) break
-      const targetId = options.targetId ?? enc.enemies.find((e) => e.hp > 0)?.id
-      if (!targetId) break
-      const target = enc.enemies.find((e) => e.id === targetId)
-      if (!target || target.hp <= 0) break
-
-      result.player = {
-        ...result.player,
-        energy: result.player.energy - SKILL_COSTS.skill_bleed,
-      }
-      const { multiplier, encounter: encAfterBuff } = consumeDamageMultiplier(enc)
-      result.currentEncounter = { ...enc, ...encAfterBuff }
-      const { damage } = rollDamage(
-        Math.floor(playerStats.strength * 0.7),
-        target.stats.defense,
-        playerStats.dexterity,
-        getEffectiveAgility(target.stats, target.statusEffects),
-        false,
-        rng,
-        { damageMultiplier: multiplier > 1 ? multiplier : undefined }
-      )
-      const bleedPower = 3 + Math.floor(playerStats.dexterity * 0.2)
-      const enemies = enc.enemies.map((e) => {
-        if (e.id !== targetId) return e
-        const statusEffects = addStatus(e.statusEffects ?? [], 'bleed', 3, bleedPower)
-        return { ...e, hp: Math.max(0, e.hp - damage), statusEffects }
-      })
-      result.currentEncounter!.enemies = enemies
-      events.push({
-        type: 'skill',
-        source: result.player.id,
-        sourceName: result.player.name,
-        target: targetId,
-        targetName: target.name,
-        amount: damage,
-        status: 'bleed',
-        message: `Bleed cuts ${target.name} for ${damage} and leaves them bleeding!${empoweredSuffix(multiplier)}`,
-      })
-      break
-    }
-
-    case 'skill_hamstring': {
-      if (result.player.energy < SKILL_COSTS.skill_hamstring) break
-      const targetId = options.targetId ?? enc.enemies.find((e) => e.hp > 0)?.id
-      if (!targetId) break
-      const target = enc.enemies.find((e) => e.id === targetId)
-      if (!target || target.hp <= 0) break
-
-      result.player = {
-        ...result.player,
-        energy: result.player.energy - SKILL_COSTS.skill_hamstring,
-      }
-      const { multiplier, encounter: encAfterBuff } = consumeDamageMultiplier(enc)
-      result.currentEncounter = { ...enc, ...encAfterBuff }
-      const { damage } = rollDamage(
-        Math.floor(playerStats.strength * 0.6),
-        target.stats.defense,
-        playerStats.dexterity,
-        getEffectiveAgility(target.stats, target.statusEffects),
-        false,
-        rng,
-        { damageMultiplier: multiplier > 1 ? multiplier : undefined }
-      )
-      const slowPower = 4
-      const enemies = enc.enemies.map((e) => {
-        if (e.id !== targetId) return e
-        const statusEffects = addStatus(e.statusEffects ?? [], 'slow', 2, slowPower)
-        return { ...e, hp: Math.max(0, e.hp - damage), statusEffects }
-      })
-      result.currentEncounter!.enemies = enemies
-      events.push({
-        type: 'skill',
-        source: result.player.id,
-        sourceName: result.player.name,
-        target: targetId,
-        targetName: target.name,
-        amount: damage,
-        status: 'slow',
-        message: `Hamstring slows ${target.name} for ${damage} damage!${empoweredSuffix(multiplier)}`,
-      })
-      break
-    }
-
-    case 'skill_power_strike': {
-      if (result.player.energy < SKILL_COSTS.skill_power_strike) break
-      const targetId = options.targetId ?? enc.enemies.find((e) => e.hp > 0)?.id
-      if (!targetId) break
-      const target = enc.enemies.find((e) => e.id === targetId)
-      if (!target) break
-
-      result.player = {
-        ...result.player,
-        energy: result.player.energy - SKILL_COSTS.skill_power_strike,
-      }
-      const { multiplier, encounter: encAfterBuff } = consumeDamageMultiplier(enc)
-      result.currentEncounter = { ...enc, ...encAfterBuff }
-      const bonusDmg = Math.floor(playerStats.strength * 0.8)
-      const { damage, crit } = rollDamage(
-        playerStats.strength + bonusDmg,
-        target.stats.defense,
-        playerStats.dexterity,
-        getEffectiveAgility(target.stats, target.statusEffects),
-        false,
-        rng,
-        { damageMultiplier: multiplier > 1 ? multiplier : undefined }
-      )
-      const newHp = Math.max(0, target.hp - damage)
-      result.currentEncounter!.enemies = enc.enemies.map((e) =>
-        e.id === targetId ? { ...e, hp: newHp } : e
-      )
-      events.push({
-        type: 'skill',
-        source: result.player.id,
-        sourceName: result.player.name,
-        target: targetId,
-        targetName: target.name,
-        amount: damage,
-        crit,
-        message: `Power Strike hits ${target.name} for ${damage} damage!${empoweredSuffix(multiplier)}`,
-      })
-      break
-    }
-
-    case 'skill_cleave': {
-      if (result.player.energy < SKILL_COSTS.skill_cleave) break
-      result.player = { ...result.player, energy: result.player.energy - SKILL_COSTS.skill_cleave }
-      const { multiplier, encounter: encAfterBuff } = consumeDamageMultiplier(enc)
-      result.currentEncounter = { ...enc, ...encAfterBuff }
-      const cleaveDmg = Math.floor(playerStats.strength * 0.6)
-      result.currentEncounter!.enemies = enc.enemies.map((e) => {
-        if (e.hp <= 0) return e
-        const { damage } = rollDamage(
-          cleaveDmg,
-          e.stats.defense,
-          playerStats.dexterity,
-          getEffectiveAgility(e.stats, e.statusEffects),
-          false,
-          rng,
-          { damageMultiplier: multiplier > 1 ? multiplier : undefined }
-        )
-        return { ...e, hp: Math.max(0, e.hp - damage) }
-      })
-      events.push({
-        type: 'skill',
-        source: result.player.id,
-        sourceName: result.player.name,
-        message: `Cleave sweeps all enemies!${empoweredSuffix(multiplier)}`,
-      })
-      break
-    }
-
-    case 'skill_bandage': {
-      if (result.player.energy < SKILL_COSTS.skill_bandage) break
-      result.player = {
-        ...result.player,
-        energy: result.player.energy - SKILL_COSTS.skill_bandage,
-      }
-      const heal = 20 + Math.floor(playerStats.defense * 0.5)
-      result.player.hp = Math.min(result.player.maxHp, result.player.hp + heal)
-      events.push({
-        type: 'heal',
-        source: result.player.id,
-        sourceName: result.player.name,
-        amount: heal,
-        message: `Bandage restores ${heal} HP.`,
-      })
-      break
-    }
-
     case 'flee': {
       events.push({
         type: 'flee',
@@ -655,6 +411,14 @@ export function resolvePlayerCombatAction(
         message: 'You flee from combat!',
       })
       return { state: result, events }
+    }
+
+    default: {
+      const skill = getSkillByAction(action)
+      if (skill?.combat?.activatable) {
+        result = resolveSkillEffects(result, skill, options, rng, events)
+      }
+      break
     }
   }
 

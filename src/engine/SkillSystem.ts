@@ -29,9 +29,20 @@ const SKILLS: SkillDef[] = [
 ]
 
 const skillMap = new Map(SKILLS.map((s) => [s.id, s]))
+const actionMap = new Map(
+  SKILLS.filter((s) => s.action).map((s) => [s.action!, s])
+)
 
 export function getSkill(id: string): SkillDef | undefined {
   return skillMap.get(id)
+}
+
+export function getSkillByAction(action: string): SkillDef | undefined {
+  return actionMap.get(action)
+}
+
+export function getSkillEnergyCost(skillId: string): number {
+  return getSkill(skillId)?.energyCost ?? 0
 }
 
 export function getAllSkills(): SkillDef[] {

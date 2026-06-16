@@ -1,1 +1,31 @@
-{"id":"skill_power_strike","name":"Power Strike","branch":"might","description":"A devastating single-target blow.","requires":[],"cost":1,"energyCost":2,"action":"skill_power_strike"}
+{
+  "id": "skill_power_strike",
+  "name": "Power Strike",
+  "branch": "might",
+  "description": "A devastating single-target blow.",
+  "requires": [],
+  "cost": 1,
+  "energyCost": 2,
+  "action": "skill_power_strike",
+  "combat": {
+    "activatable": true,
+    "targetMode": "single_enemy",
+    "requireLivingTarget": false,
+    "effects": [
+      {
+        "kind": "damage",
+        "scaling": {
+          "mode": "stat_plus_bonus",
+          "stat": "strength",
+          "bonusStat": "strength",
+          "bonusScale": 0.8
+        },
+        "consumeDamageBuff": true
+      }
+    ],
+    "log": {
+      "eventType": "skill",
+      "message": "Power Strike hits {target} for {damage} damage!{empowered}"
+    }
+  }
+}

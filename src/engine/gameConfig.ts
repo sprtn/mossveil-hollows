@@ -23,18 +23,6 @@ export const ZONE_SHARD_IDS: Record<ZoneId, string> = {
   ruins: 'ruins_shard',
 }
 
-export const SKILL_COSTS = {
-  skill_power_strike: 2,
-  skill_cleave: 3,
-  skill_bandage: 2,
-  skill_brace: 2,
-  skill_antidote_lore: 2,
-  skill_second_wind: 4,
-  skill_precise_shot: 2,
-  skill_bleed: 3,
-  skill_hamstring: 3,
-} as const
-
 /** Stamina — expedition budget */
 export const DEFAULT_MAX_STAMINA = 10
 export const STAMINA_PER_MOVE = 1

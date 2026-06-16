@@ -1,1 +1,31 @@
-{"id":"skill_bleed","name":"Bleed","branch":"hunter","description":"Apply stacking bleed damage.","requires":["skill_precise_shot"],"cost":2,"energyCost":3,"action":"skill_bleed"}
+{
+  "id": "skill_bleed",
+  "name": "Bleed",
+  "branch": "hunter",
+  "description": "Apply stacking bleed damage.",
+  "requires": ["skill_precise_shot"],
+  "cost": 2,
+  "energyCost": 3,
+  "action": "skill_bleed",
+  "combat": {
+    "activatable": true,
+    "targetMode": "single_enemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "scaling": { "mode": "stat_times", "stat": "strength", "multiplier": 0.7 },
+        "consumeDamageBuff": true
+      },
+      {
+        "kind": "apply_status",
+        "status": "bleed",
+        "turns": 3,
+        "power": { "kind": "stat", "stat": "dexterity", "flat": 3, "scale": 0.2 }
+      }
+    ],
+    "log": {
+      "eventType": "skill",
+      "message": "Bleed cuts {target} for {damage} and leaves them bleeding!{empowered}"
+    }
+  }
+}

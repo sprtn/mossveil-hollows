@@ -89,6 +89,10 @@ describe('Game Loop', () => {
       const room = createTestRoom()
       const enemy = createTestEnemy()
       let state = triggerEncounter(enterRoom(initGame(player, room), room), [enemy])
+      state = {
+        ...state,
+        currentEncounter: { ...state.currentEncounter!, rngState: 100 },
+      }
       state = playerAction(state, 'defend')
       expect(state.currentEncounter?.playerDefending).toBeFalsy()
     })

@@ -1,1 +1,28 @@
-{"id":"skill_precise_shot","name":"Precise Shot","branch":"hunter","description":"High critical hit chance.","requires":[],"cost":2,"energyCost":2,"action":"skill_precise_shot"}
+{
+  "id": "skill_precise_shot",
+  "name": "Precise Shot",
+  "branch": "hunter",
+  "description": "High critical hit chance.",
+  "requires": [],
+  "cost": 2,
+  "energyCost": 2,
+  "action": "skill_precise_shot",
+  "combat": {
+    "activatable": true,
+    "targetMode": "single_enemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "scaling": { "mode": "stat", "stat": "strength" },
+        "critBonus": 0.35,
+        "guaranteedHit": true,
+        "consumeDamageBuff": true
+      }
+    ],
+    "log": {
+      "eventType": "skill",
+      "message": "Precise Shot hits {target} for {damage} damage!{empowered}",
+      "messageCrit": "Precise Shot crits {target} for {damage} damage!{empowered}"
+    }
+  }
+}

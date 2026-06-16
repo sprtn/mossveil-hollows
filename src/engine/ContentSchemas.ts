@@ -6,6 +6,7 @@
 import type { OutcomeEffect, OutcomeRequirement } from './Outcomes'
 import type { Quality } from './Quality'
 import type { ProfessionId } from './Professions'
+import type { CombatEvent, PlayerStatKey, StatusType } from './GameLoopDesign'
 
 export interface EventChoice {
   text: string
@@ -179,6 +180,101 @@ export interface NpcDef {
   >
 }
 
+export type SkillTargetMode =
+  | 'self'
+  | 'single_enemy'
+  | 'all_enemies'
+  /** STAGE 3 ONLY: one to-hit roll for whole sweep; all hit or all miss. */
+  | 'all_enemies_single_roll'
+
+/** How to derive attacker power for rollDamage's attackerStr argument. */
+export type StatScaling =
+  | { mode: 'stat'; stat: PlayerStatKey }
+  | { mode: 'stat_times'; stat: PlayerStatKey; multiplier: number }
+  | { mode: 'stat_plus_bonus'; stat: PlayerStatKey; bonusStat: PlayerStatKey; bonusScale: number }
+
+export type StatusPower =
+  | { kind: 'fixed'; value: number }
+  | { kind: 'stat'; stat: PlayerStatKey; flat: number; scale: number }
+
+/** STAGE 3 ONLY: chance gate before apply_status. Omitted = always applies. */
+export type StatusApplyChance = {
+  base: number
+  perStat?: { stat: PlayerStatKey; scale: number }
+  max?: number
+}
+
+/** STAGE 3 ONLY: on-hit debuff after a landed damage roll. */
+export type DefenseDebuffOnHit = {
+  status: StatusType
+  turns: number
+  power: StatusPower
+}
+
+export type SkillEffect =
+  | {
+      kind: 'damage'
+      scaling: StatScaling
+      critBonus?: number
+      guaranteedHit?: boolean
+      consumeDamageBuff?: boolean
+      /** STAGE 3 ONLY: additive to-hit adjustment; guaranteedHit overrides. */
+      hitModifier?: number
+      /** STAGE 3 ONLY: fraction or flat DEF ignored (Crushing Blow). */
+      ignoreDefense?: number
+      /** STAGE 3 ONLY: apply status on landed hit (Concussive Slam). */
+      defenseDebuffOnHit?: DefenseDebuffOnHit
+      /** STAGE 3 ONLY: damage scales per debuff stack on target. */
+      bonusPerTargetStatus?: { status: StatusType; scale: number }
+      /** STAGE 3 ONLY: execute below HP threshold. */
+      executeBelowHpPct?: number
+      executeMultiplier?: number
+    }
+  | {
+      kind: 'heal'
+      flat: number
+      stat?: PlayerStatKey
+      statScale?: number
+      target: 'self'
+    }
+  | {
+      kind: 'apply_status'
+      status: StatusType
+      turns: number
+      power: StatusPower
+      /** STAGE 3 ONLY: roll before applying; omitted = always applies. */
+      chance?: StatusApplyChance
+    }
+  | {
+      kind: 'remove_status'
+      status: StatusType
+      target: 'self'
+    }
+  | {
+      kind: 'set_encounter_flag'
+      flag: 'playerBracing'
+      value: boolean
+    }
+
+export type SkillCombatLog = {
+  eventType: CombatEvent['type']
+  message: string
+  messageCrit?: string
+  messageMiss?: string
+  aggregate?: boolean
+}
+
+export type SkillCombatDef = {
+  activatable: boolean
+  targetMode: SkillTargetMode
+  effects: SkillEffect[]
+  log: SkillCombatLog
+  /** When false, single_enemy skills may target hp<=0 enemies (Power Strike). Default true. */
+  requireLivingTarget?: boolean
+  /** STAGE 3 ONLY: passive hooks (e.g. Second Wind on lethal). */
+  passive?: { hook: 'on_lethal'; effects: SkillEffect[] }
+}
+
 export interface SkillDef {
   id: string
   name: string
@@ -188,7 +284,7 @@ export interface SkillDef {
   cost: number
   energyCost: number
   action?: string
-  effect?: string
+  combat?: SkillCombatDef
 }
 
 export interface ActiveEventState {

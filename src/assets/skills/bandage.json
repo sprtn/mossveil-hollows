@@ -1,1 +1,21 @@
-{"id":"skill_bandage","name":"Bandage","branch":"survival","description":"Heal yourself in combat.","requires":[],"cost":1,"energyCost":2,"action":"skill_bandage"}
+{
+  "id": "skill_bandage",
+  "name": "Bandage",
+  "branch": "survival",
+  "description": "Heal yourself in combat.",
+  "requires": [],
+  "cost": 1,
+  "energyCost": 2,
+  "action": "skill_bandage",
+  "combat": {
+    "activatable": true,
+    "targetMode": "self",
+    "effects": [
+      { "kind": "heal", "flat": 20, "stat": "defense", "statScale": 0.5, "target": "self" }
+    ],
+    "log": {
+      "eventType": "heal",
+      "message": "Bandage restores {heal} HP."
+    }
+  }
+}

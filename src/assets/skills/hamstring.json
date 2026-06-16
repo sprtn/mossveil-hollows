@@ -1,1 +1,31 @@
-{"id":"skill_hamstring","name":"Hamstring","branch":"hunter","description":"Stun an enemy.","requires":["skill_bleed"],"cost":2,"energyCost":3,"action":"skill_hamstring"}
+{
+  "id": "skill_hamstring",
+  "name": "Hamstring",
+  "branch": "hunter",
+  "description": "Stun an enemy.",
+  "requires": ["skill_bleed"],
+  "cost": 2,
+  "energyCost": 3,
+  "action": "skill_hamstring",
+  "combat": {
+    "activatable": true,
+    "targetMode": "single_enemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "scaling": { "mode": "stat_times", "stat": "strength", "multiplier": 0.6 },
+        "consumeDamageBuff": true
+      },
+      {
+        "kind": "apply_status",
+        "status": "slow",
+        "turns": 2,
+        "power": { "kind": "fixed", "value": 4 }
+      }
+    ],
+    "log": {
+      "eventType": "skill",
+      "message": "Hamstring slows {target} for {damage} damage!{empowered}"
+    }
+  }
+}

@@ -86,7 +86,12 @@ describe('combat consumables', () => {
   })
 
   it('applies stake multiplier to power strike', () => {
-    let baseline = combatWithInventory([{ templateId: 'wooden_stake', quantity: 1, quality: 'common' }])
+    const pinRng = (s: ReturnType<typeof combatWithInventory>) => ({
+      ...s,
+      currentEncounter: { ...s.currentEncounter!, rngState: 100 },
+    })
+
+    let baseline = pinRng(combatWithInventory([{ templateId: 'wooden_stake', quantity: 1, quality: 'common' }]))
     const enemyId = baseline.currentEncounter!.enemies[0]!.id
     baseline = {
       ...baseline,
@@ -100,7 +105,7 @@ describe('combat consumables', () => {
     baseline = playerAction(baseline, 'skill_power_strike', { targetId: enemyId })
     const baselineDmg = hpBeforeBaseline - baseline.currentEncounter!.enemies[0]!.hp
 
-    let buffed = combatWithInventory([{ templateId: 'wooden_stake', quantity: 1, quality: 'common' }])
+    let buffed = pinRng(combatWithInventory([{ templateId: 'wooden_stake', quantity: 1, quality: 'common' }]))
     const buffedEnemyId = buffed.currentEncounter!.enemies[0]!.id
     buffed = {
       ...buffed,

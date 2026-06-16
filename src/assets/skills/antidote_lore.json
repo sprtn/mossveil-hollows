@@ -1,1 +1,19 @@
-{"id":"skill_antidote_lore","name":"Antidote Lore","branch":"survival","description":"Cleanse poison without an item.","requires":["skill_bandage"],"cost":2,"energyCost":2,"action":"skill_antidote_lore"}
+{
+  "id": "skill_antidote_lore",
+  "name": "Antidote Lore",
+  "branch": "survival",
+  "description": "Cleanse poison without an item.",
+  "requires": ["skill_bandage"],
+  "cost": 2,
+  "energyCost": 2,
+  "action": "skill_antidote_lore",
+  "combat": {
+    "activatable": true,
+    "targetMode": "self",
+    "effects": [{ "kind": "remove_status", "status": "poison", "target": "self" }],
+    "log": {
+      "eventType": "heal",
+      "message": "Antidote Lore purges the poison from your veins."
+    }
+  }
+}
