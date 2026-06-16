@@ -26,6 +26,14 @@
       "baseYield": 2,
       "maxCharges": 6,
       "regenPerDay": 2
+    },
+    {
+      "id": "forest_cache_berries",
+      "profession": "herbalism",
+      "resource": "berries",
+      "baseYield": 1,
+      "maxCharges": 6,
+      "regenPerDay": 2
     }
   ],
   "exits": [

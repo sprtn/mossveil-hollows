@@ -53,6 +53,7 @@ export const ITEM_MARKET_CATEGORY: Record<string, MarketCategory> = {
   moonshade_herb: 'consumables',
   raw_fish: 'consumables',
   fresh_produce: 'consumables',
+  berries: 'consumables',
 }
 
 export const MARKET_TUNING = {

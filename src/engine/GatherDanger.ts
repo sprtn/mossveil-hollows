@@ -5,8 +5,7 @@
 import type { Enemy, GameState, Room } from './GameLoopDesign'
 import type { GatherNode, GatherNodeRuntimeState, GatherRollResult, GatheringProfessionId } from './GatherNodes'
 import { SeededRandom } from './CombatEngine'
-import { addMaterial } from './Materials'
-import { getItemName } from './ItemDatabase'
+import { getItemName, grantGatherResource } from './ItemDatabase'
 import { grantProfessionXp, PROFESSIONS } from './Professions'
 
 // --- Danger chance (playtest placeholders) ---
@@ -57,11 +56,11 @@ export function getNodeRichness(node: GatherNode): number {
 }
 
 export function computeGatherDangerChance(roomDifficulty: number, nodeRichness: number): number {
-  if (roomDifficulty <= 0) return 0
-
+  // Difficulty 0 contributes no difficulty term; richness alone can still pose risk
+  // (closes exploit if a rich node is placed in a calm room).
   let raw =
     GATHER_DANGER_BASE +
-    roomDifficulty * GATHER_DANGER_PER_DIFFICULTY +
+    Math.max(0, roomDifficulty) * GATHER_DANGER_PER_DIFFICULTY +
     nodeRichness * GATHER_DANGER_PER_RICHNESS
 
   if (
@@ -129,9 +128,9 @@ export function securePendingGather(state: GameState): GameState {
     return clearPendingGather(state)
   }
 
-  let player = addMaterial(state.player, pending.primaryResource, pending.primaryQty)
+  let player = grantGatherResource(state.player, pending.primaryResource, pending.primaryQty)
   for (const bonus of pending.bonusItems) {
-    player = addMaterial(player, bonus.item, bonus.qty)
+    player = grantGatherResource(player, bonus.item, bonus.qty)
   }
 
   const xpResult = grantProfessionXp(player, pending.professionId, pending.xpGain)

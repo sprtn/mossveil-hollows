@@ -1,0 +1,19 @@
+{
+  "id": "wren_dialogue",
+  "npcId": "wren",
+  "nodes": [
+    {
+      "id": "start",
+      "text": "Wren checks her bowstring. 'Hunt, carve, repeat. When your fletching's worth a damn, I'll sell you the next trick.'",
+      "responses": [
+        {
+          "text": "What recipes can I buy?",
+          "outcomes": [
+            { "kind": "open_hub_panel", "panel": "profession_train", "npcId": "wren" }
+          ]
+        },
+        { "text": "Farewell.", "outcomes": [] }
+      ]
+    }
+  ]
+}

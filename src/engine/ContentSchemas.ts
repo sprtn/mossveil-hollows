@@ -39,6 +39,8 @@ export interface RecipeDef {
     gold: number
   }
   output: { itemId: string; qty: number }
+  /** Optional override for trainer recipe-purchase gold (default: tier × RECIPE_PURCHASE_GOLD_BASE). */
+  purchaseGold?: number
   unlockedBy?: { flag?: string; building?: string; buildingLevel?: number }
 }
 
@@ -172,7 +174,9 @@ export interface NpcDef {
   name: string
   role: string
   dialogueId: string
-  services?: Array<'shop' | 'healer' | 'crafting' | 'training' | 'buildings'>
+  services?: Array<
+    'shop' | 'healer' | 'crafting' | 'training' | 'profession_training' | 'buildings'
+  >
 }
 
 export interface SkillDef {

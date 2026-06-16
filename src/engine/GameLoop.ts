@@ -56,9 +56,14 @@ import {
   ZONE_SHARD_IDS,
   STAMINA_PER_ENCOUNTER,
   STAMINA_PER_MOVE,
+  EXPLORE_STAMINA_COST,
+  BOSS_RESPAWN_DAYS,
+  BOSS_RESPAWN_XP_MULTIPLIER,
+  BOSS_RESPAWN_GOLD_MULTIPLIER,
   ENERGY_PER_WIN,
   EVENT_CHANCE_ON_EXPLORE,
   START_ROOM_ID,
+  ZONE_IDS,
   type ZoneId,
 } from './gameConfig'
 import { saveGame, clearSave } from './saveGame'
@@ -170,6 +175,28 @@ function getRoomAreaId(roomId: string): string | null {
   return null
 }
 
+interface ZoneBossAutoEncounter {
+  zone: ZoneId
+  enemies: Enemy[]
+}
+
+/** Zone boss rooms: auto encounter whose enemy id matches ZONE_BOSS_IDS. */
+function getZoneBossAutoEncounter(room: Room): ZoneBossAutoEncounter | null {
+  if (!room.zoneId || !(ZONE_IDS as readonly string[]).includes(room.zoneId)) return null
+  const zone = room.zoneId as ZoneId
+  const bossId = ZONE_BOSS_IDS[zone]
+  const autoEncounter = room.encounters.find((e) => e.onTrigger === 'auto')
+  if (!autoEncounter?.enemies.some((e) => e.id === bossId)) return null
+  return { zone, enemies: autoEncounter.enemies }
+}
+
+export interface TriggerEncounterOptions {
+  /** Explore already paid EXPLORE_STAMINA_COST — skip encounter-entry tax. */
+  skipStaminaDrain?: boolean
+  /** Farm respawn — reduced rewards, no shard/unlock. */
+  isRespawnBoss?: boolean
+}
+
 export function initGame(player: Player, firstRoom: Room, seed?: number): GameState {
   const meta = getDefaultGameMeta()
   return {
@@ -209,7 +236,18 @@ export function enterRoom(state: GameState, room: Room, previousRoomId?: string)
   }
 
   const autoEncounter = room.encounters.find((e) => e.onTrigger === 'auto')
-  if (autoEncounter) {
+  const zoneBoss = getZoneBossAutoEncounter(room)
+  if (zoneBoss) {
+    const clearedDay = (state.bossClearedDay ?? {})[zoneBoss.zone]
+    const currentDay = updatedState.day ?? 1
+    if (clearedDay === undefined) {
+      return triggerEncounter(updatedState, zoneBoss.enemies)
+    }
+    if (currentDay - clearedDay >= BOSS_RESPAWN_DAYS) {
+      return triggerEncounter(updatedState, zoneBoss.enemies, { isRespawnBoss: true })
+    }
+    // Boss dormant — safe to explore/gather/pass through.
+  } else if (autoEncounter) {
     return triggerEncounter(updatedState, autoEncounter.enemies)
   }
 
@@ -241,8 +279,14 @@ export function exploreRoom(state: GameState): GameState {
     return { ...state, statusMessage: 'Exhausted — return to town to recover stamina.' }
   }
 
+  // Pay for the search attempt up front (encounter, event, or empty).
+  const playerAfterExploreCost = drainStamina(state.player, EXPLORE_STAMINA_COST)
   const newExploreCount = (state.exploreCount ?? 0) + 1
-  const baseState: GameState = { ...state, exploreCount: newExploreCount }
+  const baseState: GameState = {
+    ...state,
+    player: playerAfterExploreCost,
+    exploreCount: newExploreCount,
+  }
   const seed = getStateSeed(baseState, newExploreCount * 1000)
   const rng = new SeededRandom(seed)
   const needsHealing = shouldProvideHealingOpportunity(baseState)
@@ -255,7 +299,8 @@ export function exploreRoom(state: GameState): GameState {
   for (const enc of randomEncounters) {
     const adjustedChance = (enc.triggerChance || 0) * encounterChanceMultiplier
     if (rng.next() < adjustedChance) {
-      return triggerEncounter(baseState, enc.enemies)
+      // Explore stamina already spent; skip encounter-entry drain (see EXPLORE_STAMINA_COST).
+      return triggerEncounter(baseState, enc.enemies, { skipStaminaDrain: true })
     }
   }
 
@@ -347,7 +392,11 @@ export async function returnToHub(state: GameState): Promise<GameState> {
   }
 }
 
-export function triggerEncounter(state: GameState, enemies: Enemy[]): GameState {
+export function triggerEncounter(
+  state: GameState,
+  enemies: Enemy[],
+  options: TriggerEncounterOptions = {}
+): GameState {
   const seed = getStateSeed(state, state.turnCount)
   const encounterId = `enc_${state.currentRoom.id}_${state.turnCount}_${seed}`
   const rngState = Math.abs(
@@ -365,10 +414,11 @@ export function triggerEncounter(state: GameState, enemies: Enemy[]): GameState 
     playerBonusAction: false,
     combatBuffs: [],
     consumableUsedThisTurn: false,
+    isRespawnBoss: options.isRespawnBoss ?? false,
   }
 
   let player = state.player
-  if (!state.forcedEncounter) {
+  if (!state.forcedEncounter && !options.skipStaminaDrain) {
     player = drainStamina(player, STAMINA_PER_ENCOUNTER)
   }
 
@@ -721,8 +771,11 @@ export function endEncounter(
   let finalBossDefeated = state.finalBossDefeated ?? false
   let areasUnlocked = [...(state.areasUnlocked ?? ['forest'])]
   let bossesDefeated = [...(state.bossesDefeated ?? [])]
+  let bossClearedDay = { ...(state.bossClearedDay ?? {}) }
   let flags = { ...(state.flags ?? {}) }
   let phase: GameState['phase'] = result === 'loss' ? 'game_over' : 'combat_results'
+  const isRespawnBoss = state.currentEncounter.isRespawnBoss === true
+  const currentDay = state.day ?? 1
 
   if (result === 'win') {
     const lootRng = new SeededRandom(
@@ -730,8 +783,14 @@ export function endEncounter(
     )
     const roomDifficulty = state.currentRoom.difficulty ?? 0
     for (const enemy of state.currentEncounter.enemies) {
-      totalXp += enemy.xpReward || 0
-      totalGold += enemy.goldReward ?? 0
+      let xp = enemy.xpReward || 0
+      let gold = enemy.goldReward ?? 0
+      if (isRespawnBoss) {
+        xp = Math.floor(xp * BOSS_RESPAWN_XP_MULTIPLIER)
+        gold = Math.floor(gold * BOSS_RESPAWN_GOLD_MULTIPLIER)
+      }
+      totalXp += xp
+      totalGold += gold
       totalLoot.push(...resolveEnemyLoot(enemy, lootRng, roomDifficulty))
       flags[`defeated_${enemy.id}`] = true
     }
@@ -796,8 +855,11 @@ export function endEncounter(
       state.currentEncounter.enemies,
       state.currentRoom.zoneId
     )
-    if (zoneCleared && !zonesCleared.includes(zoneCleared)) {
+    if (zoneCleared && isRespawnBoss) {
+      bossClearedDay[zoneCleared] = currentDay
+    } else if (zoneCleared && !zonesCleared.includes(zoneCleared)) {
       zonesCleared.push(zoneCleared)
+      bossClearedDay[zoneCleared] = currentDay
       const shardId = ZONE_SHARD_IDS[zoneCleared]
       updatedPlayer.inventory = addItemToInventory(
         updatedPlayer.inventory,
@@ -871,6 +933,7 @@ export function endEncounter(
     finalBossDefeated,
     areasUnlocked,
     bossesDefeated,
+    bossClearedDay,
     flags,
   }
 

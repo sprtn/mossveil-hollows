@@ -111,18 +111,40 @@ describe('GatherDanger', () => {
   })
 
   describe('computeGatherDangerChance', () => {
+    const plainRichness = getNodeRichness(plainNode)
+    const richRichness = getNodeRichness(richNode)
+
     it('is near-zero for low difficulty and humble node', () => {
-      const chance = computeGatherDangerChance(1, getNodeRichness(plainNode))
+      const chance = computeGatherDangerChance(1, plainRichness)
       expect(chance).toBeLessThanOrEqual(GATHER_DANGER_SAFE_CEILING)
       expect(chance).toBeLessThan(0.06)
     })
 
     it('is meaningfully high for high difficulty and rich node', () => {
-      const low = computeGatherDangerChance(1, getNodeRichness(plainNode))
-      const high = computeGatherDangerChance(5, getNodeRichness(richNode))
+      const low = computeGatherDangerChance(1, plainRichness)
+      const high = computeGatherDangerChance(5, richRichness)
       expect(high).toBeGreaterThan(0.15)
       expect(high).toBeGreaterThan(low * 3)
       expect(high).toBeLessThanOrEqual(GATHER_DANGER_CAP)
+    })
+
+    it('gives rich nodes non-zero danger at difficulty 0', () => {
+      const chance = computeGatherDangerChance(0, richRichness)
+      expect(chance).toBeGreaterThan(0.1)
+      expect(chance).toBeLessThanOrEqual(GATHER_DANGER_CAP)
+    })
+
+    it('keeps plain nodes effectively safe at difficulty 0', () => {
+      const chance = computeGatherDangerChance(0, plainRichness)
+      expect(chance).toBeGreaterThan(0)
+      expect(chance).toBeLessThanOrEqual(GATHER_DANGER_SAFE_CEILING)
+      expect(chance).toBeLessThan(0.06)
+    })
+
+    it('unchanged for difficulty > 0 (regression guard)', () => {
+      expect(computeGatherDangerChance(1, plainRichness)).toBe(GATHER_DANGER_SAFE_CEILING)
+      expect(computeGatherDangerChance(5, richRichness)).toBeCloseTo(0.437388, 5)
+      expect(computeGatherDangerChance(5, plainRichness)).toBeCloseTo(0.178, 3)
     })
   })
 
@@ -295,13 +317,30 @@ describe('GatherDanger', () => {
       expect(after.gatherNodeState?.plain?.charges).toBe(plainNode.maxCharges)
     })
 
-    it('safe room gathering still succeeds without danger at difficulty 0', () => {
-      const zeroDiffRoom = { ...safeRoom, difficulty: 0 }
-      let state = stateInRoom(zeroDiffRoom)
-      state = gatherFromNode(state, 'plain')
-      expect(state.pendingGather).toBeUndefined()
-      expect(state.player.materials?.oak_wood).toBeGreaterThan(0)
-      expect(state.gatherNodeState?.plain?.charges).toBe(plainNode.maxCharges - 1)
+    it('plain node at difficulty 0 usually gathers without danger', () => {
+      const zeroDiffRoom = { ...safeRoom, difficulty: 0, gatherNodes: [plainNode] }
+      for (let i = 0; i < 40; i++) {
+        let state = { ...stateInRoom(zeroDiffRoom), turnCount: i, moveCount: i }
+        state = gatherFromNode(state, 'plain')
+        if (!state.pendingGather) {
+          expect(state.player.materials?.oak_wood).toBeGreaterThan(0)
+          expect(state.gatherNodeState?.plain?.charges).toBe(plainNode.maxCharges - 1)
+          return
+        }
+      }
+      expect.fail('expected at least one safe gather in 40 seeded attempts')
+    })
+
+    it('rich node at difficulty 0 can trigger danger', () => {
+      const zeroDiffRoom = { ...deepRoom, difficulty: 0, gatherNodes: [richNode] }
+      for (let i = 0; i < 40; i++) {
+        const state = { ...stateInRoom(zeroDiffRoom), turnCount: i, moveCount: i }
+        const after = gatherFromNode(state, 'rich')
+        if (after.pendingGather) {
+          return
+        }
+      }
+      expect.fail('expected at least one danger trigger in 40 seeded attempts')
     })
   })
 

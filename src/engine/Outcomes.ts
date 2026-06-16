@@ -18,6 +18,11 @@ import { getCraftOrdersForNpc } from './CraftOrderSystem'
 import { getVendorTier, giveVendorXp } from './VendorSystem'
 import { recordMaterialSale, ensureMarketState } from './MarketSystem'
 import { securePendingGather, forfeitPendingGather } from './GatherDanger'
+import {
+  unlockProfessionTier,
+  purchaseRecipe,
+} from './CraftingSystem'
+import { getProfessionLevel, type ProfessionId } from './Professions'
 
 export type OutcomeEffect =
   | { kind: 'give_item'; itemId: string; qty: number }
@@ -43,8 +48,10 @@ export type OutcomeEffect =
   | { kind: 'increment_counter'; counter: string; amount?: number }
   | { kind: 'give_vendor_xp'; vendorId: string; amount: number }
   | { kind: 'record_market_sale'; materialId: string; qty: number }
-  | { kind: 'open_hub_panel'; panel: 'train' | 'craft' | 'shop'; npcId: string }
+  | { kind: 'open_hub_panel'; panel: 'train' | 'craft' | 'shop' | 'profession_train'; npcId: string }
   | { kind: 'resolve_gather'; result: 'secure' | 'forfeit' }
+  | { kind: 'unlock_profession_tier'; profession: string; tier: number }
+  | { kind: 'purchase_recipe'; recipeId: string }
 
 export type OutcomeRequirement =
   | { kind: 'has_item'; itemId: string; qty?: number }
@@ -66,6 +73,7 @@ export type OutcomeRequirement =
   | { kind: 'market_supply_at_least'; category: string; value: number }
   | { kind: 'market_supply_below'; category: string; value: number }
   | { kind: 'area_unlocked'; areaId: string }
+  | { kind: 'profession_at_least'; profession: string; level: number }
 
 export function meetsRequirements(state: GameState, reqs: OutcomeRequirement[] = []): boolean {
   return reqs.every((req) => meetsRequirement(state, req))
@@ -127,6 +135,8 @@ function meetsRequirement(state: GameState, req: OutcomeRequirement): boolean {
     }
     case 'area_unlocked':
       return (state.areasUnlocked ?? []).includes(req.areaId)
+    case 'profession_at_least':
+      return getProfessionLevel(player, req.profession as ProfessionId) >= req.level
     default:
       return false
   }
@@ -251,6 +261,14 @@ function applySingleOutcome(state: GameState, effect: OutcomeEffect): GameState 
       }
       player = next.player
       break
+    case 'unlock_profession_tier':
+      next = unlockProfessionTier(next, effect.profession as ProfessionId, effect.tier)
+      player = next.player
+      break
+    case 'purchase_recipe':
+      next = purchaseRecipe(next, effect.recipeId)
+      player = next.player
+      break
   }
 
   next.player = player
@@ -264,6 +282,7 @@ export function getDefaultGameMeta(): Pick<
   | 'townBuildings'
   | 'areasUnlocked'
   | 'bossesDefeated'
+  | 'bossClearedDay'
   | 'day'
   | 'counters'
   | 'craftOrders'
@@ -278,6 +297,7 @@ export function getDefaultGameMeta(): Pick<
     townBuildings: {},
     areasUnlocked: ['forest'],
     bossesDefeated: [],
+    bossClearedDay: {},
     day: 1,
     counters: {},
     craftOrders: [],

@@ -35,7 +35,14 @@ const hubRoom: Room = {
 }
 
 function baseState(overrides: Partial<GameState['player']> = {}): GameState {
-  let state = initGame(createDefaultPlayer(overrides), hubRoom)
+  let state = initGame(
+    createDefaultPlayer({
+      unlockedProfessionTiers: { smithing: 3, fletching: 2, alchemy: 4 },
+      purchasedRecipes: ['wooden_stake', 'oak_spear', 'cloth_bandage', 'antidote_recipe', 'padded_wrap', 'hide_jerkin', 'wolf_cloak'],
+      ...overrides,
+    }),
+    hubRoom
+  )
   state = enterRoom(state, hubRoom)
   state = {
     ...state,

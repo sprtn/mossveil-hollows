@@ -30,6 +30,14 @@
       "baseYield": 1,
       "maxCharges": 5,
       "regenPerDay": 2
+    },
+    {
+      "id": "forest_entrance_berries",
+      "profession": "herbalism",
+      "resource": "berries",
+      "baseYield": 1,
+      "maxCharges": 6,
+      "regenPerDay": 2
     }
   ],
   "exits": [

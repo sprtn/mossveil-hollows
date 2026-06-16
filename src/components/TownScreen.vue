@@ -57,6 +57,11 @@
               class="action-button small"
               @click="openTrain(npc)"
             >Training</button>
+            <button
+              v-if="npc.services?.includes('profession_training')"
+              class="action-button small"
+              @click="openProfessionTrain(npc)"
+            >Recipes</button>
           </div>
         </div>
       </div>
@@ -77,6 +82,15 @@
         :npc-name="trainNpc.name"
         @buy-point="handleTrain"
         @learn="handleLearn"
+      />
+
+      <ProfessionTrainPanel
+        v-if="professionTrainNpc"
+        :game-state="gameState"
+        :npc-id="professionTrainNpc.id"
+        :npc-name="professionTrainNpc.name"
+        @unlock-tier="handleUnlockTier"
+        @purchase-recipe="handlePurchaseRecipe"
       />
     </div>
 
@@ -258,6 +272,7 @@ import {
   useHealer, manualSave, restAtHub, useInn, sleepAtHome,
   trainSkillPoint, trainLearnSkill, hubCraft, hubSelfCraft, hubUpgradeBuilding,
   hubSetProductionEnabled, hubSetProductionLabour,
+  hubUnlockProfessionTier, hubPurchaseRecipe,
 } from '@/engine/HubActions'
 import { getMarketMaterialListings } from '@/engine/MarketSystem'
 import { getItemName, getItemTemplate, getEquipBonus, hasItem } from '@/engine/ItemDatabase'
@@ -277,8 +292,10 @@ import {
   getVendorSellBonus,
 } from '@/engine/VendorSystem'
 import { getPrice } from '@/engine/MarketSystem'
+import { getTrainerProfession } from '@/engine/ProfessionTraining'
 import CraftPanel from './CraftPanel.vue'
 import TrainPanel from './TrainPanel.vue'
+import ProfessionTrainPanel from './ProfessionTrainPanel.vue'
 import ProductionPanel from './ProductionPanel.vue'
 
 const gameState = inject<Ref<GameState>>('gameState')!
@@ -287,6 +304,7 @@ const dispatch = inject<(state: GameState) => void>('dispatch')!
 const activeTab = ref('services')
 const craftNpc = ref<NpcDef | null>(null)
 const trainNpc = ref<NpcDef | null>(null)
+const professionTrainNpc = ref<NpcDef | null>(null)
 const selectedVendor = ref('sera_quartermaster')
 const pendingSwap = ref<{
   templateId: string
@@ -356,6 +374,16 @@ function handleTrain() {
 function handleLearn(skillId: string) {
   dispatch(trainLearnSkill(gameState.value, skillId, trainNpc.value?.id))
 }
+function handleUnlockTier(tier: number) {
+  const npcId = professionTrainNpc.value?.id
+  if (!npcId) return
+  const profession = getTrainerProfession(npcId)
+  if (!profession) return
+  dispatch(hubUnlockProfessionTier(gameState.value, profession, tier))
+}
+function handlePurchaseRecipe(recipeId: string) {
+  dispatch(hubPurchaseRecipe(gameState.value, recipeId))
+}
 function handleCraft(recipeId: string) { dispatch(hubCraft(gameState.value, recipeId)) }
 function handleSelfCraft(recipeId: string) { dispatch(hubSelfCraft(gameState.value, recipeId)) }
 function handleUpgrade(buildingId: string) { dispatch(hubUpgradeBuilding(gameState.value, buildingId)) }
@@ -363,6 +391,7 @@ function handleUpgrade(buildingId: string) { dispatch(hubUpgradeBuilding(gameSta
 function talkTo(npc: NpcDef) {
   craftNpc.value = null
   trainNpc.value = null
+  professionTrainNpc.value = null
   dispatch(startDialogue(gameState.value, npc.dialogueId))
 }
 
@@ -370,17 +399,27 @@ function openCraft(npc: NpcDef) {
   activeTab.value = 'services'
   craftNpc.value = npc
   trainNpc.value = null
+  professionTrainNpc.value = null
 }
 
 function openTrain(npc: NpcDef) {
   activeTab.value = 'services'
   trainNpc.value = npc
   craftNpc.value = null
+  professionTrainNpc.value = null
+}
+
+function openProfessionTrain(npc: NpcDef) {
+  activeTab.value = 'services'
+  professionTrainNpc.value = npc
+  craftNpc.value = null
+  trainNpc.value = null
 }
 
 function openShop(npc: NpcDef) {
   craftNpc.value = null
   trainNpc.value = null
+  professionTrainNpc.value = null
   selectedVendor.value = npc.id
   activeTab.value = 'shop'
 }
@@ -395,11 +434,14 @@ function applyPendingHubPanel() {
   activeTab.value = 'services'
   craftNpc.value = null
   trainNpc.value = null
+  professionTrainNpc.value = null
 
   if (pending.panel === 'train') {
     trainNpc.value = npc
   } else if (pending.panel === 'craft') {
     craftNpc.value = npc
+  } else if (pending.panel === 'profession_train') {
+    professionTrainNpc.value = npc
   } else if (pending.panel === 'shop') {
     selectedVendor.value = npc.id
     activeTab.value = 'shop'

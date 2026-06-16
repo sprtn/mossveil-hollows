@@ -10,23 +10,28 @@
       <p class="order-hint">Finished commissions arrive when you rest, sleep, or stay at the inn.</p>
     </div>
 
-    <div v-if="throughput <= 0 && recipes.length === 0" class="empty">
+    <div v-if="throughput <= 0 && catalog.length === 0" class="empty">
       Build the workbench in Buildings before crafting here.
     </div>
-    <div v-else-if="recipes.length === 0" class="empty">
+    <div v-else-if="catalog.length === 0" class="empty">
       No recipes available yet. Upgrade buildings or complete quests first.
     </div>
 
-    <div v-for="recipe in recipes" :key="recipe.id" class="recipe-row">
+    <div
+      v-for="recipe in catalog"
+      :key="recipe.id"
+      :class="['recipe-row', { locked: !isCraftable(recipe) }]"
+    >
       <div class="recipe-info">
         <strong>{{ recipe.name }}</strong>
+        <span v-if="!isCraftable(recipe)" class="lock-hint">{{ lockHint(recipe) }}</span>
         <span class="output">
           → {{ getItemName(recipe.output.itemId) }}<template v-if="recipe.output.qty > 1"> x{{ recipe.output.qty }}</template>
         </span>
         <span v-if="outputStats(recipe.output.itemId)" class="item-stats">{{ outputStats(recipe.output.itemId) }}</span>
         <span v-if="outputDesc(recipe.output.itemId)" class="item-desc">{{ outputDesc(recipe.output.itemId) }}</span>
 
-        <div class="materials">
+        <div v-if="isCraftable(recipe)" class="materials">
           <span
             v-for="(qty, matId) in recipe.requires.materials"
             :key="matId"
@@ -36,7 +41,7 @@
           </span>
         </div>
 
-        <div class="self-craft-meta">
+        <div v-if="isCraftable(recipe)" class="self-craft-meta">
           <span>{{ resourceIcons.stamina }} Self-craft: {{ preview(recipe.id)?.staminaCost ?? '—' }} stamina</span>
           <span>{{ professionIcon(recipe.profession) }} {{ preview(recipe.id)?.professionName }} Lv {{ preview(recipe.id)?.professionLevel ?? 1 }}</span>
           <span class="quality-range">
@@ -45,7 +50,7 @@
           <span class="xp-note">+{{ preview(recipe.id)?.xpReward ?? 0 }} XP (instant)</span>
         </div>
 
-        <div class="commission-meta">
+        <div v-if="isCraftable(recipe)" class="commission-meta">
           <span v-if="recipe.requires.gold" class="mat">
             {{ resourceIcons.gold }} Order fee: {{ recipe.requires.gold }}g
           </span>
@@ -53,7 +58,7 @@
         </div>
       </div>
 
-      <div class="recipe-actions">
+      <div v-if="isCraftable(recipe)" class="recipe-actions">
         <button
           class="shop-btn self-craft-btn"
           :disabled="!canSelfCraftRecipe(recipe.id)"
@@ -76,13 +81,22 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { GameState } from '@/engine/GameLoopDesign'
-import type { ProfessionId } from '@/engine/Professions'
-import { getRecipesForNpc, canCraft } from '@/engine/CraftingSystem'
+import type { RecipeDef } from '@/engine/ContentSchemas'
+import { canCraft, getRecipeCatalogForNpc, isRecipeCraftable } from '@/engine/CraftingSystem'
 import { getPendingCraftOrders, describeCraftOrder, getCraftThroughput } from '@/engine/CraftOrderSystem'
 import { canSelfCraft, getSelfCraftPreview } from '@/engine/SelfCraft'
 import { getItemName, getItemTemplate } from '@/engine/ItemDatabase'
 import { getMaterialCount } from '@/engine/Materials'
 import { materialIcon, resourceIcons, itemStatSummary } from '@/utils/icons'
+import type { ProfessionId } from '@/engine/Professions'
+import { PROFESSIONS } from '@/engine/Professions'
+import {
+  getUnlockedProfessionTier,
+  hasPurchasedRecipe,
+  PROFESSION_TRAINER_NPC,
+  getRecipePurchaseGold,
+} from '@/engine/ProfessionTraining'
+import { getNpc } from '@/engine/NpcData'
 
 const props = defineProps<{
   gameState: GameState
@@ -92,13 +106,33 @@ const props = defineProps<{
 
 defineEmits<{ craft: [recipeId: string]; selfCraft: [recipeId: string] }>()
 
-const recipes = computed(() => getRecipesForNpc(props.gameState, props.npcId))
+const catalog = computed(() => getRecipeCatalogForNpc(props.gameState, props.npcId))
 const pendingOrders = computed(() => getPendingCraftOrders(props.gameState, props.npcId))
 const throughput = computed(() => getCraftThroughput(props.gameState, props.npcId))
 const estimatedWait = computed(() => pendingOrders.value.length + 1)
 
 function describeOrder(order: ReturnType<typeof getPendingCraftOrders>[number]) {
   return describeCraftOrder(props.gameState, order)
+}
+
+function isCraftable(recipe: RecipeDef): boolean {
+  return isRecipeCraftable(props.gameState, recipe)
+}
+
+function lockHint(recipe: RecipeDef): string {
+  const tier = recipe.tier ?? 1
+  const unlocked = getUnlockedProfessionTier(props.gameState.player, recipe.profession)
+  const trainerId = PROFESSION_TRAINER_NPC[recipe.profession as keyof typeof PROFESSION_TRAINER_NPC]
+  const trainerName = trainerId ? (getNpc(trainerId)?.name ?? 'the trainer') : 'the trainer'
+  const profName = PROFESSIONS[recipe.profession].name
+
+  if (tier > unlocked) {
+    return `Unlock ${profName} tier ${tier} from ${trainerName}`
+  }
+  if (!hasPurchasedRecipe(props.gameState.player, recipe.id)) {
+    return `Buy recipe from ${trainerName} (${getRecipePurchaseGold(recipe)}g)`
+  }
+  return 'Requirements not met'
 }
 
 function materialCount(matId: string): number {
@@ -143,6 +177,8 @@ function canCommissionRecipe(id: string): boolean {
 .order-row { font-size: 12px; color: #ccc; margin-bottom: 4px; }
 .order-hint { margin: 8px 0 0; font-size: 11px; color: #888; font-style: italic; }
 .recipe-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 10px; background: var(--color-panel-inset); border: 1px solid var(--color-border); border-radius: var(--radius-sm); margin-bottom: 8px; }
+.recipe-row.locked { opacity: 0.55; background: rgba(40, 40, 40, 0.4); }
+.lock-hint { display: block; font-size: 11px; color: var(--color-warning); font-style: italic; margin: 2px 0 4px; }
 .recipe-info { flex: 1; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
 .recipe-actions { display: flex; flex-direction: column; gap: 6px; }
 .output { color: #888; font-size: 12px; }

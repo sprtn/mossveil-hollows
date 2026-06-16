@@ -9,7 +9,6 @@ import { triggerEncounter } from './GameLoop'
 import type { Enemy } from './GameLoopDesign'
 import { SeededRandom } from './CombatEngine'
 
-import berryThicket from '../assets/events/berry_thicket.json'
 import woundedTraveler from '../assets/events/wounded_traveler.json'
 import fallenLog from '../assets/events/fallen_log.json'
 import oldShrine from '../assets/events/old_shrine.json'
@@ -21,7 +20,6 @@ import gatherRuinsWard from '../assets/events/gather_ruins_ward.json'
 import { forfeitPendingGather } from './GatherDanger'
 
 const FOREST_EVENTS: EventCard[] = [
-  berryThicket as EventCard,
   woundedTraveler as EventCard,
   fallenLog as EventCard,
   oldShrine as EventCard,

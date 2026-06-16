@@ -6,7 +6,7 @@ export const GAME_TITLE_SUB = 'Shards of the Shadow'
 export const START_ROOM_ID = 'town_hub'
 export const FINAL_BOSS_ENEMY_ID = 'shadow_lord'
 export const SAVE_KEY = 'strat_rpg_save'
-export const SAVE_VERSION = 6
+export const SAVE_VERSION = 8
 
 export const ZONE_IDS = ['forest', 'cave', 'ruins'] as const
 export type ZoneId = (typeof ZONE_IDS)[number]
@@ -39,6 +39,21 @@ export const SKILL_COSTS = {
 export const DEFAULT_MAX_STAMINA = 10
 export const STAMINA_PER_MOVE = 1
 export const STAMINA_PER_ENCOUNTER = 1
+/** Stamina per explore attempt (paid before outcome roll). */
+export const EXPLORE_STAMINA_COST = 1
+
+/** Zone boss respawn — days after first clear before the guardian returns. */
+export const BOSS_RESPAWN_DAYS = 7
+/** Farm respawn reward tuning (first-kill rewards unchanged). */
+export const BOSS_RESPAWN_XP_MULTIPLIER = 0.4
+export const BOSS_RESPAWN_GOLD_MULTIPLIER = 0.4
+
+/** Wild berry gather nodes (see forest room gatherNodes; values should match). */
+export const BERRY_NODE_BASE_YIELD = 1
+export const BERRY_NODE_MAX_CHARGES = 6
+export const BERRY_NODE_REGEN_PER_DAY = 2
+/** Energy restored when eating gathered berries (also berries.json power). */
+export const BERRY_ENERGY_RESTORE = 2
 
 /** Energy — combat resource (persists across expedition) */
 export const DEFAULT_MAX_ENERGY = 6

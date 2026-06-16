@@ -123,6 +123,10 @@ export interface Player {
   skillPoints: number
   wounded: boolean
   professions: Record<ProfessionId, ProfessionState>
+  /** Highest recipe tier unlocked per crafting profession (tier 1 default). */
+  unlockedProfessionTiers?: Partial<Record<ProfessionId, number>>
+  /** Recipe ids bought from profession trainers. */
+  purchasedRecipes?: string[]
 }
 
 export interface LootDrop {
@@ -213,6 +217,8 @@ export interface Encounter {
   combatBuffs?: CombatBuff[]
   combatLog?: string[]
   lastEvents?: CombatEvent[]
+  /** Farm respawn encounter — reduced rewards, no shard/unlock. */
+  isRespawnBoss?: boolean
 }
 
 export interface CombatResults {
@@ -247,6 +253,8 @@ export interface GameState {
   townBuildings: Record<string, number>
   areasUnlocked: string[]
   bossesDefeated: string[]
+  /** Calendar day when each zone boss was last cleared (first kill or respawn). */
+  bossClearedDay?: Partial<Record<string, number>>
   day: number
   activeEvent?: ActiveEventState
   activeDialogue?: DialogueState
@@ -259,7 +267,10 @@ export interface GameState {
   marketMaterialStock?: Record<string, number>
   vendorState?: Record<string, VendorState>
   productionState?: Record<string, ProductionBuildingState>
-  pendingHubPanel?: { panel: 'train' | 'craft' | 'shop'; npcId: string }
+  pendingHubPanel?: {
+    panel: 'train' | 'craft' | 'shop' | 'profession_train'
+    npcId: string
+  }
   gatherNodeState?: Record<string, GatherNodeRuntimeState>
   /** Held harvest when gather danger interrupts — granted only on success. */
   pendingGather?: PendingGather

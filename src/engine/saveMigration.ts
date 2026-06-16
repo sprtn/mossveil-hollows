@@ -4,6 +4,12 @@
 
 import type { EquipmentRef, EquipmentSlots, InventoryItem, Player } from './GameLoopDesign'
 import { DEFAULT_QUALITY, normalizeQuality } from './Quality'
+import { computeMigrationTrainingState } from './ProfessionTraining'
+import { getAllRecipes } from './CraftingSystem'
+import {
+  normalizePurchasedRecipes,
+  normalizeUnlockedProfessionTiers,
+} from './ProfessionTraining'
 
 type LegacyEquipmentSlot = string | EquipmentRef | undefined
 
@@ -62,6 +68,40 @@ export function migrateSaveV6(parsed: LegacyPlayer & Record<string, unknown>): {
   return { player }
 }
 
+/** v7 → boss respawn timers; backfill from zonesCleared for in-progress saves. */
+export function migrateSaveV7(parsed: Record<string, unknown>): {
+  bossClearedDay: Record<string, number>
+} {
+  const bossClearedDay: Record<string, number> = {
+    ...((parsed.bossClearedDay as Record<string, number> | undefined) ?? {}),
+  }
+  const day = (parsed.day as number | undefined) ?? 1
+  for (const zone of (parsed.zonesCleared as string[] | undefined) ?? []) {
+    if (bossClearedDay[zone] === undefined) {
+      bossClearedDay[zone] = day
+    }
+  }
+  return { bossClearedDay }
+}
+
+/** v8 → profession tier + recipe purchase gates; preserve legacy craft access. */
+export function migrateSaveV8(parsed: Record<string, unknown>): {
+  unlockedProfessionTiers: Player['unlockedProfessionTiers']
+  purchasedRecipes: Player['purchasedRecipes']
+} {
+  const player = parsed.player as Player | undefined
+  if (player?.purchasedRecipes !== undefined && player?.unlockedProfessionTiers !== undefined) {
+    return {
+      unlockedProfessionTiers: normalizeUnlockedProfessionTiers(player),
+      purchasedRecipes: normalizePurchasedRecipes(player),
+    }
+  }
+
+  const flags = (parsed.flags as Record<string, boolean> | undefined) ?? {}
+  const townBuildings = (parsed.townBuildings as Record<string, number> | undefined) ?? {}
+  return computeMigrationTrainingState(flags, townBuildings, getAllRecipes())
+}
+
 export function migrateParsedSave(
   parsed: Record<string, unknown>,
   fromVersion: number
@@ -71,6 +111,24 @@ export function migrateParsedSave(
   if (fromVersion < 6) {
     const migrated = migrateSaveV6(current as LegacyPlayer & Record<string, unknown>)
     current = { ...current, player: migrated.player }
+  }
+
+  if (fromVersion < 7) {
+    const migrated = migrateSaveV7(current)
+    current = { ...current, bossClearedDay: migrated.bossClearedDay }
+  }
+
+  if (fromVersion < 8) {
+    const migrated = migrateSaveV8(current)
+    const player = (current.player ?? {}) as Player
+    current = {
+      ...current,
+      player: {
+        ...player,
+        unlockedProfessionTiers: migrated.unlockedProfessionTiers,
+        purchasedRecipes: migrated.purchasedRecipes,
+      },
+    }
   }
 
   return current

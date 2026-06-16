@@ -5,8 +5,7 @@
 import type { GameState, Room } from './GameLoopDesign'
 import { SeededRandom } from './CombatEngine'
 import { getBuildingLevel } from './BuildingSystem'
-import { addMaterial } from './Materials'
-import { getItemName } from './ItemDatabase'
+import { grantGatherResource, getItemName } from './ItemDatabase'
 import {
   grantProfessionXp,
   getProfessionLevel,
@@ -25,6 +24,8 @@ import {
 
 /** Stamina spent per gather action. */
 export const GATHER_STAMINA_COST = 1
+
+export { grantGatherResource } from './ItemDatabase'
 
 /** Base profession XP awarded per successful gather. */
 export const GATHER_XP_BASE = 8
@@ -270,8 +271,10 @@ export function gatherFromNode(state: GameState, nodeId: string): GameState {
 
   const roomDifficulty = working.currentRoom.difficulty ?? 0
   const richness = getNodeRichness(node)
-  const dangerRoll = new SeededRandom(gatherSeed(working, nodeId) ^ 0x9e3779b9)
-  if (roomDifficulty > 0 && rollGatherDangerTriggered(roomDifficulty, richness, dangerRoll)) {
+  const dangerRoll = new SeededRandom(
+    Math.abs(gatherSeed(working, nodeId) ^ 0x9e3779b9)
+  )
+  if (rollGatherDangerTriggered(roomDifficulty, richness, dangerRoll)) {
     const pending = buildPendingGather(node, working.currentRoom, roll, xpGain, 'combat')
     return {
       ...working,
@@ -282,9 +285,9 @@ export function gatherFromNode(state: GameState, nodeId: string): GameState {
   }
 
   let player = working.player
-  player = addMaterial(player, node.resource, roll.primaryQty)
+  player = grantGatherResource(player, node.resource, roll.primaryQty)
   for (const bonus of roll.bonusItems) {
-    player = addMaterial(player, bonus.item, bonus.qty)
+    player = grantGatherResource(player, bonus.item, bonus.qty)
   }
 
   const xpResult = grantProfessionXp(player, node.profession, xpGain)

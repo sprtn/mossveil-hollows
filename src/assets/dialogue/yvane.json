@@ -1,0 +1,19 @@
+{
+  "id": "yvane_dialogue",
+  "npcId": "yvane",
+  "nodes": [
+    {
+      "id": "start",
+      "text": "Yvane marks a reagent chart. 'Corruption spreads when brewers are careless. Study, level up, then purchase each formula in turn.'",
+      "responses": [
+        {
+          "text": "Open your lesson book.",
+          "outcomes": [
+            { "kind": "open_hub_panel", "panel": "profession_train", "npcId": "yvane" }
+          ]
+        },
+        { "text": "Farewell.", "outcomes": [] }
+      ]
+    }
+  ]
+}

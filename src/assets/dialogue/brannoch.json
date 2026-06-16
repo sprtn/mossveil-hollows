@@ -1,0 +1,19 @@
+{
+  "id": "brannoch_dialogue",
+  "npcId": "brannoch",
+  "nodes": [
+    {
+      "id": "start",
+      "text": "Brannoch folds his arms. 'Forge-work isn't charity. Prove your hands on the metal, then pay for what I teach.'",
+      "responses": [
+        {
+          "text": "Show me what I can learn.",
+          "outcomes": [
+            { "kind": "open_hub_panel", "panel": "profession_train", "npcId": "brannoch" }
+          ]
+        },
+        { "text": "Farewell.", "outcomes": [] }
+      ]
+    }
+  ]
+}

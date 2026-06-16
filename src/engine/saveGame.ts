@@ -10,6 +10,10 @@ import { ensureMarketState, ensureMarketMaterialStock } from './MarketSystem'
 import { ensureVendorState } from './VendorSystem'
 import { ensureProductionState } from './EconomyTick'
 import { normalizePlayerProfessions } from './Professions'
+import {
+  normalizePurchasedRecipes,
+  normalizeUnlockedProfessionTiers,
+} from './ProfessionTraining'
 import { normalizeGatherNodeState } from './GatherNodes'
 import { migrateParsedSave } from './saveMigration'
 
@@ -76,12 +80,15 @@ export function loadGame(): { state: GameState | null; versionMismatch: boolean 
         stamina: parsed.player.stamina ?? parsed.player.maxStamina ?? 10,
         maxStamina: parsed.player.maxStamina ?? 10,
         professions: normalizePlayerProfessions(parsed.player),
+        unlockedProfessionTiers: normalizeUnlockedProfessionTiers(parsed.player),
+        purchasedRecipes: normalizePurchasedRecipes(parsed.player),
       },
       quests: parsed.quests ?? meta.quests,
       flags: parsed.flags ?? meta.flags,
       townBuildings: parsed.townBuildings ?? meta.townBuildings,
       areasUnlocked: parsed.areasUnlocked ?? meta.areasUnlocked,
       bossesDefeated: parsed.bossesDefeated ?? meta.bossesDefeated,
+      bossClearedDay: parsed.bossClearedDay ?? meta.bossClearedDay,
       day: parsed.day ?? meta.day,
       counters: parsed.counters ?? meta.counters,
       craftOrders: parsed.craftOrders ?? meta.craftOrders,

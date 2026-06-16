@@ -20,6 +20,7 @@ import { calculateMaxHp, getBaseStatsForLevel } from './ProgressionSystem'
 import { consumeDamageMultiplier } from './combatBuffs'
 import { DEFAULT_QUALITY } from './Quality'
 import { createDefaultProfessions } from './Professions'
+import { createDefaultUnlockedProfessionTiers } from './ProfessionTraining'
 
 export class SeededRandom {
   seed: number
@@ -882,6 +883,8 @@ export function createDefaultPlayer(overrides: Partial<Player> = {}): Player {
     skillPoints: 0,
     wounded: false,
     professions: createDefaultProfessions(),
+    unlockedProfessionTiers: createDefaultUnlockedProfessionTiers(),
+    purchasedRecipes: [],
     ...overrides,
   }
 }

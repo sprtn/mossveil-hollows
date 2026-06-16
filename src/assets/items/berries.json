@@ -1,0 +1,13 @@
+{
+  "id": "berries",
+  "name": "Wild Berries",
+  "description": "Foraged forest berries. Eat them for a small burst of energy.",
+  "type": "consumable",
+  "stackable": true,
+  "maxStackSize": 99,
+  "weight": 0.1,
+  "effect": "restore_energy",
+  "power": 2,
+  "duration": null,
+  "sellPrice": 3
+}

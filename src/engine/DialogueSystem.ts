@@ -12,6 +12,9 @@ import marenDialogue from '../assets/dialogue/maren_healer.json'
 import garrickDialogue from '../assets/dialogue/garrick_smith.json'
 import seraDialogue from '../assets/dialogue/sera_quartermaster.json'
 import pellDialogue from '../assets/dialogue/old_pell.json'
+import brannochDialogue from '../assets/dialogue/brannoch.json'
+import wrenDialogue from '../assets/dialogue/wren.json'
+import yvaneDialogue from '../assets/dialogue/yvane.json'
 
 const DIALOGUES: DialogueDef[] = [
   brynDialogue as DialogueDef,
@@ -19,6 +22,9 @@ const DIALOGUES: DialogueDef[] = [
   garrickDialogue as DialogueDef,
   seraDialogue as DialogueDef,
   pellDialogue as DialogueDef,
+  brannochDialogue as DialogueDef,
+  wrenDialogue as DialogueDef,
+  yvaneDialogue as DialogueDef,
 ]
 
 const dialogueMap = new Map(DIALOGUES.map((d) => [d.id, d]))

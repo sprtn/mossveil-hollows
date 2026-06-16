@@ -26,6 +26,11 @@ import { getEffectiveMaxHp, applyWoundedClear } from './PlayerStats'
 import { learnSkill, buySkillPoint } from './SkillSystem'
 import { placeCraftOrder } from './CraftOrderSystem'
 import { selfCraft } from './SelfCraft'
+import {
+  unlockProfessionTier,
+  purchaseRecipe,
+} from './CraftingSystem'
+import type { ProfessionId } from './Professions'
 import { advanceDay } from './DayAdvance'
 import { upgradeBuilding, getBuildingLevel } from './BuildingSystem'
 import {
@@ -330,6 +335,20 @@ export function hubCraft(state: GameState, recipeId: string): GameState {
 
 export function hubSelfCraft(state: GameState, recipeId: string): GameState {
   return selfCraft(state, recipeId)
+}
+
+export function hubUnlockProfessionTier(
+  state: GameState,
+  profession: ProfessionId,
+  tier: number
+): GameState {
+  if (!state.currentRoom.isHub) return state
+  return unlockProfessionTier(state, profession, tier)
+}
+
+export function hubPurchaseRecipe(state: GameState, recipeId: string): GameState {
+  if (!state.currentRoom.isHub) return state
+  return purchaseRecipe(state, recipeId)
 }
 
 export function hubUpgradeBuilding(state: GameState, buildingId: string): GameState {

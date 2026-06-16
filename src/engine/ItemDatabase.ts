@@ -17,6 +17,7 @@ import {
   normalizeQuality,
   type Quality,
 } from './Quality'
+import { addMaterial } from './Materials'
 
 import healthPotion from '../assets/items/health_potion.json'
 import manaPotion from '../assets/items/mana_potion.json'
@@ -56,6 +57,7 @@ import greenHerb from '../assets/items/green_herb.json'
 import moonshadeHerb from '../assets/items/moonshade_herb.json'
 import rawFish from '../assets/items/raw_fish.json'
 import freshProduce from '../assets/items/fresh_produce.json'
+import berries from '../assets/items/berries.json'
 
 const RAW_ITEMS: ItemTemplate[] = [
   healthPotion as ItemTemplate,
@@ -96,6 +98,7 @@ const RAW_ITEMS: ItemTemplate[] = [
   moonshadeHerb as ItemTemplate,
   rawFish as ItemTemplate,
   freshProduce as ItemTemplate,
+  berries as ItemTemplate,
 ]
 
 const itemMap = new Map<string, ItemTemplate>()
@@ -109,6 +112,18 @@ export function getItemTemplate(id: string): ItemTemplate | undefined {
 
 export function getItemName(id: string): string {
   return itemMap.get(id)?.name ?? id
+}
+
+/** Consumable gather yields go to inventory; crafting materials use the materials bag. */
+export function grantGatherResource(player: Player, resourceId: string, qty: number): Player {
+  const template = getItemTemplate(resourceId)
+  if (template?.type === 'consumable') {
+    return {
+      ...player,
+      inventory: addItemToInventory(player.inventory, resourceId, qty, DEFAULT_QUALITY),
+    }
+  }
+  return addMaterial(player, resourceId, qty)
 }
 
 export function equipmentRefKey(ref: EquipmentRef): string {
