@@ -1,0 +1,32 @@
+{
+  "id": "skill_killing_mark",
+  "name": "Killing Mark",
+  "branch": "hunter",
+  "description": "Execute foes below 25% HP; otherwise land a heavy crit.",
+  "requires": ["skill_precise_shot"],
+  "energyCost": 2,
+  "training": {
+    "governingStat": "dexterity",
+    "minStat": 20,
+    "maxStat": 30,
+    "goldCost": 25
+  },
+  "combat": {
+    "activatable": true,
+    "targetMode": "single_enemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "scaling": { "mode": "stat_times", "stat": "dexterity", "multiplier": 1.1 },
+        "executeBelowHpPct": 0.25,
+        "executeMode": "kill",
+        "critBonus": 0.25
+      }
+    ],
+    "log": {
+      "eventType": "skill",
+      "message": "Killing Mark strikes {target} for {damage} damage!",
+      "messageCrit": "Killing Mark executes {target} for {damage} damage!"
+    }
+  }
+}

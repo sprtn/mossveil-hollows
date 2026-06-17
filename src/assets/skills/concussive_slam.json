@@ -1,0 +1,33 @@
+{
+  "id": "skill_concussive_slam",
+  "name": "Concussive Slam",
+  "branch": "might",
+  "description": "A concussive hit that reduces enemy accuracy on impact.",
+  "requires": ["skill_stunning_blow"],
+  "energyCost": 2,
+  "training": {
+    "governingStat": "strength",
+    "minStat": 20,
+    "maxStat": 30,
+    "goldCost": 20
+  },
+  "combat": {
+    "activatable": true,
+    "targetMode": "single_enemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "scaling": { "mode": "stat_times", "stat": "strength", "multiplier": 1.2 },
+        "defenseDebuffOnHit": {
+          "status": "accuracy_down",
+          "turns": 2,
+          "power": { "kind": "fixed", "value": 4 }
+        }
+      }
+    ],
+    "log": {
+      "eventType": "skill",
+      "message": "Concussive Slam rattles {target} for {damage} damage!"
+    }
+  }
+}

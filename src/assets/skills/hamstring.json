@@ -2,16 +2,14 @@
   "id": "skill_hamstring",
   "name": "Hamstring",
   "branch": "hunter",
-  "description": "Stun an enemy.",
+  "description": "Cripple the target's movement and accuracy.",
   "requires": ["skill_bleed"],
-  "energyCost": 3,
-  "action": "skill_hamstring",
+  "energyCost": 2,
   "training": {
-    "provisional": true,
     "governingStat": "dexterity",
-    "minStat": 11,
-    "maxStat": 21,
-    "goldCost": 35
+    "minStat": 15,
+    "maxStat": 25,
+    "goldCost": 15
   },
   "combat": {
     "activatable": true,
@@ -19,19 +17,24 @@
     "effects": [
       {
         "kind": "damage",
-        "scaling": { "mode": "stat_times", "stat": "strength", "multiplier": 0.6 },
-        "consumeDamageBuff": true
+        "scaling": { "mode": "stat_times", "stat": "dexterity", "multiplier": 0.9 }
       },
       {
         "kind": "apply_status",
         "status": "slow",
         "turns": 2,
-        "power": { "kind": "fixed", "value": 4 }
+        "power": { "kind": "fixed", "value": 3 }
+      },
+      {
+        "kind": "apply_status",
+        "status": "accuracy_down",
+        "turns": 2,
+        "power": { "kind": "fixed", "value": 3 }
       }
     ],
     "log": {
       "eventType": "skill",
-      "message": "Hamstring slows {target} for {damage} damage!{empowered}"
+      "message": "Hamstring cripples {target} for {damage} damage!"
     }
   }
 }

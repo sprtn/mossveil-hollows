@@ -31,7 +31,7 @@ const testEnemy = (): Enemy => ({
 
 function combatWithBonusAction() {
   const player = createDefaultPlayer({
-    knownSkills: ['skill_power_strike'],
+    knownSkills: ['skill_empowered_strike'],
     energy: 20,
     stats: { strength: 14, defense: 5, constitution: 10, dexterity: 10, agility: 8 },
   })
@@ -60,10 +60,16 @@ describe('combat turn state', () => {
     const state = combatWithBonusAction()
     const enemyId = state.currentEncounter!.enemies[0]!.id
 
-    const viaResolve = resolvePlayerCombatAction(state, 'skill_power_strike', { targetId: enemyId })
+    const viaResolve = resolvePlayerCombatAction(state, 'use_skill', {
+      skillId: 'skill_empowered_strike',
+      targetId: enemyId,
+    })
     expect(viaResolve.state.currentEncounter?.playerBonusAction).toBe(false)
 
-    const viaPlayerAction = playerAction(state, 'skill_power_strike', { targetId: enemyId })
+    const viaPlayerAction = playerAction(state, 'use_skill', {
+      skillId: 'skill_empowered_strike',
+      targetId: enemyId,
+    })
     expect(viaPlayerAction.currentEncounter?.playerBonusAction).toBe(false)
   })
 

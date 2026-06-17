@@ -1,0 +1,18 @@
+{
+  "id": "skill_make_camp",
+  "name": "Make Camp",
+  "branch": "survival",
+  "description": "Camp for a day to recover — risk of ambush in dangerous zones.",
+  "requires": ["skill_field_dressing"],
+  "energyCost": 0,
+  "training": {
+    "governingStat": "constitution",
+    "minStat": 15,
+    "maxStat": 25,
+    "goldCost": 15
+  },
+  "outOfCombat": {
+    "hook": "make_camp",
+    "implemented": true
+  }
+}

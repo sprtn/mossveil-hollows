@@ -2,16 +2,14 @@
   "id": "skill_precise_shot",
   "name": "Precise Shot",
   "branch": "hunter",
-  "description": "High critical hit chance.",
+  "description": "A precise ranged strike with high crit chance.",
   "requires": [],
-  "energyCost": 2,
-  "action": "skill_precise_shot",
+  "energyCost": 1,
   "training": {
-    "provisional": true,
     "governingStat": "dexterity",
-    "minStat": 9,
-    "maxStat": 19,
-    "goldCost": 22
+    "minStat": 10,
+    "maxStat": 15,
+    "goldCost": 0
   },
   "combat": {
     "activatable": true,
@@ -19,16 +17,14 @@
     "effects": [
       {
         "kind": "damage",
-        "scaling": { "mode": "stat", "stat": "strength" },
-        "critBonus": 0.35,
-        "guaranteedHit": true,
-        "consumeDamageBuff": true
+        "scaling": { "mode": "stat_times", "stat": "dexterity", "multiplier": 1.2 },
+        "critBonus": 0.35
       }
     ],
     "log": {
       "eventType": "skill",
-      "message": "Precise Shot hits {target} for {damage} damage!{empowered}",
-      "messageCrit": "Precise Shot crits {target} for {damage} damage!{empowered}"
+      "message": "Precise Shot hits {target} for {damage} damage!",
+      "messageCrit": "Precise Shot crits {target} for {damage} damage!"
     }
   }
 }

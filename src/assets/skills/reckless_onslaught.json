@@ -1,0 +1,34 @@
+{
+  "id": "skill_reckless_onslaught",
+  "name": "Reckless Onslaught",
+  "branch": "might",
+  "description": "A devastating attack that leaves you vulnerable until next turn.",
+  "requires": ["skill_crushing_blow"],
+  "energyCost": 3,
+  "training": {
+    "governingStat": "strength",
+    "minStat": 25,
+    "maxStat": 35,
+    "goldCost": 30
+  },
+  "combat": {
+    "activatable": true,
+    "targetMode": "single_enemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "scaling": { "mode": "stat_times", "stat": "strength", "multiplier": 2.5 }
+      },
+      {
+        "kind": "add_combat_buff",
+        "target": "self",
+        "label": "Reckless (+25% damage taken)",
+        "damageTakenMultiplier": 1.25
+      }
+    ],
+    "log": {
+      "eventType": "skill",
+      "message": "Reckless Onslaught devastates {target} for {damage} damage!"
+    }
+  }
+}

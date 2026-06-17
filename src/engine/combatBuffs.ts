@@ -48,6 +48,30 @@ export function consumeDamageMultiplier(encounter: Encounter): {
   }
 }
 
+export function getPlayerEvasionBonus(encounter: Encounter): number {
+  let bonus = 0
+  for (const buff of encounter.combatBuffs ?? []) {
+    if (buff.evasionBonus) bonus += buff.evasionBonus
+  }
+  return bonus
+}
+
+export function getPlayerDamageTakenMultiplier(encounter: Encounter): number {
+  let mult = 1
+  for (const buff of encounter.combatBuffs ?? []) {
+    if (buff.damageTakenMultiplier) mult *= buff.damageTakenMultiplier
+  }
+  return mult
+}
+
+/** Remove skill-applied buffs at round boundary (evasion, damage-taken). */
+export function clearSkillCombatBuffs(encounter: Encounter): Encounter {
+  const remaining = (encounter.combatBuffs ?? []).filter(
+    (b) => b.sourceItemId || (!b.evasionBonus && !b.damageTakenMultiplier)
+  )
+  return { ...encounter, combatBuffs: remaining }
+}
+
 export function addCombatBuff(encounter: Encounter, buff: CombatBuff): Encounter {
   return {
     ...encounter,

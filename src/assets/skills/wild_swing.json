@@ -1,0 +1,31 @@
+{
+  "id": "skill_wild_swing",
+  "name": "Wild Swing",
+  "branch": "might",
+  "description": "A reckless double-strength blow with reduced accuracy.",
+  "requires": ["skill_empowered_strike"],
+  "energyCost": 1,
+  "training": {
+    "governingStat": "strength",
+    "minStat": 10,
+    "maxStat": 20,
+    "goldCost": 10
+  },
+  "combat": {
+    "activatable": true,
+    "targetMode": "single_enemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "scaling": { "mode": "stat_times", "stat": "strength", "multiplier": 2.0 },
+        "hitModifier": -0.25,
+        "consumeDamageBuff": true
+      }
+    ],
+    "log": {
+      "eventType": "skill",
+      "message": "Wild Swing smashes {target} for {damage} damage!{empowered}",
+      "messageMiss": "Wild Swing misses {target}!"
+    }
+  }
+}

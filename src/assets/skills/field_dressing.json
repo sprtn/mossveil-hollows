@@ -1,0 +1,31 @@
+{
+  "id": "skill_field_dressing",
+  "name": "Field Dressing",
+  "branch": "survival",
+  "description": "Bandage wounds in the field, restoring health scaled by constitution.",
+  "requires": [],
+  "energyCost": 1,
+  "training": {
+    "governingStat": "constitution",
+    "minStat": 10,
+    "maxStat": 15,
+    "goldCost": 0
+  },
+  "combat": {
+    "activatable": true,
+    "targetMode": "self",
+    "effects": [
+      {
+        "kind": "heal",
+        "flat": 15,
+        "stat": "constitution",
+        "statScale": 0.4,
+        "target": "self"
+      }
+    ],
+    "log": {
+      "eventType": "heal",
+      "message": "Field Dressing restores {heal} HP."
+    }
+  }
+}

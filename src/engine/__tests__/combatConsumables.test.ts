@@ -89,7 +89,7 @@ describe('combat consumables', () => {
     expect(state.currentEncounter?.combatBuffs ?? []).toHaveLength(0)
   })
 
-  it('applies stake multiplier to power strike', () => {
+  it('applies stake multiplier to empowered strike', () => {
     const pinRng = (s: ReturnType<typeof combatWithInventory>) => ({
       ...s,
       currentEncounter: { ...s.currentEncounter!, rngState: 100 },
@@ -101,23 +101,23 @@ describe('combat consumables', () => {
       ...baseline,
       player: {
         ...baseline.player,
-        knownSkills: ['skill_power_strike'],
+        knownSkills: ['skill_empowered_strike'],
         energy: 20,
       },
     }
     const hpBeforeBaseline = baseline.currentEncounter!.enemies[0]!.hp
-    baseline = playerAction(baseline, 'skill_power_strike', { targetId: enemyId })
+    baseline = playerAction(baseline, 'use_skill', { skillId: 'skill_empowered_strike', targetId: enemyId })
     const baselineDmg = hpBeforeBaseline - baseline.currentEncounter!.enemies[0]!.hp
 
     let buffed = pinRng(combatWithInventory([{ templateId: 'wooden_stake', quantity: 1, quality: 'common' }]))
     const buffedEnemyId = buffed.currentEncounter!.enemies[0]!.id
     buffed = {
       ...buffed,
-      player: { ...buffed.player, knownSkills: ['skill_power_strike'], energy: 20 },
+      player: { ...buffed.player, knownSkills: ['skill_empowered_strike'], energy: 20 },
     }
     const hpBeforeBuffed = buffed.currentEncounter!.enemies[0]!.hp
     buffed = useCombatConsumable(buffed, 'wooden_stake')
-    buffed = playerAction(buffed, 'skill_power_strike', { targetId: buffedEnemyId })
+    buffed = playerAction(buffed, 'use_skill', { skillId: 'skill_empowered_strike', targetId: buffedEnemyId })
     const buffedDmg = hpBeforeBuffed - buffed.currentEncounter!.enemies[0]!.hp
 
     expect(baselineDmg).toBeGreaterThan(0)

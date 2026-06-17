@@ -34,15 +34,7 @@ export type PlayerAction =
   | 'attack'
   | 'defend'
   | 'flee'
-  | 'skill_power_strike'
-  | 'skill_cleave'
-  | 'skill_bandage'
-  | 'skill_brace'
-  | 'skill_antidote_lore'
-  | 'skill_precise_shot'
-  | 'skill_bleed'
-  | 'skill_hamstring'
-  | 'skill_second_wind'
+  | 'use_skill'
 
 export type PlayerStatKey = 'strength' | 'constitution' | 'dexterity' | 'agility' | 'defense'
 
@@ -56,7 +48,14 @@ export interface PlayerStats {
 
 export type ItemType = 'weapon' | 'armor' | 'consumable' | 'key' | 'quest' | 'crafting'
 export type ItemEffect = 'heal_health' | 'restore_energy' | 'remove_poison' | 'boost_damage' | 'boost_defense'
-export type StatusType = 'poison' | 'stun' | 'bleed' | 'slow'
+export type StatusType =
+  | 'poison'
+  | 'stun'
+  | 'bleed'
+  | 'slow'
+  | 'stun_immune'
+  | 'accuracy_down'
+  | 'vulnerable'
 export type EnemyArchetype = 'attacker' | 'defender' | 'caster'
 
 /** Item template loaded from JSON */
@@ -99,6 +98,8 @@ export interface StatusEffect {
   type: StatusType
   turnsRemaining: number
   power: number
+  /** Bleed stack count; damage per tick = stacks * power. */
+  stacks?: number
 }
 
 export interface Player {
@@ -201,6 +202,10 @@ export interface CombatBuff {
   label: string
   damageMultiplier?: number
   sourceItemId?: string
+  /** Additive evasion bonus for the player (reduces enemy hit chance). */
+  evasionBonus?: number
+  /** Multiplier on damage taken by the player (e.g. 1.25 = +25% damage taken). */
+  damageTakenMultiplier?: number
 }
 
 export interface Encounter {
@@ -281,4 +286,5 @@ export interface GameState {
 export interface PlayerActionOptions {
   targetId?: string
   itemId?: string
+  skillId?: string
 }

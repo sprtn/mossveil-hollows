@@ -79,9 +79,9 @@ function simulateFight(
     const target = alive[0]!
     const hpPct = state.player.hp / state.player.maxHp
 
-    if (policy === 'smart' && hpPct < 0.35 && state.player.energy >= 2
-        && (state.player.knownSkills ?? []).includes('skill_bandage')) {
-      state = playerAction(state, 'skill_bandage')
+    if (policy === 'smart' && hpPct < 0.35 && state.player.energy >= 1
+        && (state.player.knownSkills ?? []).includes('skill_field_dressing')) {
+      state = playerAction(state, 'use_skill', { skillId: 'skill_field_dressing' })
     } else {
       state = playerAction(state, 'attack', { targetId: target.id })
     }

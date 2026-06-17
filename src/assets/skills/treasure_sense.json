@@ -1,0 +1,18 @@
+{
+  "id": "skill_treasure_sense",
+  "name": "Treasure Sense",
+  "branch": "survival",
+  "description": "Sense hidden caches while exploring (coming soon).",
+  "requires": ["skill_make_camp"],
+  "energyCost": 0,
+  "training": {
+    "governingStat": "dexterity",
+    "minStat": 18,
+    "maxStat": 28,
+    "goldCost": 20
+  },
+  "outOfCombat": {
+    "hook": "treasure_sense",
+    "implemented": false
+  }
+}

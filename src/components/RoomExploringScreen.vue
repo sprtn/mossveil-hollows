@@ -55,6 +55,16 @@
       >
         {{ isNavigating ? 'Exploring...' : 'Explore' }}
       </button>
+      <button
+        v-for="ooc in outOfCombatSkills"
+        :key="ooc.id"
+        @click="handleOutOfCombat(ooc)"
+        class="action-button"
+        :disabled="isNavigating || !ooc.implemented"
+        :title="ooc.implemented ? ooc.description : `${ooc.description} (not yet available)`"
+      >
+        {{ ooc.label }}{{ ooc.implemented ? '' : ' — coming soon' }}
+      </button>
     </div>
 
     <div v-if="!room.isHub" class="stamina-hint">
@@ -69,7 +79,8 @@ import { inject, computed, ref, watch } from 'vue'
 import type { Ref } from 'vue'
 import type { GameState } from '@/engine/GameLoopDesign'
 import type { RoomExit } from '@/engine/RoomSystem'
-import { exploreRoom, goToRoom, goBack, gatherFromNode, returnToHub } from '@/engine/GameLoop'
+import { exploreRoom, goToRoom, goBack, gatherFromNode, returnToHub, makeCamp } from '@/engine/GameLoop'
+import { getOutOfCombatSkills } from '@/engine/SkillSystem'
 import {
   getGatherNodeLabel,
   getGatherNodeRuntimeState,
@@ -95,6 +106,16 @@ const hubName = GAME_TITLE_MAIN
 const showReturnHome = computed(() => !room.value.isHub)
 
 const gatherNodes = computed(() => room.value.gatherNodes ?? [])
+
+const outOfCombatSkills = computed(() =>
+  getOutOfCombatSkills(gameState.value).map((s) => ({
+    id: s.id,
+    label: s.name,
+    description: s.description,
+    implemented: s.outOfCombat?.implemented ?? false,
+    hook: s.outOfCombat?.hook,
+  }))
+)
 
 function gatherNodeLabel(node: GatherNode): string {
   return getGatherNodeLabel(node)
@@ -159,6 +180,22 @@ async function handleExplore() {
     || newState.phase === 'event'
     || !!newState.currentEncounter
   if (!triggered && newState.statusMessage) {
+    explorationMessage.value = newState.statusMessage
+    setTimeout(() => { explorationMessage.value = '' }, 3000)
+  }
+  dispatch(newState)
+  isNavigating.value = false
+}
+
+function handleOutOfCombat(skill: { id: string; hook?: string; implemented: boolean }) {
+  if (!skill.implemented) return
+  isNavigating.value = true
+  explorationMessage.value = ''
+  let newState = gameState.value
+  if (skill.hook === 'make_camp') {
+    newState = makeCamp(gameState.value)
+  }
+  if (newState.statusMessage) {
     explorationMessage.value = newState.statusMessage
     setTimeout(() => { explorationMessage.value = '' }, 3000)
   }

@@ -17,9 +17,9 @@ import type {
 import { getEffectiveStats } from './ItemDatabase'
 import { DEFAULT_MAX_ENERGY, DEFAULT_MAX_STAMINA } from './gameConfig'
 import { calculateMaxHp, getBaseStatsForLevel } from './ProgressionSystem'
-import { consumeDamageMultiplier } from './combatBuffs'
+import { consumeDamageMultiplier, getPlayerDamageTakenMultiplier, getPlayerEvasionBonus } from './combatBuffs'
 import { resolveSkillEffects } from './SkillEffects'
-import { getSkillByAction } from './SkillSystem'
+import { getSkill } from './SkillSystem'
 import { DEFAULT_QUALITY } from './Quality'
 import { createDefaultProfessions } from './Professions'
 import { createDefaultUnlockedProfessionTiers } from './ProfessionTraining'
@@ -74,6 +74,19 @@ export function accuracyFor(dex: number): number {
 /** Evasion: how much this Agility raises an attacker's miss chance against you (0..0.45). */
 export function evasionFor(agi: number): number {
   return Math.min(0.45, Math.max(0, agi * 0.012))
+}
+
+export function getEffectiveDexterity(
+  stats: { dexterity: number },
+  statusEffects: StatusEffect[] = []
+): number {
+  let dex = stats.dexterity
+  for (const effect of statusEffects) {
+    if (effect.type === 'accuracy_down' && effect.turnsRemaining > 0) {
+      dex -= effect.power
+    }
+  }
+  return Math.max(1, dex)
 }
 
 export function getEffectiveAgility(
@@ -135,17 +148,25 @@ export function rollDamage(
     guaranteedHit?: boolean
     defenseMultiplier?: number
     damageMultiplier?: number
+    hitModifier?: number
+    ignoreDefense?: number
   } = {}
 ): DamageResult {
   const critChance = critChanceFor(attackerDex, options.critBonus ?? 0)
   const crit = rng.next() < critChance
-  const missChance = missChanceFor(attackerDex, defenderAgi)
+  let missChance = missChanceFor(attackerDex, defenderAgi)
+  if (!options.guaranteedHit && options.hitModifier) {
+    missChance = clamp(missChance - options.hitModifier, 0.05, 0.95)
+  }
   if (!options.guaranteedHit && rng.next() < missChance) {
     return { damage: 0, crit: false, missed: true }
   }
 
   const defMult = options.defenseMultiplier ?? (defenderDefending ? 0.5 : 1.0)
-  const effectiveDef = Math.floor(defenderDef * defMult)
+  let effectiveDef = Math.floor(defenderDef * defMult)
+  if (options.ignoreDefense) {
+    effectiveDef = Math.floor(effectiveDef * (1 - options.ignoreDefense))
+  }
   const base = Math.max(1, attackerStr - effectiveDef)
   const variance = rng.nextInt(5) - 2
   let damage = Math.max(1, base + variance)
@@ -179,19 +200,6 @@ export function applyStatusTick(
         message: `Poison deals ${dmg} damage!`,
       })
     }
-    if (effect.type === 'bleed' && effect.turnsRemaining > 0) {
-      const dmg = effect.power
-      hp = Math.max(0, hp - dmg)
-      events.push({
-        type: 'status_tick',
-        source: 'status',
-        sourceName: 'Bleed',
-        target: isPlayer ? 'player' : 'enemy',
-        amount: dmg,
-        status: 'bleed',
-        message: `Bleeding deals ${dmg} damage!`,
-      })
-    }
     if (effect.turnsRemaining > 1) {
       remaining.push({ ...effect, turnsRemaining: effect.turnsRemaining - 1 })
     }
@@ -200,12 +208,79 @@ export function applyStatusTick(
   return { hp, statusEffects: remaining, events }
 }
 
+export function tickBleedAtTurnStart(
+  target: { hp: number; maxHp: number; statusEffects: StatusEffect[]; id?: string; name?: string },
+  isPlayer: boolean
+): { hp: number; statusEffects: StatusEffect[]; events: CombatEvent[] } {
+  const events: CombatEvent[] = []
+  let hp = target.hp
+  const remaining: StatusEffect[] = []
+
+  for (const effect of target.statusEffects) {
+    if (effect.type === 'bleed' && effect.turnsRemaining > 0) {
+      const stacks = effect.stacks ?? 1
+      if (stacks > 0) {
+        const dmg = stacks * effect.power
+        hp = Math.max(0, hp - dmg)
+        events.push({
+          type: 'status_tick',
+          source: 'status',
+          sourceName: 'Bleed',
+          target: isPlayer ? 'player' : target.id,
+          targetName: isPlayer ? undefined : target.name,
+          amount: dmg,
+          status: 'bleed',
+          message: isPlayer
+            ? `Bleeding deals ${dmg} damage!`
+            : `${target.name ?? 'Enemy'} bleeds for ${dmg} damage!`,
+        })
+        const newStacks = stacks - 1
+        if (newStacks > 0) {
+          remaining.push({ ...effect, stacks: newStacks })
+        }
+      }
+      continue
+    }
+    remaining.push(effect)
+  }
+
+  return { hp, statusEffects: remaining, events }
+}
+
+export type AddStatusOptions = {
+  stackMode?: 'refresh' | 'stack'
+  stackCount?: number
+}
+
 export function addStatus(
   effects: StatusEffect[],
   type: StatusType,
   turns: number,
-  power: number
+  power: number,
+  options: AddStatusOptions = {}
 ): StatusEffect[] {
+  if (type === 'stun' && effects.some((e) => e.type === 'stun_immune' && e.turnsRemaining > 0)) {
+    return effects
+  }
+
+  if (type === 'bleed' && options.stackMode === 'stack') {
+    const addStacks = options.stackCount ?? 1
+    const existing = effects.find((e) => e.type === 'bleed')
+    if (existing) {
+      return effects.map((e) =>
+        e.type === 'bleed'
+          ? {
+              ...e,
+              stacks: (e.stacks ?? 1) + addStacks,
+              turnsRemaining: Math.max(e.turnsRemaining, turns),
+              power: Math.max(e.power, power),
+            }
+          : e
+      )
+    }
+    return [...effects, { type, turnsRemaining: turns, power, stacks: addStacks }]
+  }
+
   const existing = effects.find((e) => e.type === type)
   if (existing) {
     return effects.map((e) =>
@@ -217,14 +292,40 @@ export function addStatus(
   return [...effects, { type, turnsRemaining: turns, power }]
 }
 
+export function countStatusStacks(effects: StatusEffect[], type: StatusType): number {
+  let total = 0
+  for (const e of effects) {
+    if (e.type !== type || e.turnsRemaining <= 0) continue
+    if (type === 'bleed') total += e.stacks ?? 1
+    else total += 1
+  }
+  return total
+}
+
 export function isStunned(effects: StatusEffect[]): boolean {
+  if (effects.some((e) => e.type === 'stun_immune' && e.turnsRemaining > 0)) return false
   return effects.some((e) => e.type === 'stun' && e.turnsRemaining > 0)
 }
 
 export function tickStun(effects: StatusEffect[]): StatusEffect[] {
-  return effects
-    .map((e) => (e.type === 'stun' ? { ...e, turnsRemaining: e.turnsRemaining - 1 } : e))
+  let grantImmune = false
+  const updated = effects
+    .map((e) => {
+      if (e.type === 'stun' && e.turnsRemaining > 0) {
+        if (e.turnsRemaining === 1) grantImmune = true
+        return { ...e, turnsRemaining: e.turnsRemaining - 1 }
+      }
+      if (e.type === 'stun_immune' && e.turnsRemaining > 0) {
+        return { ...e, turnsRemaining: e.turnsRemaining - 1 }
+      }
+      return e
+    })
     .filter((e) => e.turnsRemaining > 0)
+
+  if (grantImmune) {
+    return [...updated, { type: 'stun_immune', turnsRemaining: 1, power: 0 }]
+  }
+  return updated
 }
 
 function getEnemyAction(
@@ -265,36 +366,53 @@ function empoweredSuffix(multiplier: number): string {
   return multiplier > 1 ? ' (empowered!)' : ''
 }
 
-export function trySecondWind(state: GameState): GameState {
-  const knows = (state.player.knownSkills ?? []).includes('skill_second_wind')
-  if (!knows || state.flags?.second_wind_used) return state
+export function tryPassiveHooks(state: GameState, hook: 'on_lethal'): GameState {
   if (state.player.hp > 0) return state
 
-  const reviveHp = Math.max(1, Math.floor(state.player.maxHp * 0.3))
-  return {
-    ...state,
-    player: { ...state.player, hp: reviveHp },
-    flags: { ...(state.flags ?? {}), second_wind_used: true },
-    currentEncounter: state.currentEncounter
-      ? {
-          ...state.currentEncounter,
-          combatLog: [
-            'Second Wind revives you!',
-            ...(state.currentEncounter.combatLog ?? []),
-          ].slice(0, 50),
-          lastEvents: [
-            {
-              type: 'heal',
-              source: state.player.id,
-              sourceName: state.player.name,
-              amount: reviveHp,
-              message: `Second Wind! You rally with ${reviveHp} HP!`,
-            },
-            ...(state.currentEncounter.lastEvents ?? []),
-          ],
-        }
-      : undefined,
+  for (const skillId of state.player.knownSkills ?? []) {
+    const skill = getSkill(skillId)
+    const passive = skill?.combat?.passive
+    if (!passive || passive.hook !== hook) continue
+    if (skillId === 'skill_second_wind' && state.flags?.second_wind_used) continue
+
+    for (const effect of passive.effects) {
+      if (effect.kind !== 'revive') continue
+
+      const reviveHp = Math.max(1, Math.floor(state.player.maxHp * effect.hpPct))
+      const flagKey = skillId === 'skill_second_wind' ? 'second_wind_used' : `passive_${skillId}_used`
+      return {
+        ...state,
+        player: { ...state.player, hp: reviveHp },
+        flags: { ...(state.flags ?? {}), [flagKey]: true },
+        currentEncounter: state.currentEncounter
+          ? {
+              ...state.currentEncounter,
+              combatLog: [
+                `${skill!.name} revives you!`,
+                ...(state.currentEncounter.combatLog ?? []),
+              ].slice(0, 50),
+              lastEvents: [
+                {
+                  type: 'heal',
+                  source: state.player.id,
+                  sourceName: state.player.name,
+                  amount: reviveHp,
+                  message: `${skill!.name}! You rally with ${reviveHp} HP!`,
+                },
+                ...(state.currentEncounter.lastEvents ?? []),
+              ],
+            }
+          : undefined,
+      }
+    }
   }
+
+  return state
+}
+
+/** @deprecated Use tryPassiveHooks */
+export function trySecondWind(state: GameState): GameState {
+  return tryPassiveHooks(state, 'on_lethal')
 }
 
 export function resolvePlayerCombatAction(
@@ -329,6 +447,28 @@ export function resolvePlayerCombatAction(
     ]
     result = tickPlayerStunAndRunEnemies(result, stunEvents)
     return { state: result, events: stunEvents }
+  }
+
+  const bleedTick = tickBleedAtTurnStart(
+    {
+      hp: result.player.hp,
+      maxHp: result.player.maxHp,
+      statusEffects: result.player.statusEffects,
+      id: result.player.id,
+      name: result.player.name,
+    },
+    true
+  )
+  if (bleedTick.events.length > 0) {
+    result = {
+      ...result,
+      player: { ...result.player, hp: bleedTick.hp, statusEffects: bleedTick.statusEffects },
+    }
+    events.push(...bleedTick.events)
+    if (result.player.hp <= 0) {
+      result = tryPassiveHooks(result, 'on_lethal')
+      return { state: result, events }
+    }
   }
 
   const rng = createRngFromEncounter(enc)
@@ -413,13 +553,18 @@ export function resolvePlayerCombatAction(
       return { state: result, events }
     }
 
-    default: {
-      const skill = getSkillByAction(action)
-      if (skill?.combat?.activatable) {
+    case 'use_skill': {
+      const skillId = options.skillId
+      if (!skillId) break
+      const skill = getSkill(skillId)
+      if (skill?.combat?.activatable !== false && skill?.combat && !skill.combat.passive) {
         result = resolveSkillEffects(result, skill, options, rng, events)
       }
       break
     }
+
+    default:
+      break
   }
 
   persistRng()
@@ -463,7 +608,10 @@ export function executeEnemyTurns(
   const playerBracing = enc.playerBracing ?? false
   const defenseMultiplier = playerBracing ? 0.25 : playerDefending ? 0.5 : 1.0
   const playerStats = getEffectiveStats(result.player)
-  const playerAgi = getEffectiveAgility(playerStats, result.player.statusEffects)
+  const playerAgi =
+    getEffectiveAgility(playerStats, result.player.statusEffects) +
+    getPlayerEvasionBonus(enc)
+  const damageTakenMult = getPlayerDamageTakenMultiplier(enc)
 
   const enemiesToAct = enemySubset ?? enc.enemies.filter((e) => e.hp > 0)
   const rng = createRngFromEncounter(enc)
@@ -487,7 +635,29 @@ export function executeEnemyTurns(
       continue
     }
 
-    const { action } = getEnemyAction(liveEnemy, result, rng)
+    const enemyBleed = tickBleedAtTurnStart(
+      {
+        hp: liveEnemy.hp,
+        maxHp: liveEnemy.maxHp,
+        statusEffects: liveEnemy.statusEffects ?? [],
+        id: liveEnemy.id,
+        name: liveEnemy.name,
+      },
+      false
+    )
+    if (enemyBleed.events.length > 0) {
+      enc.enemies = enc.enemies.map((e) =>
+        e.id === enemy.id ? { ...e, hp: enemyBleed.hp, statusEffects: enemyBleed.statusEffects } : e
+      )
+      result.currentEncounter!.enemies = enc.enemies
+      events.push(...enemyBleed.events)
+      if (enemyBleed.hp <= 0) continue
+    }
+
+    const refreshedEnemy = enc.enemies.find((e) => e.id === enemy.id)
+    if (!refreshedEnemy || refreshedEnemy.hp <= 0) continue
+
+    const { action } = getEnemyAction(refreshedEnemy, result, rng)
 
     if (action === 'defend') {
       events.push({
@@ -535,23 +705,24 @@ export function executeEnemyTurns(
         message: `${enemy.name} misses you!`,
       })
     } else {
-      result.player = { ...result.player, hp: Math.max(0, result.player.hp - damage) }
+      const finalDamage = Math.max(1, Math.floor(damage * damageTakenMult))
+      result.player = { ...result.player, hp: Math.max(0, result.player.hp - finalDamage) }
       events.push({
         type: 'attack',
         source: enemy.id,
         sourceName: enemy.name,
         target: result.player.id,
         targetName: result.player.name,
-        amount: damage,
+        amount: finalDamage,
         crit,
         message: crit
-          ? `${enemy.name} lands a critical hit for ${damage} damage!`
-          : `${enemy.name} attacks you for ${damage} damage!`,
+          ? `${enemy.name} lands a critical hit for ${finalDamage} damage!`
+          : `${enemy.name} attacks you for ${finalDamage} damage!`,
       })
     }
 
-    const enemyAgi = getEffectiveAgility(liveEnemy.stats, liveEnemy.statusEffects)
-    if (rollExtraActionChance(enemyAgi, playerAgi, rng) && liveEnemy.hp > 0) {
+    const enemyAgi = getEffectiveAgility(refreshedEnemy.stats, refreshedEnemy.statusEffects)
+    if (rollExtraActionChance(enemyAgi, playerAgi, rng) && refreshedEnemy.hp > 0) {
       const { damage: extraDmg, crit: extraCrit, missed: extraMiss } = rollDamage(
         liveEnemy.stats.strength,
         playerStats.defense,
@@ -562,18 +733,19 @@ export function executeEnemyTurns(
         { defenseMultiplier }
       )
       if (!extraMiss) {
-        result.player = { ...result.player, hp: Math.max(0, result.player.hp - extraDmg) }
+        const finalExtra = Math.max(1, Math.floor(extraDmg * damageTakenMult))
+        result.player = { ...result.player, hp: Math.max(0, result.player.hp - finalExtra) }
         events.push({
           type: 'attack',
           source: enemy.id,
           sourceName: enemy.name,
           target: result.player.id,
           targetName: result.player.name,
-          amount: extraDmg,
+          amount: finalExtra,
           crit: extraCrit,
           message: extraCrit
-            ? `${enemy.name} strikes again — critical ${extraDmg} damage!`
-            : `${enemy.name} strikes again for ${extraDmg} damage!`,
+            ? `${enemy.name} strikes again — critical ${finalExtra} damage!`
+            : `${enemy.name} strikes again for ${finalExtra} damage!`,
         })
       }
     }

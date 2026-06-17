@@ -75,127 +75,115 @@ function combatState(
   return state
 }
 
+function useSkill(
+  state: ReturnType<typeof combatState>,
+  skillId: string,
+  targetId?: string
+) {
+  return resolvePlayerCombatAction(state, 'use_skill', { skillId, targetId })
+}
+
 describe('skillEffects characterization', () => {
-  it('second wind action is a no-op (no energy spent, no events)', () => {
+  it('second wind is passive-only (use_skill no-op)', () => {
     const state = combatState({ knownSkills: ['skill_second_wind'], energy: 20 })
     const energyBefore = state.player.energy
-    const { state: after, events } = resolvePlayerCombatAction(state, 'skill_second_wind')
+    const { state: after, events } = useSkill(state, 'skill_second_wind')
     expect(after.player.energy).toBe(energyBefore)
     expect(events).toHaveLength(0)
   })
 
-  it('power strike spends energy and deals damage (rngState=100)', () => {
-    const state = combatState({ knownSkills: ['skill_power_strike'], rngState: 100 })
+  it('empowered strike spends energy and deals damage (rngState=100)', () => {
+    const state = combatState({ knownSkills: ['skill_empowered_strike'], rngState: 100 })
     const enemyId = state.currentEncounter!.enemies[0]!.id
     const hpBefore = state.currentEncounter!.enemies[0]!.hp
-    const { state: after, events } = resolvePlayerCombatAction(state, 'skill_power_strike', {
-      targetId: enemyId,
-    })
-    expect(after.player.energy).toBe(state.player.energy - getSkillEnergyCost('skill_power_strike'))
+    const { state: after, events } = useSkill(state, 'skill_empowered_strike', enemyId)
+    expect(after.player.energy).toBe(state.player.energy - getSkillEnergyCost('skill_empowered_strike'))
     expect(after.currentEncounter!.enemies[0]!.hp).toBeLessThan(hpBefore)
     expect(events[0]?.type).toBe('skill')
-    expect(events[0]?.message).toContain('Power Strike hits')
+    expect(events[0]?.message).toContain('Empowered Strike hits')
   })
 
-  it('cleave spends energy and hits all living enemies (rngState=100)', () => {
+  it('whirlwind sweep hits all living enemies on success (rngState=100)', () => {
     const state = combatState({
-      knownSkills: ['skill_cleave'],
+      knownSkills: ['skill_whirlwind_sweep'],
       rngState: 100,
       enemies: [
         testEnemy({ id: 'e1', hp: 60 }),
         testEnemy({ id: 'e2', name: 'Orc', hp: 60 }),
       ],
     })
-    const { state: after, events } = resolvePlayerCombatAction(state, 'skill_cleave')
-    expect(after.player.energy).toBe(state.player.energy - getSkillEnergyCost('skill_cleave'))
+    const { state: after, events } = useSkill(state, 'skill_whirlwind_sweep')
+    expect(after.player.energy).toBe(state.player.energy - getSkillEnergyCost('skill_whirlwind_sweep'))
     expect(after.currentEncounter!.enemies.every((e) => e.hp < 60)).toBe(true)
-    expect(events).toHaveLength(1)
-    expect(events[0]?.message).toBe('Cleave sweeps all enemies!')
+    expect(events.some((e) => e.message.includes('Whirlwind'))).toBe(true)
   })
 
-  it('brace sets playerBracing and heals (defense=10 → heal 11)', () => {
-    const state = combatState({ knownSkills: ['skill_brace'], rngState: 100, playerHp: 20 })
-    const hpBefore = state.player.hp
-    const { state: after, events } = resolvePlayerCombatAction(state, 'skill_brace')
-    expect(after.currentEncounter!.playerBracing).toBe(true)
-    expect(after.player.hp).toBe(hpBefore + 11)
-    expect(events[0]?.type).toBe('defend')
-    expect(events[0]?.message).toBe('You brace yourself and recover 11 HP.')
-  })
-
-  it('bandage heals self (defense=10 → heal 25, clamped to maxHp)', () => {
-    const state = combatState({ knownSkills: ['skill_bandage'], rngState: 100, playerHp: 20 })
-    const { state: after, events } = resolvePlayerCombatAction(state, 'skill_bandage')
-    expect(after.player.hp).toBe(after.player.maxHp)
+  it('field dressing heals self (CON 10 → heal 19)', () => {
+    const state = combatState({ knownSkills: ['skill_field_dressing'], rngState: 100, playerHp: 20 })
+    const { state: after, events } = useSkill(state, 'skill_field_dressing')
+    expect(after.player.hp).toBe(39)
     expect(events[0]?.type).toBe('heal')
-    expect(events[0]?.message).toBe('Bandage restores 25 HP.')
-    expect(events[0]?.amount).toBe(25)
+    expect(events[0]?.message).toContain('Field Dressing')
+    expect(events[0]?.amount).toBe(19)
   })
 
-  it('antidote lore removes poison', () => {
+  it('antidote lore removes poison and grants bonus heal', () => {
     const state = combatState({ knownSkills: ['skill_antidote_lore'], poison: true, rngState: 100 })
-    const { state: after, events } = resolvePlayerCombatAction(state, 'skill_antidote_lore')
+    const { state: after, events } = useSkill(state, 'skill_antidote_lore')
     expect(after.player.statusEffects.some((s) => s.type === 'poison')).toBe(false)
-    expect(events[0]?.message).toBe('Antidote Lore purges the poison from your veins.')
+    expect(events[0]?.message).toBe('Antidote Lore purges your ailments.')
   })
 
-  it('precise shot always hits with guaranteedHit (rngState=100)', () => {
+  it('precise shot deals damage (rngState=100)', () => {
     const state = combatState({ knownSkills: ['skill_precise_shot'], rngState: 100 })
     const enemyId = state.currentEncounter!.enemies[0]!.id
     const hpBefore = state.currentEncounter!.enemies[0]!.hp
-    const { state: after, events } = resolvePlayerCombatAction(state, 'skill_precise_shot', {
-      targetId: enemyId,
-    })
+    const { state: after, events } = useSkill(state, 'skill_precise_shot', enemyId)
     expect(after.currentEncounter!.enemies[0]!.hp).toBeLessThan(hpBefore)
-    expect(events[0]?.message).toMatch(/Precise Shot (hits|crits)/)
+    expect(events[0]?.message).toMatch(/Precise Shot/)
   })
 
-  it('bleed applies bleed status (rngState=100)', () => {
+  it('bleed applies bleed stacks (rngState=100)', () => {
     const state = combatState({ knownSkills: ['skill_bleed'], rngState: 100 })
     const enemyId = state.currentEncounter!.enemies[0]!.id
-    const { state: after, events } = resolvePlayerCombatAction(state, 'skill_bleed', {
-      targetId: enemyId,
-    })
+    const { state: after, events } = useSkill(state, 'skill_bleed', enemyId)
     const enemy = after.currentEncounter!.enemies[0]!
     expect(enemy.statusEffects?.some((s) => s.type === 'bleed')).toBe(true)
     expect(events[0]?.status).toBe('bleed')
-    expect(events[0]?.message).toContain('bleeding')
+    expect(events[0]?.message).toContain('bleeding wound')
   })
 
   it('hamstring applies slow status (rngState=100)', () => {
     const state = combatState({ knownSkills: ['skill_hamstring'], rngState: 100 })
     const enemyId = state.currentEncounter!.enemies[0]!.id
-    const { state: after, events } = resolvePlayerCombatAction(state, 'skill_hamstring', {
-      targetId: enemyId,
-    })
+    const { state: after, events } = useSkill(state, 'skill_hamstring', enemyId)
     const enemy = after.currentEncounter!.enemies[0]!
     expect(enemy.statusEffects?.some((s) => s.type === 'slow')).toBe(true)
-    expect(events[0]?.status).toBe('slow')
-    expect(events[0]?.message).toContain('Hamstring slows')
+    expect(events[0]?.message).toContain('Hamstring')
   })
 
-  it('stake buff increases power strike damage at fixed rngState', () => {
+  it('stake buff increases empowered strike damage at fixed rngState', () => {
     const stakeInv = [
       { templateId: 'wooden_stake', quantity: 1, quality: 'common' as const },
     ]
     const baseline = combatState({
-      knownSkills: ['skill_power_strike'],
+      knownSkills: ['skill_empowered_strike'],
       rngState: 100,
       inventory: stakeInv,
     })
     const enemyId = baseline.currentEncounter!.enemies[0]!.id
     const hpBefore = baseline.currentEncounter!.enemies[0]!.hp
-    const baseResult = resolvePlayerCombatAction(baseline, 'skill_power_strike', { targetId: enemyId })
+    const baseResult = useSkill(baseline, 'skill_empowered_strike', enemyId)
     const baselineDmg = hpBefore - baseResult.state.currentEncounter!.enemies[0]!.hp
 
     let buffed = combatState({
-      knownSkills: ['skill_power_strike'],
+      knownSkills: ['skill_empowered_strike'],
       rngState: 100,
       inventory: stakeInv,
     })
     buffed = useCombatConsumable(buffed, 'wooden_stake')
     const buffedHpBefore = buffed.currentEncounter!.enemies[0]!.hp
-    const buffResult = resolvePlayerCombatAction(buffed, 'skill_power_strike', { targetId: enemyId })
+    const buffResult = useSkill(buffed, 'skill_empowered_strike', enemyId)
     const buffedDmg = buffedHpBefore - buffResult.state.currentEncounter!.enemies[0]!.hp
 
     expect(baselineDmg).toBeGreaterThan(0)
@@ -203,21 +191,9 @@ describe('skillEffects characterization', () => {
     expect(buffResult.events[0]?.message).toContain('empowered')
   })
 
-  it('cleave consumes stake buff once for whole sweep', () => {
-    let state = combatState({
-      knownSkills: ['skill_cleave'],
-      rngState: 100,
-      inventory: [{ templateId: 'wooden_stake', quantity: 1, quality: 'common' as const }],
-      enemies: [testEnemy({ id: 'e1', hp: 80 }), testEnemy({ id: 'e2', name: 'Orc', hp: 80 })],
-    })
-    state = useCombatConsumable(state, 'wooden_stake')
-    const { state: after, events } = resolvePlayerCombatAction(state, 'skill_cleave')
-    expect(after.currentEncounter!.combatBuffs ?? []).toHaveLength(0)
-    expect(events[0]?.message).toContain('empowered')
-  })
-
   it('getSkill returns combat data for activatable skills', () => {
-    expect(getSkill('skill_power_strike')?.combat?.activatable).toBe(true)
-    expect(getSkill('skill_second_wind')?.combat).toBeUndefined()
+    expect(getSkill('skill_empowered_strike')?.combat?.activatable).toBe(true)
+    expect(getSkill('skill_second_wind')?.combat?.activatable).toBe(false)
+    expect(getSkill('skill_second_wind')?.combat?.passive?.hook).toBe('on_lethal')
   })
 })

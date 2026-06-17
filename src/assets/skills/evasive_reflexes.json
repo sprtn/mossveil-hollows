@@ -1,0 +1,30 @@
+{
+  "id": "skill_evasive_reflexes",
+  "name": "Evasive Reflexes",
+  "branch": "hunter",
+  "description": "Hone reflexes — +12% evasion until next turn.",
+  "requires": ["skill_hamstring"],
+  "energyCost": 2,
+  "training": {
+    "governingStat": "agility",
+    "minStat": 18,
+    "maxStat": 28,
+    "goldCost": 20
+  },
+  "combat": {
+    "activatable": true,
+    "targetMode": "self",
+    "effects": [
+      {
+        "kind": "add_combat_buff",
+        "target": "self",
+        "label": "Evasive (+12% evasion)",
+        "evasionBonus": 0.12
+      }
+    ],
+    "log": {
+      "eventType": "skill",
+      "message": "Evasive Reflexes — you ready to dodge!"
+    }
+  }
+}

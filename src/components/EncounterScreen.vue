@@ -72,8 +72,8 @@
         <button @click="handleFlee" class="action-button danger" :disabled="isBusy">Flee</button>
         <button
           v-for="skill in skills"
-          :key="skill.action"
-          @click="handleSkill(skill.action)"
+          :key="skill.id"
+          @click="handleSkill(skill.id)"
           class="action-button skill"
           :disabled="isBusy || player.energy < skill.cost"
           :title="skill.description"
@@ -124,7 +124,7 @@ import type { Ref } from 'vue'
 import type { GameState, PlayerAction, CombatEvent, Enemy, InventoryItem } from '@/engine/GameLoopDesign'
 import { playerAction, useCombatConsumable } from '@/engine/GameLoop'
 import { getItemName, getItemTemplate } from '@/engine/ItemDatabase'
-import { getAllSkills } from '@/engine/SkillSystem'
+import { getActivatableCombatSkills } from '@/engine/SkillSystem'
 import { formatItemName, itemStatSummary, qualityColor } from '@/utils/icons'
 import {
   classifyCombatEvent,
@@ -165,17 +165,13 @@ const secondWindStatus = computed<'ready' | 'used' | null>(() => {
   return secondWindUsed.value ? 'used' : 'ready'
 })
 
-const knownSkillIds = computed(() => new Set(player.value.knownSkills ?? []))
-
 const skills = computed(() =>
-  getAllSkills()
-    .filter((s) => s.action && knownSkillIds.value.has(s.id))
-    .map((s) => ({
-      action: s.action as PlayerAction,
-      label: s.name,
-      cost: s.energyCost,
-      description: s.description,
-    }))
+  getActivatableCombatSkills(gameState.value).map((s) => ({
+    id: s.id,
+    label: s.name,
+    cost: s.energyCost,
+    description: s.description,
+  }))
 )
 
 const consumables = computed(() =>
@@ -258,7 +254,7 @@ function displayEvents(events: CombatEvent[]) {
   })
 }
 
-function runAction(action: PlayerAction, options: { targetId?: string; itemId?: string } = {}) {
+function runAction(action: PlayerAction, options: { targetId?: string; itemId?: string; skillId?: string } = {}) {
   if (isBusy.value) return
   isBusy.value = true
 
@@ -305,9 +301,13 @@ function handleFlee() {
   runAction('flee')
 }
 
-function handleSkill(action: PlayerAction) {
-  const targetId = selectedTarget.value || aliveEnemies.value[0]?.id
-  runAction(action, { targetId })
+function handleSkill(skillId: string) {
+  const skill = getActivatableCombatSkills(gameState.value).find((s) => s.id === skillId)
+  const needsTarget =
+    skill?.combat?.targetMode === 'single_enemy' ||
+    skill?.combat?.targetMode === 'all_enemies_single_roll'
+  const targetId = needsTarget ? selectedTarget.value || aliveEnemies.value[0]?.id : undefined
+  runAction('use_skill', { skillId, targetId })
 }
 
 function handleUseConsumable(item: InventoryItem) {

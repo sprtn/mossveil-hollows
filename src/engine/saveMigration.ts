@@ -10,6 +10,7 @@ import {
   normalizePurchasedRecipes,
   normalizeUnlockedProfessionTiers,
 } from './ProfessionTraining'
+import { OLD_SKILL_REFUND_GOLD } from './gameConfig'
 
 type LegacyEquipmentSlot = string | EquipmentRef | undefined
 
@@ -109,6 +110,38 @@ export function migrateSaveV9(parsed: Record<string, unknown>): { player: Player
   return { player: rest as Player }
 }
 
+const SKILL_ID_MAP: Record<string, string> = {
+  skill_power_strike: 'skill_empowered_strike',
+  skill_bandage: 'skill_field_dressing',
+}
+
+const DROPPED_SKILL_IDS = new Set(['skill_cleave', 'skill_brace'])
+
+/** v10 → remap renamed skills, refund dropped skills, dedupe knownSkills. */
+export function migrateSaveV10(parsed: Record<string, unknown>): { player: Player } {
+  const raw = (parsed.player ?? {}) as Player
+  const known = raw.knownSkills ?? []
+  let refund = 0
+  const mapped: string[] = []
+
+  for (const id of known) {
+    if (DROPPED_SKILL_IDS.has(id)) {
+      refund += OLD_SKILL_REFUND_GOLD
+      continue
+    }
+    const next = SKILL_ID_MAP[id] ?? id
+    if (!mapped.includes(next)) mapped.push(next)
+  }
+
+  return {
+    player: {
+      ...raw,
+      knownSkills: mapped,
+      gold: raw.gold + refund,
+    },
+  }
+}
+
 export function migrateParsedSave(
   parsed: Record<string, unknown>,
   fromVersion: number
@@ -140,6 +173,11 @@ export function migrateParsedSave(
 
   if (fromVersion < 9) {
     const migrated = migrateSaveV9(current)
+    current = { ...current, player: migrated.player }
+  }
+
+  if (fromVersion < 10) {
+    const migrated = migrateSaveV10(current)
     current = { ...current, player: migrated.player }
   }
 

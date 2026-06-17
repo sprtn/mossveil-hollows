@@ -2,15 +2,26 @@
   "id": "skill_second_wind",
   "name": "Second Wind",
   "branch": "survival",
-  "description": "Revive once per expedition when defeated.",
-  "requires": ["skill_antidote_lore"],
-  "energyCost": 4,
-  "action": "skill_second_wind",
+  "description": "Once per expedition, rally with 30% HP when reduced to zero.",
+  "requires": ["skill_forager"],
+  "energyCost": 0,
   "training": {
-    "provisional": true,
     "governingStat": "constitution",
-    "minStat": 12,
-    "maxStat": 22,
-    "goldCost": 40
+    "minStat": 22,
+    "maxStat": 32,
+    "goldCost": 30
+  },
+  "combat": {
+    "activatable": false,
+    "targetMode": "self",
+    "effects": [],
+    "log": {
+      "eventType": "heal",
+      "message": ""
+    },
+    "passive": {
+      "hook": "on_lethal",
+      "effects": [{ "kind": "revive", "hpPct": 0.3 }]
+    }
   }
 }

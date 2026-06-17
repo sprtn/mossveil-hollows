@@ -1,0 +1,33 @@
+{
+  "id": "skill_whirlwind_sweep",
+  "name": "Whirlwind Sweep",
+  "branch": "might",
+  "description": "Sweep all enemies with one attack roll — all hit or all miss.",
+  "requires": ["skill_wild_swing", "skill_stunning_blow"],
+  "energyCost": 3,
+  "training": {
+    "governingStat": "strength",
+    "minStat": 22,
+    "maxStat": 32,
+    "goldCost": 25
+  },
+  "combat": {
+    "activatable": true,
+    "targetMode": "all_enemies_single_roll",
+    "effects": [
+      {
+        "kind": "damage",
+        "scaling": { "mode": "stat_times", "stat": "strength", "multiplier": 0.8 },
+        "hitModifier": -0.1
+      }
+    ],
+    "log": {
+      "eventType": "skill",
+      "message": "Whirlwind Sweep cuts through the ranks!",
+      "messageMiss": "Whirlwind Sweep misses everyone!",
+      "aggregate": true,
+      "perTargetMessages": true,
+      "perTargetMessage": "Whirlwind hits {target} for {damage} damage!"
+    }
+  }
+}

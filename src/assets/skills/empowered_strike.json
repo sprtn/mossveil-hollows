@@ -1,0 +1,29 @@
+{
+  "id": "skill_empowered_strike",
+  "name": "Empowered Strike",
+  "branch": "might",
+  "description": "A focused blow dealing 150% strength damage.",
+  "requires": [],
+  "energyCost": 1,
+  "training": {
+    "governingStat": "strength",
+    "minStat": 10,
+    "maxStat": 15,
+    "goldCost": 0
+  },
+  "combat": {
+    "activatable": true,
+    "targetMode": "single_enemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "scaling": { "mode": "stat_times", "stat": "strength", "multiplier": 1.5 },
+        "consumeDamageBuff": true
+      }
+    ],
+    "log": {
+      "eventType": "skill",
+      "message": "Empowered Strike hits {target} for {damage} damage!{empowered}"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "id": "skill_crushing_blow",
+  "name": "Crushing Blow",
+  "branch": "might",
+  "description": "A heavy strike that ignores 35% of enemy defense.",
+  "requires": ["skill_wild_swing"],
+  "energyCost": 2,
+  "training": {
+    "governingStat": "strength",
+    "minStat": 18,
+    "maxStat": 28,
+    "goldCost": 20
+  },
+  "combat": {
+    "activatable": true,
+    "targetMode": "single_enemy",
+    "effects": [
+      {
+        "kind": "damage",
+        "scaling": { "mode": "stat_times", "stat": "strength", "multiplier": 1.75 },
+        "ignoreDefense": 0.35
+      }
+    ],
+    "log": {
+      "eventType": "skill",
+      "message": "Crushing Blow crushes {target} for {damage} damage!"
+    }
+  }
+}

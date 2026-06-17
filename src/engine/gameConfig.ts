@@ -6,7 +6,7 @@ export const GAME_TITLE_SUB = 'Shards of the Shadow'
 export const START_ROOM_ID = 'town_hub'
 export const FINAL_BOSS_ENEMY_ID = 'shadow_lord'
 export const SAVE_KEY = 'strat_rpg_save'
-export const SAVE_VERSION = 9
+export const SAVE_VERSION = 10
 
 export const ZONE_IDS = ['forest', 'cave', 'ruins'] as const
 export type ZoneId = (typeof ZONE_IDS)[number]
@@ -69,6 +69,15 @@ export const WOUNDED_MAX_HP_PENALTY = 0.2
 export const TRAINING_DAYS_PER_ATTEMPT = 1
 /** Success chance at exactly minStat (linear ramp to 100% at maxStat). */
 export const TRAINING_MIN_SUCCESS_PCT = 0.08
+
+/** Save v10 — gold refunded per dropped legacy skill id. */
+export const OLD_SKILL_REFUND_GOLD = 30
+
+/** Make Camp — out-of-combat rest in zones. */
+export const CAMP_HP_PERCENT = 0.8
+export const CAMP_ENERGY_PERCENT = 0.8
+export const CAMP_STAMINA_PERCENT = 0.8
+export const CAMP_AMBUSH_CHANCE_SCALE = 0.08
 
 /** Event chance on explore (after combat check) */
 export const EVENT_CHANCE_ON_EXPLORE = 0.35

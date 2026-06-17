@@ -46,9 +46,9 @@ import {
   splitEnemiesByInitiative,
   getEffectiveAgility,
   rollExtraActionChance,
-  trySecondWind,
+  tryPassiveHooks,
 } from './CombatEngine'
-import { addCombatBuff, createCombatBuffFromItem } from './combatBuffs'
+import { addCombatBuff, clearSkillCombatBuffs, createCombatBuffFromItem } from './combatBuffs'
 import { getEffectiveStats } from './ItemDatabase'
 import {
   FINAL_BOSS_ENEMY_ID,
@@ -64,6 +64,10 @@ import {
   EVENT_CHANCE_ON_EXPLORE,
   START_ROOM_ID,
   ZONE_IDS,
+  CAMP_HP_PERCENT,
+  CAMP_ENERGY_PERCENT,
+  CAMP_STAMINA_PERCENT,
+  CAMP_AMBUSH_CHANCE_SCALE,
   type ZoneId,
 } from './gameConfig'
 import { saveGame, clearSave } from './saveGame'
@@ -71,6 +75,7 @@ import { getDefaultGameMeta } from './Outcomes'
 import { getEffectiveMaxHp, applyWounded, clampPlayerHp } from './PlayerStats'
 import { addMaterial } from './Materials'
 import { pickRandomEvent, startEvent, pickGatherHazardEvent } from './EventSystem'
+import { advanceDay } from './DayAdvance'
 import { resolvePendingGatherAfterCombat, forfeitPendingGather, type PendingGather } from './GatherDanger'
 import {
   gatherDangerSeed,
@@ -317,6 +322,52 @@ export function exploreRoom(state: GameState): GameState {
   }
 }
 
+export function makeCamp(state: GameState): GameState {
+  if (state.phase !== 'room_exploring') return state
+  if (state.currentRoom.isHub) return state
+  if (!(state.player.knownSkills ?? []).includes('skill_make_camp')) return state
+
+  const advanced = advanceDay(state)
+  const maxHp = getEffectiveMaxHp(advanced.player)
+  const targetHp = Math.floor(maxHp * CAMP_HP_PERCENT)
+  const targetEnergy = Math.floor(advanced.player.maxEnergy * CAMP_ENERGY_PERCENT)
+  const targetStamina = Math.floor(advanced.player.maxStamina * CAMP_STAMINA_PERCENT)
+
+  let rested: GameState = {
+    ...advanced,
+    player: {
+      ...advanced.player,
+      hp: Math.max(advanced.player.hp, targetHp),
+      energy: Math.max(advanced.player.energy, targetEnergy),
+      stamina: Math.max(advanced.player.stamina, targetStamina),
+      statusEffects: advanced.player.statusEffects.filter((s) => s.type !== 'poison'),
+    },
+    encounterChainCount: 0,
+    lastHealingOpportunity: state.turnCount,
+  }
+
+  const difficulty = state.currentRoom.difficulty ?? 0
+  const ambushChance = difficulty * CAMP_AMBUSH_CHANCE_SCALE
+  const seed = getStateSeed(rested, (rested.exploreCount ?? 0) * 2000 + (rested.day ?? 1))
+  const rng = new SeededRandom(seed)
+
+  if (ambushChance > 0 && rng.next() < ambushChance) {
+    const randomEnc = rested.currentRoom.encounters.find((e) => e.type === 'random' && e.enemies.length)
+    if (randomEnc) {
+      return triggerEncounter(
+        { ...rested, statusMessage: 'Ambush! Your camp is overrun!' },
+        randomEnc.enemies,
+        { skipStaminaDrain: true }
+      )
+    }
+  }
+
+  return {
+    ...rested,
+    statusMessage: 'You make camp and recover strength for the day.',
+  }
+}
+
 export async function goToRoom(state: GameState, targetRoomId: string): Promise<GameState> {
   if (state.phase !== 'room_exploring') return state
 
@@ -438,7 +489,7 @@ export function triggerEncounter(
   const { fast } = splitEnemiesByInitiative(playerAgi, encounter.enemies)
   if (fast.length > 0) {
     const fastResult = executeEnemyTurns(newState, [], fast)
-    newState = trySecondWind(fastResult.state)
+    newState = tryPassiveHooks(fastResult.state, 'on_lethal')
     if (newState.player.hp <= 0) {
       return endEncounter(newState, 'loss', fastResult.events)
     }
@@ -454,7 +505,7 @@ function finishEnemyPhase(
 ): GameState {
   if (enemies.length === 0) return state
   const enemyResult = executeEnemyTurns(state, events, enemies)
-  let result = trySecondWind(enemyResult.state)
+  let result = tryPassiveHooks(enemyResult.state, 'on_lethal')
   if (result.player.hp <= 0) {
     return endEncounter(result, 'loss', enemyResult.events)
   }
@@ -470,13 +521,13 @@ function advanceCombatRound(state: GameState, events: CombatEvent[]): GameState 
   )
   const updated: GameState = {
     ...state,
-    currentEncounter: {
+    currentEncounter: clearSkillCombatBuffs({
       ...enc,
       roundNumber: enc.roundNumber + 1,
       playerDefending: false,
       playerBracing: false,
       consumableUsedThisTurn: false,
-    },
+    }),
   }
   const { fast } = splitEnemiesByInitiative(playerAgi, updated.currentEncounter!.enemies)
   return finishEnemyPhase(updated, events, fast)

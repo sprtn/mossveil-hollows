@@ -2,36 +2,32 @@
   "id": "skill_bleed",
   "name": "Bleed",
   "branch": "hunter",
-  "description": "Apply stacking bleed damage.",
+  "description": "Open a bleeding wound that stacks with dexterity.",
   "requires": ["skill_precise_shot"],
-  "energyCost": 3,
-  "action": "skill_bleed",
+  "energyCost": 1,
   "training": {
-    "provisional": true,
     "governingStat": "dexterity",
-    "minStat": 10,
+    "minStat": 12,
     "maxStat": 20,
-    "goldCost": 30
+    "goldCost": 10
   },
   "combat": {
     "activatable": true,
     "targetMode": "single_enemy",
     "effects": [
       {
-        "kind": "damage",
-        "scaling": { "mode": "stat_times", "stat": "strength", "multiplier": 0.7 },
-        "consumeDamageBuff": true
-      },
-      {
         "kind": "apply_status",
         "status": "bleed",
         "turns": 3,
-        "power": { "kind": "stat", "stat": "dexterity", "flat": 3, "scale": 0.2 }
+        "power": { "kind": "fixed", "value": 2 },
+        "stackMode": "stack",
+        "stackStat": "dexterity",
+        "stackStatScale": 0.05
       }
     ],
     "log": {
-      "eventType": "skill",
-      "message": "Bleed cuts {target} for {damage} and leaves them bleeding!{empowered}"
+      "eventType": "status_apply",
+      "message": "You open a bleeding wound on {target}!"
     }
   }
 }

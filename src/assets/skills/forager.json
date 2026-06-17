@@ -1,0 +1,18 @@
+{
+  "id": "skill_forager",
+  "name": "Forager",
+  "branch": "survival",
+  "description": "Find extra forage in the wild (coming soon).",
+  "requires": ["skill_antidote_lore"],
+  "energyCost": 0,
+  "training": {
+    "governingStat": "constitution",
+    "minStat": 15,
+    "maxStat": 25,
+    "goldCost": 15
+  },
+  "outOfCombat": {
+    "hook": "forager",
+    "implemented": false
+  }
+}

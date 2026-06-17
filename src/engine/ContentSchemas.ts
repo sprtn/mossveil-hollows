@@ -218,17 +218,15 @@ export type SkillEffect =
       critBonus?: number
       guaranteedHit?: boolean
       consumeDamageBuff?: boolean
-      /** STAGE 3 ONLY: additive to-hit adjustment; guaranteedHit overrides. */
       hitModifier?: number
-      /** STAGE 3 ONLY: fraction or flat DEF ignored (Crushing Blow). */
+      /** Fraction 0–1 of defender DEF ignored. */
       ignoreDefense?: number
-      /** STAGE 3 ONLY: apply status on landed hit (Concussive Slam). */
       defenseDebuffOnHit?: DefenseDebuffOnHit
-      /** STAGE 3 ONLY: damage scales per debuff stack on target. */
       bonusPerTargetStatus?: { status: StatusType; scale: number }
-      /** STAGE 3 ONLY: execute below HP threshold. */
       executeBelowHpPct?: number
       executeMultiplier?: number
+      /** 'kill' = execute to 0 HP; 'bonus_crit' = critBonus when above threshold. */
+      executeMode?: 'kill' | 'bonus_crit'
     }
   | {
       kind: 'heal'
@@ -242,18 +240,39 @@ export type SkillEffect =
       status: StatusType
       turns: number
       power: StatusPower
-      /** STAGE 3 ONLY: roll before applying; omitted = always applies. */
+      target?: 'self' | 'enemy'
       chance?: StatusApplyChance
+      stackMode?: 'refresh' | 'stack'
+      /** Stacks added per application (bleed); uses stat if stackStat set. */
+      stackCount?: number
+      stackStat?: PlayerStatKey
+      stackStatScale?: number
     }
   | {
       kind: 'remove_status'
-      status: StatusType
+      /** Single status or omit for all cleansable debuffs. */
+      status?: StatusType
       target: 'self'
+      /** Bonus heal when a status was removed (CON-scaled). */
+      bonusHealStat?: PlayerStatKey
+      bonusHealScale?: number
     }
   | {
       kind: 'set_encounter_flag'
       flag: 'playerBracing'
       value: boolean
+    }
+  | {
+      kind: 'add_combat_buff'
+      target: 'self'
+      label: string
+      evasionBonus?: number
+      damageTakenMultiplier?: number
+      damageMultiplier?: number
+    }
+  | {
+      kind: 'revive'
+      hpPct: number
     }
 
 export type SkillCombatLog = {
@@ -262,6 +281,18 @@ export type SkillCombatLog = {
   messageCrit?: string
   messageMiss?: string
   aggregate?: boolean
+  perTargetMessages?: boolean
+  perTargetMessage?: string
+}
+
+export type SkillPassiveDef = {
+  hook: 'on_lethal'
+  effects: SkillEffect[]
+}
+
+export type SkillOutOfCombatDef = {
+  hook: 'make_camp' | 'forager' | 'treasure_sense'
+  implemented: boolean
 }
 
 export type SkillCombatDef = {
@@ -269,10 +300,8 @@ export type SkillCombatDef = {
   targetMode: SkillTargetMode
   effects: SkillEffect[]
   log: SkillCombatLog
-  /** When false, single_enemy skills may target hp<=0 enemies (Power Strike). Default true. */
   requireLivingTarget?: boolean
-  /** STAGE 3 ONLY: passive hooks (e.g. Second Wind on lethal). */
-  passive?: { hook: 'on_lethal'; effects: SkillEffect[] }
+  passive?: SkillPassiveDef
 }
 
 export type SkillTrainingDef = {
@@ -291,9 +320,9 @@ export interface SkillDef {
   description: string
   requires: string[]
   energyCost: number
-  action?: string
   combat?: SkillCombatDef
   training?: SkillTrainingDef
+  outOfCombat?: SkillOutOfCombatDef
 }
 
 export interface ActiveEventState {
