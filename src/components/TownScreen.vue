@@ -1,5 +1,16 @@
 <template>
   <div class="town-screen">
+    <TownActionsStrip
+      :game-state="gameState"
+      @rest="handleRest"
+      @inn="handleInn"
+      @sleep-home="handleSleepHome"
+      @save="handleSave"
+    />
+    <p class="hint">
+      Free rest never lowers HP. Inn/Home clear wounded. Visit Maren to heal fully.
+    </p>
+
     <div class="town-tabs">
       <button
         v-for="tab in tabs"
@@ -13,198 +24,42 @@
 
     <div v-if="statusMessage" class="status-msg">{{ statusMessage }}</div>
 
-    <!-- Services -->
-    <div v-if="activeTab === 'services'" class="tab-panel panel">
-      <div class="service-buttons">
-        <button @click="handleRest" class="action-button">
-          {{ resourceIcons.hp }} Free Rest (~60% cap)
-        </button>
-        <button @click="handleInn" class="action-button" :disabled="player.gold < innCost">
-          {{ resourceIcons.gold }} Inn ({{ innCost }}g — full, safe)
-        </button>
-        <button
-          v-if="hasHouse"
-          @click="handleSleepHome"
-          class="action-button primary"
-        >
-          {{ resourceIcons.hp }} Sleep at Home (free, full)
-        </button>
-        <button @click="handleHeal" class="action-button" :disabled="player.gold < healerCost">
-          Healer ({{ healerCost }}g — full + clear wounded)
-        </button>
-        <button @click="handleSave" class="action-button">Save</button>
-      </div>
-      <p class="hint">Free rest never lowers HP. Inn/Home/Healer clear wounded.</p>
-
-      <div class="npc-list">
-        <h4>NPCs</h4>
-        <div v-for="npc in npcs" :key="npc.id" class="npc-row">
-          <span class="npc-name">{{ npc.name }}</span>
-          <div class="npc-actions">
-            <button class="action-button small" @click="talkTo(npc)">Talk</button>
-            <button
-              v-if="npc.services?.includes('shop')"
-              class="action-button small"
-              @click="openShop(npc)"
-            >Trade</button>
-            <button
-              v-if="npc.services?.includes('crafting')"
-              class="action-button small"
-              @click="openCraft(npc)"
-            >Craft</button>
-            <button
-              v-if="npc.services?.includes('training')"
-              class="action-button small"
-              @click="openTrain(npc)"
-            >Training</button>
-            <button
-              v-if="npc.services?.includes('profession_training')"
-              class="action-button small"
-              @click="openProfessionTrain(npc)"
-            >Recipes</button>
-          </div>
-        </div>
-      </div>
-
-      <CraftPanel
-        v-if="craftNpc"
+    <!-- People -->
+    <div v-if="activeTab === 'people'" class="tab-panel">
+      <NpcRoster
+        v-if="!selectedNpcId"
         :game-state="gameState"
-        :npc-id="craftNpc.id"
-        :npc-name="craftNpc.name"
+        @select="openNpcHub"
+      />
+      <NpcHub
+        v-else
+        ref="npcHubRef"
+        :npc-id="selectedNpcId"
+        :game-state="gameState"
+        :focus-section="hubFocusSection"
+        :pending-swap="pendingSwap"
+        @back="closeNpcHub"
+        @talk="talkToSelected"
+        @heal="handleHeal"
         @craft="handleCraft"
-        @selfCraft="handleSelfCraft"
-      />
-
-      <TrainPanel
-        v-if="trainNpc"
-        ref="trainPanelRef"
-        :game-state="gameState"
-        :npc-id="trainNpc.id"
-        :npc-name="trainNpc.name"
+        @self-craft="handleSelfCraft"
+        @buy="handleBuy"
+        @sell="handleSell"
+        @confirm-swap="confirmSwap"
+        @dismiss-swap="pendingSwap = null"
         @attempt-training="handleAttemptTraining"
-      />
-
-      <ProfessionTrainPanel
-        v-if="professionTrainNpc"
-        :game-state="gameState"
-        :npc-id="professionTrainNpc.id"
-        :npc-name="professionTrainNpc.name"
         @unlock-tier="handleUnlockTier"
         @purchase-recipe="handlePurchaseRecipe"
       />
     </div>
 
-    <!-- Shop -->
-    <div v-if="activeTab === 'shop'" class="tab-panel panel">
-      <h4>Local Market — Resources</h4>
-      <p class="market-hint">
-        Buy and sell raw materials here at live prices (Day {{ gameDay }}).
-        What you sell enters town stock; traders sell from that stock.
-        Sera and Garrick below deal in <em>finished goods</em> only — not pelts or timber.
-      </p>
-      <div class="shop-list">
-        <div v-for="row in marketListings" :key="row.materialId" class="shop-item market-row">
-          <div class="shop-item-info">
-            <span class="shop-item-name">
-              {{ materialIcon(row.materialId) }} {{ getItemName(row.materialId) }}
-            </span>
-            <span class="market-meta">
-              You: {{ materialCount(row.materialId) }} ·
-              In stock: {{ row.stock }} ·
-              Buy {{ row.buyPrice }}g / Sell {{ row.sellPrice }}g
-            </span>
-          </div>
-          <div class="sell-btns">
-            <button
-              v-if="row.stock > 0"
-              class="shop-btn"
-              :disabled="player.gold < row.buyPrice"
-              @click="handleBuyMaterial(row.materialId, 1)"
-            >Buy 1</button>
-            <button
-              v-if="row.stock > 0"
-              class="shop-btn"
-              :disabled="player.gold < row.buyPrice * row.stock"
-              @click="handleBuyMaterial(row.materialId, row.stock)"
-            >Buy all</button>
-            <button
-              v-if="materialCount(row.materialId) > 0"
-              class="shop-btn"
-              @click="handleSellMaterial(row.materialId, 1)"
-            >Sell 1</button>
-            <button
-              v-if="materialCount(row.materialId) > 0"
-              class="shop-btn"
-              @click="handleSellMaterial(row.materialId, materialCount(row.materialId))"
-            >Sell all</button>
-          </div>
-        </div>
-        <div v-if="marketListings.length === 0" class="empty">
-          No materials in the market yet. Gather resources in the zones or wait for stock.
-        </div>
-      </div>
-
-      <h4 class="vendor-heading">Traders — Finished Goods</h4>
-      <div class="vendor-tabs">
-        <button
-          v-for="vid in availableVendors"
-          :key="vid"
-          :class="['vendor-btn', { active: selectedVendor === vid }]"
-          @click="selectedVendor = vid"
-        >
-          {{ vendorName(vid) }}
-        </button>
-      </div>
-      <h4>Buy</h4>
-      <div class="shop-list">
-        <div
-          v-for="item in buyList"
-          :key="`${item.templateId}::${item.quality ?? 'common'}`"
-          class="shop-item"
-        >
-          <div class="shop-item-info">
-            <span class="shop-item-name" :style="{ color: qualityColor(item.quality) }">
-              {{ formatItemName(getItemName(item.templateId), item.quality) }}
-              x{{ item.stock }} — {{ buyPrice(item.templateId, item.quality) }}g
-            </span>
-            <span v-if="itemStats(item.templateId, item.quality)" class="item-stats">
-              {{ itemStats(item.templateId, item.quality) }}
-            </span>
-            <span v-if="itemDesc(item.templateId)" class="item-desc">{{ itemDesc(item.templateId) }}</span>
-          </div>
-          <button
-            @click="handleBuy(item.templateId, item.quality)"
-            class="shop-btn"
-            :disabled="player.gold < buyPrice(item.templateId, item.quality)"
-          >Buy</button>
-        </div>
-        <div v-if="buyList.length === 0" class="empty">Nothing for sale right now.</div>
-      </div>
-      <h4>Sell</h4>
-      <div class="shop-list">
-        <div
-          v-for="item in sellList"
-          :key="`${item.templateId}::${item.quality}`"
-          class="shop-item"
-        >
-          <div class="shop-item-info">
-            <span class="shop-item-name" :style="{ color: qualityColor(item.quality) }">
-              {{ formatItemName(getItemName(item.templateId), item.quality) }}
-              x{{ item.quantity }} — {{ sellPrice(item.templateId, item.quality) }}g
-            </span>
-            <span v-if="itemStats(item.templateId, item.quality)" class="item-stats">
-              {{ itemStats(item.templateId, item.quality) }}
-            </span>
-          </div>
-          <button @click="handleSell(item.templateId, item.quality)" class="shop-btn">Sell</button>
-        </div>
-        <div v-if="sellList.length === 0" class="empty">Nothing to sell here.</div>
-      </div>
-      <div v-if="pendingSwap" class="swap-prompt">
-        <p>Equip <strong>{{ formatItemName(getItemName(pendingSwap.templateId), pendingSwap.quality) }}</strong> (+{{ pendingSwap.newBonus }})?</p>
-        <button @click="confirmSwap" class="shop-btn">Equip</button>
-        <button @click="pendingSwap = null" class="shop-btn secondary">Keep</button>
-      </div>
+    <!-- Market -->
+    <div v-if="activeTab === 'market'" class="tab-panel panel">
+      <MaterialMarketPanel
+        :game-state="gameState"
+        @buy-material="handleBuyMaterial"
+        @sell-material="handleSellMaterial"
+      />
     </div>
 
     <!-- Buildings -->
@@ -227,7 +82,9 @@
               {{ materialIcon(matId) }} {{ getItemName(matId) }}: {{ materialCount(matId) }}/{{ qty }}
             </span>
           </div>
-          <button @click="handleUpgrade(b.id)" class="shop-btn" :disabled="!canUpgrade(b.id)">Upgrade</button>
+          <button class="shop-btn" :disabled="!canUpgrade(b.id)" @click="handleUpgrade(b.id)">
+            Upgrade
+          </button>
         </template>
         <p v-else class="maxed">Max level</p>
         <ProductionPanel
@@ -243,14 +100,7 @@
 
     <!-- Quests -->
     <div v-if="activeTab === 'quests'" class="tab-panel panel">
-      <div v-for="q in activeQuests" :key="q.quest.id" class="quest-row">
-        <div>
-          <strong>{{ q.quest.name }}</strong>
-          <p>{{ q.stage.description }}</p>
-        </div>
-        <span class="quest-progress">{{ q.progressText }}</span>
-      </div>
-      <div v-if="activeQuests.length === 0" class="empty">No active quests. Talk to NPCs in Services.</div>
+      <QuestPanel :game-state="gameState" />
     </div>
 
     <div class="shard-progress">
@@ -265,191 +115,154 @@
 import { inject, computed, ref, watch } from 'vue'
 import type { Ref } from 'vue'
 import type { GameState } from '@/engine/GameLoopDesign'
-import type { NpcDef } from '@/engine/ContentSchemas'
 import { equipItemAction } from '@/engine/GameLoop'
 import {
-  buyItem, sellItem, sellMaterialToMarket, buyMaterialFromMarket,
-  useHealer, manualSave, restAtHub, useInn, sleepAtHome,
-  hubAttemptTraining, hubCraft, hubSelfCraft, hubUpgradeBuilding,
-  hubSetProductionEnabled, hubSetProductionLabour,
-  hubUnlockProfessionTier, hubPurchaseRecipe,
+  buyItem,
+  sellItem,
+  sellMaterialToMarket,
+  buyMaterialFromMarket,
+  useHealer,
+  manualSave,
+  restAtHub,
+  useInn,
+  sleepAtHome,
+  hubAttemptTraining,
+  hubCraft,
+  hubSelfCraft,
+  hubUpgradeBuilding,
+  hubSetProductionEnabled,
+  hubSetProductionLabour,
+  hubUnlockProfessionTier,
+  hubPurchaseRecipe,
 } from '@/engine/HubActions'
-import { getMarketMaterialListings } from '@/engine/MarketSystem'
 import { getItemName, getItemTemplate, getEquipBonus, hasItem } from '@/engine/ItemDatabase'
-import { HEALER_COST, INN_COST } from '@/engine/gameConfig'
-import { NPCS, getNpc } from '@/engine/NpcData'
+import { getNpc } from '@/engine/NpcData'
 import { startDialogue } from '@/engine/DialogueSystem'
 import { getAllBuildings, canUpgradeBuilding, getBuildingLevel } from '@/engine/BuildingSystem'
-import { getActiveQuestStages } from '@/engine/QuestSystem'
 import { getMaterialCount } from '@/engine/Materials'
-import { materialIcon, resourceIcons, itemStatSummary, formatItemName, qualityColor } from '@/utils/icons'
+import { materialIcon, resourceIcons } from '@/utils/icons'
 import type { Quality } from '@/engine/Quality'
-import {
-  getAvailableVendors,
-  getVendorBuyList,
-  getVendorSellList,
-  getVendorBuyDiscount,
-  getVendorSellBonus,
-} from '@/engine/VendorSystem'
-import { getPrice } from '@/engine/MarketSystem'
 import { getTrainerProfession } from '@/engine/ProfessionTraining'
 import { getSkill } from '@/engine/SkillSystem'
-import CraftPanel from './CraftPanel.vue'
-import TrainPanel from './TrainPanel.vue'
-import ProfessionTrainPanel from './ProfessionTrainPanel.vue'
+import {
+  resolvePendingHubNavigation,
+  type HubSection,
+} from '@/engine/NpcHubCatalog'
+import TownActionsStrip from './TownActionsStrip.vue'
+import NpcRoster from './NpcRoster.vue'
+import NpcHub from './NpcHub.vue'
+import MaterialMarketPanel from './MaterialMarketPanel.vue'
+import QuestPanel from './QuestPanel.vue'
 import ProductionPanel from './ProductionPanel.vue'
+import type { PendingEquipSwap } from './VendorShopPanel.vue'
+
+type TownTab = 'people' | 'market' | 'buildings' | 'quests'
 
 const gameState = inject<Ref<GameState>>('gameState')!
 const dispatch = inject<(state: GameState) => void>('dispatch')!
 
-const activeTab = ref('services')
-const craftNpc = ref<NpcDef | null>(null)
-const trainNpc = ref<NpcDef | null>(null)
-const trainPanelRef = ref<InstanceType<typeof TrainPanel> | null>(null)
-const professionTrainNpc = ref<NpcDef | null>(null)
-const selectedVendor = ref('sera_quartermaster')
-const pendingSwap = ref<{
-  templateId: string
-  quality: Quality
-  slot: 'weapon' | 'armor'
-  currentId: string
-  newBonus: number
-  currentBonus: number
-} | null>(null)
+const activeTab = ref<TownTab>('people')
+const selectedNpcId = ref<string | null>(null)
+const hubFocusSection = ref<HubSection | null>(null)
+const npcHubRef = ref<InstanceType<typeof NpcHub> | null>(null)
+const pendingSwap = ref<PendingEquipSwap | null>(null)
 
-const tabs = [
-  { id: 'services', label: 'Services' },
-  { id: 'shop', label: 'Market' },
+const tabs: { id: TownTab; label: string }[] = [
+  { id: 'people', label: 'People' },
+  { id: 'market', label: 'Market' },
   { id: 'buildings', label: 'Buildings' },
   { id: 'quests', label: 'Quests' },
 ]
 
 const player = computed(() => gameState.value.player)
-const gameDay = computed(() => gameState.value.day ?? 1)
-const marketListings = computed(() => getMarketMaterialListings(gameState.value))
 const statusMessage = computed(() => gameState.value.statusMessage)
-const healerCost = HEALER_COST
-const innCost = INN_COST
-const npcs = NPCS
 const buildings = getAllBuildings()
-const activeQuests = computed(() => getActiveQuestStages(gameState.value))
-const hasHouse = computed(() => getBuildingLevel(gameState.value, 'house') >= 1)
-const availableVendors = computed(() => getAvailableVendors(gameState.value))
-const buyList = computed(() => getVendorBuyList(gameState.value, selectedVendor.value))
-const sellList = computed(() => getVendorSellList(gameState.value, selectedVendor.value))
 
-function vendorName(vendorId: string) {
-  return getNpc(vendorId)?.name ?? vendorId
+function hasShard(id: string) {
+  return hasItem(player.value, id)
+}
+function buildingLevel(id: string) {
+  return getBuildingLevel(gameState.value, id)
+}
+function canUpgrade(id: string) {
+  return canUpgradeBuilding(gameState.value, id)
+}
+function materialCount(matId: string) {
+  return getMaterialCount(player.value, matId)
 }
 
-function buyPrice(templateId: string, quality?: Quality) {
-  return getPrice(gameState.value, templateId, 'buy', {
-    buyDiscount: getVendorBuyDiscount(gameState.value, selectedVendor.value),
-    quality,
-  })
+function openNpcHub(npcId: string) {
+  selectedNpcId.value = npcId
+  hubFocusSection.value = null
 }
 
-function sellPrice(templateId: string, quality?: Quality) {
-  return getPrice(gameState.value, templateId, 'sell', {
-    sellBonus: getVendorSellBonus(gameState.value, selectedVendor.value),
-    quality,
-  })
+function closeNpcHub() {
+  selectedNpcId.value = null
+  hubFocusSection.value = null
+  pendingSwap.value = null
 }
 
-function hasShard(id: string) { return hasItem(player.value, id) }
-function itemStats(id: string, quality?: Quality) {
-  return itemStatSummary(getItemTemplate(id), quality)
+function talkToSelected() {
+  const npc = selectedNpcId.value ? getNpc(selectedNpcId.value) : undefined
+  if (!npc) return
+  dispatch(startDialogue(gameState.value, npc.dialogueId))
 }
-function itemDesc(id: string) { return getItemTemplate(id)?.description ?? '' }
-function buildingLevel(id: string) { return getBuildingLevel(gameState.value, id) }
-function canUpgrade(id: string) { return canUpgradeBuilding(gameState.value, id) }
-function materialCount(matId: string) { return getMaterialCount(player.value, matId) }
 
-function handleRest() { dispatch(restAtHub(gameState.value)) }
-function handleInn() { dispatch(useInn(gameState.value)) }
-function handleSleepHome() { dispatch(sleepAtHome(gameState.value)) }
-function handleHeal() { dispatch(useHealer(gameState.value)) }
-function handleSave() { dispatch(manualSave(gameState.value)) }
+function handleRest() {
+  dispatch(restAtHub(gameState.value))
+}
+function handleInn() {
+  dispatch(useInn(gameState.value))
+}
+function handleSleepHome() {
+  dispatch(sleepAtHome(gameState.value))
+}
+function handleHeal() {
+  dispatch(useHealer(gameState.value))
+}
+function handleSave() {
+  dispatch(manualSave(gameState.value))
+}
+
 function handleAttemptTraining(skillId: string) {
   const skill = getSkill(skillId)
   const knownBefore = (gameState.value.player.knownSkills ?? []).includes(skillId)
-  const newState = hubAttemptTraining(gameState.value, skillId, trainNpc.value?.id)
+  const newState = hubAttemptTraining(gameState.value, skillId, selectedNpcId.value ?? undefined)
   dispatch(newState)
   const success = !knownBefore && (newState.player.knownSkills ?? []).includes(skillId)
-  trainPanelRef.value?.showResult(success, skill?.name ?? skillId)
+  npcHubRef.value?.showTrainingResult(success, skill?.name ?? skillId)
 }
+
 function handleUnlockTier(tier: number) {
-  const npcId = professionTrainNpc.value?.id
+  const npcId = selectedNpcId.value
   if (!npcId) return
   const profession = getTrainerProfession(npcId)
   if (!profession) return
   dispatch(hubUnlockProfessionTier(gameState.value, profession, tier))
 }
+
 function handlePurchaseRecipe(recipeId: string) {
   dispatch(hubPurchaseRecipe(gameState.value, recipeId))
 }
-function handleCraft(recipeId: string) { dispatch(hubCraft(gameState.value, recipeId)) }
-function handleSelfCraft(recipeId: string) { dispatch(hubSelfCraft(gameState.value, recipeId)) }
-function handleUpgrade(buildingId: string) { dispatch(hubUpgradeBuilding(gameState.value, buildingId)) }
 
-function talkTo(npc: NpcDef) {
-  craftNpc.value = null
-  trainNpc.value = null
-  professionTrainNpc.value = null
-  dispatch(startDialogue(gameState.value, npc.dialogueId))
+function handleCraft(recipeId: string) {
+  dispatch(hubCraft(gameState.value, recipeId))
 }
-
-function openCraft(npc: NpcDef) {
-  activeTab.value = 'services'
-  craftNpc.value = npc
-  trainNpc.value = null
-  professionTrainNpc.value = null
+function handleSelfCraft(recipeId: string) {
+  dispatch(hubSelfCraft(gameState.value, recipeId))
 }
-
-function openTrain(npc: NpcDef) {
-  activeTab.value = 'services'
-  trainNpc.value = npc
-  craftNpc.value = null
-  professionTrainNpc.value = null
-}
-
-function openProfessionTrain(npc: NpcDef) {
-  activeTab.value = 'services'
-  professionTrainNpc.value = npc
-  craftNpc.value = null
-  trainNpc.value = null
-}
-
-function openShop(npc: NpcDef) {
-  craftNpc.value = null
-  trainNpc.value = null
-  professionTrainNpc.value = null
-  selectedVendor.value = npc.id
-  activeTab.value = 'shop'
+function handleUpgrade(buildingId: string) {
+  dispatch(hubUpgradeBuilding(gameState.value, buildingId))
 }
 
 function applyPendingHubPanel() {
   const pending = gameState.value.pendingHubPanel
   if (!pending || gameState.value.phase !== 'room_exploring') return
 
-  const npc = NPCS.find((n) => n.id === pending.npcId)
-  if (!npc) return
-
-  activeTab.value = 'services'
-  craftNpc.value = null
-  trainNpc.value = null
-  professionTrainNpc.value = null
-
-  if (pending.panel === 'train') {
-    trainNpc.value = npc
-  } else if (pending.panel === 'craft') {
-    craftNpc.value = npc
-  } else if (pending.panel === 'profession_train') {
-    professionTrainNpc.value = npc
-  } else if (pending.panel === 'shop') {
-    selectedVendor.value = npc.id
-    activeTab.value = 'shop'
-  }
+  const nav = resolvePendingHubNavigation(pending)
+  activeTab.value = 'people'
+  selectedNpcId.value = nav.selectedNpcId
+  hubFocusSection.value = nav.focusSection
 
   dispatch({ ...gameState.value, pendingHubPanel: undefined })
 }
@@ -469,9 +282,13 @@ function handleProductionLabour(buildingId: string, gold: number) {
 }
 
 function handleBuy(templateId: string, quality?: Quality) {
+  const vendorId = selectedNpcId.value
+  if (!vendorId) return
+
   const goldBefore = gameState.value.player.gold
-  let newState = buyItem(gameState.value, selectedVendor.value, templateId, quality)
+  let newState = buyItem(gameState.value, vendorId, templateId, quality)
   if (newState.player.gold === goldBefore) return
+
   const template = getItemTemplate(templateId)
   const boughtQuality = quality ?? 'common'
   if (template && (template.type === 'weapon' || template.type === 'armor')) {
@@ -513,7 +330,9 @@ function confirmSwap() {
 }
 
 function handleSell(templateId: string, quality?: Quality) {
-  dispatch(sellItem(gameState.value, selectedVendor.value, templateId, quality))
+  const vendorId = selectedNpcId.value
+  if (!vendorId) return
+  dispatch(sellItem(gameState.value, vendorId, templateId, quality))
 }
 
 function handleSellMaterial(materialId: string, qty: number) {
@@ -526,8 +345,21 @@ function handleBuyMaterial(materialId: string, qty: number) {
 </script>
 
 <style scoped>
-.town-screen { display: flex; flex-direction: column; gap: 16px; }
-.town-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.town-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.hint {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+.town-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 .tab-btn {
   padding: 8px 14px;
   font-family: var(--font-display);
@@ -548,66 +380,65 @@ function handleBuyMaterial(materialId: string, qty: number) {
   border-color: rgba(201, 165, 92, 0.4);
   box-shadow: 0 0 12px rgba(201, 165, 92, 0.08);
 }
-.tab-panel { margin-top: 4px; }
-.service-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-.hint { font-size: 13px; color: var(--color-text-muted); margin: 0 0 12px; }
-.npc-list h4 { margin: 12px 0 8px; color: var(--color-accent); font-family: var(--font-display); font-size: 14px; }
-.npc-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px;
+.tab-panel {
+  margin-top: 4px;
+}
+.building-card {
+  padding: 12px;
   background: var(--color-panel-inset);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
+  margin-bottom: 10px;
+}
+.building-header {
+  display: flex;
+  justify-content: space-between;
   margin-bottom: 6px;
 }
-.npc-name { font-size: 14px; }
-.npc-actions { display: flex; gap: 6px; }
-.vendor-heading { margin-top: 16px; }
-.market-hint { font-size: 12px; color: var(--color-text-soft); margin: 0 0 10px; line-height: 1.4; }
-.market-meta { display: block; font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
-.market-row { flex-wrap: wrap; }
-.sell-btns { display: flex; flex-wrap: wrap; gap: 6px; flex-shrink: 0; }
-.vendor-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-.vendor-btn {
-  padding: 6px 12px;
-  background: var(--color-bg-elevated);
-  color: var(--color-text-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
+.building-desc,
+.upgrade-unlock {
+  font-size: 13px;
+  color: var(--color-text-soft);
+  margin: 4px 0;
+}
+.upgrade-cost {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--color-text-soft);
+  margin: 8px 0;
+}
+.upgrade-cost .short {
+  color: var(--color-danger-bright);
+}
+.maxed {
+  color: var(--color-accent-bright);
   font-size: 13px;
 }
-.vendor-btn.active {
-  background: var(--color-panel);
-  color: var(--color-accent-bright);
-  border-color: var(--color-accent);
-}
-.shop-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
-.shop-item, .quest-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px;
-  background: var(--color-panel-inset);
-  border: 1px solid var(--color-border);
+.shop-btn {
+  padding: 4px 12px;
+  background: var(--color-accent);
+  border: none;
   border-radius: var(--radius-sm);
-  margin-bottom: 6px;
+  color: var(--color-text);
+  cursor: pointer;
 }
-.shop-item-info { display: flex; flex-direction: column; gap: 2px; }
-.shop-item-name { color: var(--color-text); }
-.shop-btn { padding: 4px 12px; background: var(--color-accent); border: none; border-radius: var(--radius-sm); color: var(--color-text); cursor: pointer; }
-.shop-btn.secondary { background: var(--color-bg-elevated); border: 1px solid var(--color-border); }
-.swap-prompt { padding: 12px; background: var(--color-panel-inset); border: 1px solid var(--color-water); border-radius: var(--radius-md); margin-top: 8px; }
-.building-card { padding: 12px; background: var(--color-panel-inset); border: 1px solid var(--color-border); border-radius: var(--radius-sm); margin-bottom: 10px; }
-.building-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
-.building-desc, .upgrade-unlock { font-size: 13px; color: var(--color-text-soft); margin: 4px 0; }
-.upgrade-cost { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; color: var(--color-text-soft); margin: 8px 0; }
-.upgrade-cost .short { color: var(--color-danger-bright); }
-.maxed { color: var(--color-accent-bright); font-size: 13px; }
-.quest-progress { font-weight: 700; color: var(--color-accent-bright); white-space: nowrap; margin-left: 12px; }
-.shard-progress { display: flex; gap: 8px; }
-.shard { padding: 6px 12px; border-radius: var(--radius-md); background: var(--color-bg-elevated); color: var(--color-text-muted); font-size: 12px; border: 1px solid var(--color-border); }
-.shard.owned { background: rgba(90, 138, 170, 0.2); color: var(--color-water); border-color: var(--color-water); }
+.shard-progress {
+  display: flex;
+  gap: 8px;
+}
+.shard {
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  border: 1px solid var(--color-border);
+}
+.shard.owned {
+  background: rgba(90, 138, 170, 0.2);
+  color: var(--color-water);
+  border-color: var(--color-water);
+}
 </style>

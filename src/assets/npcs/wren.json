@@ -1,1 +1,9 @@
-{"id":"wren","name":"Wren","role":"Fletching Trainer","dialogueId":"wren_dialogue","services":["profession_training"]}
+{
+  "id": "wren",
+  "name": "Wren",
+  "role": "Fletching Trainer",
+  "dialogueId": "wren_dialogue",
+  "portrait": "/images/npcs/wren.png",
+  "profession": "fletching",
+  "services": ["profession_training"]
+}

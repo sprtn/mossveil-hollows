@@ -15,7 +15,6 @@ import { resolveSkillEffects } from '../SkillEffects'
 import { getPlayerDamageTakenMultiplier, getPlayerEvasionBonus } from '../combatBuffs'
 import { enterRoom, initGame, triggerEncounter } from '../GameLoop'
 import type { Enemy, Room } from '../GameLoopDesign'
-import { migrateSaveV10 } from '../saveMigration'
 
 const testRoom: Room = {
   id: 'room_1',
@@ -331,16 +330,5 @@ describe('skill effect types (synthetic)', () => {
     expect(after.flags?.second_wind_used).toBe(true)
     const again = tryPassiveHooks({ ...after, player: { ...after.player, hp: 0 } }, 'on_lethal')
     expect(again.player.hp).toBe(0)
-  })
-
-  it('migrateSaveV10 maps ids and refunds dropped skills', () => {
-    const migrated = migrateSaveV10({
-      player: {
-        knownSkills: ['skill_power_strike', 'skill_cleave', 'skill_bandage', 'skill_bandage'],
-        gold: 10,
-      },
-    })
-    expect(migrated.player.knownSkills).toEqual(['skill_empowered_strike', 'skill_field_dressing'])
-    expect(migrated.player.gold).toBe(10 + 30)
   })
 })

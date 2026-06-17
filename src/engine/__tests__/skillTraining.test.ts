@@ -9,7 +9,7 @@ import {
 } from '../SkillTraining'
 import { TRAINING_MIN_SUCCESS_PCT } from '../gameConfig'
 import { enterRoom, initGame } from '../GameLoop'
-import { migrateSaveV9, migrateSaveV10 } from '../saveMigration'
+import { migrateSaveV9 } from '../saveMigration'
 import type { Room } from '../GameLoopDesign'
 
 const testRoom: Room = {
@@ -133,18 +133,5 @@ describe('migrateSaveV9', () => {
     })
     expect(migrated.player.knownSkills).toEqual(['skill_field_dressing'])
     expect((migrated.player as { skillPoints?: number }).skillPoints).toBeUndefined()
-  })
-})
-
-describe('migrateSaveV10', () => {
-  it('maps legacy skill ids and refunds dropped skills', () => {
-    const migrated = migrateSaveV10({
-      player: {
-        knownSkills: ['skill_power_strike', 'skill_cleave'],
-        gold: 5,
-      },
-    })
-    expect(migrated.player.knownSkills).toEqual(['skill_empowered_strike'])
-    expect(migrated.player.gold).toBe(35)
   })
 })

@@ -1,1 +1,9 @@
-{"id":"garrick_smith","name":"Garrick the Smith","role":"Craftsman","dialogueId":"garrick_smith_dialogue","services":["crafting","buildings"]}
+{
+  "id": "garrick_smith",
+  "name": "Garrick the Smith",
+  "role": "Craftsman",
+  "dialogueId": "garrick_smith_dialogue",
+  "portrait": "/images/npcs/garrick_smith.png",
+  "profession": "smithing",
+  "services": ["crafting", "shop"]
+}

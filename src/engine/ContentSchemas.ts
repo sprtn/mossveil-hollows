@@ -175,8 +175,10 @@ export interface NpcDef {
   name: string
   role: string
   dialogueId: string
+  portrait?: string
+  profession?: ProfessionId
   services?: Array<
-    'shop' | 'healer' | 'crafting' | 'training' | 'profession_training' | 'buildings'
+    'shop' | 'healer' | 'crafting' | 'training' | 'profession_training'
   >
 }
 

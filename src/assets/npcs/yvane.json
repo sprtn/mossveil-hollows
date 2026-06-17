@@ -1,1 +1,9 @@
-{"id":"yvane","name":"Yvane","role":"Alchemy Trainer","dialogueId":"yvane_dialogue","services":["profession_training"]}
+{
+  "id": "yvane",
+  "name": "Yvane",
+  "role": "Alchemy Trainer",
+  "dialogueId": "yvane_dialogue",
+  "portrait": "/images/npcs/yvane.png",
+  "profession": "alchemy",
+  "services": ["profession_training"]
+}

@@ -1,1 +1,9 @@
-{"id":"maren_healer","name":"Maren the Healer","role":"Healer","dialogueId":"maren_healer_dialogue","services":["crafting","healer"]}
+{
+  "id": "maren_healer",
+  "name": "Maren the Healer",
+  "role": "Healer",
+  "dialogueId": "maren_healer_dialogue",
+  "portrait": "/images/npcs/maren_healer.png",
+  "profession": "alchemy",
+  "services": ["crafting", "healer"]
+}

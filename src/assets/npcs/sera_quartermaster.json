@@ -1,1 +1,8 @@
-{"id":"sera_quartermaster","name":"Sera the Quartermaster","role":"Shopkeeper","dialogueId":"sera_quartermaster_dialogue","services":["shop"]}
+{
+  "id": "sera_quartermaster",
+  "name": "Sera the Quartermaster",
+  "role": "Shopkeeper",
+  "dialogueId": "sera_quartermaster_dialogue",
+  "portrait": "/images/npcs/sera_quartermaster.png",
+  "services": ["shop"]
+}

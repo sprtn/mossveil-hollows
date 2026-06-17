@@ -1,1 +1,8 @@
-{"id":"captain_bryn","name":"Captain Bryn","role":"Quest Giver & Trainer","dialogueId":"captain_bryn_dialogue","services":["training"]}
+{
+  "id": "captain_bryn",
+  "name": "Captain Bryn",
+  "role": "Quest Giver & Trainer",
+  "dialogueId": "captain_bryn_dialogue",
+  "portrait": "/images/npcs/captain_bryn.png",
+  "services": ["training"]
+}

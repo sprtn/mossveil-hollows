@@ -70,9 +70,6 @@ export const TRAINING_DAYS_PER_ATTEMPT = 1
 /** Success chance at exactly minStat (linear ramp to 100% at maxStat). */
 export const TRAINING_MIN_SUCCESS_PCT = 0.08
 
-/** Save v10 — gold refunded per dropped legacy skill id. */
-export const OLD_SKILL_REFUND_GOLD = 30
-
 /** Make Camp — out-of-combat rest in zones. */
 export const CAMP_HP_PERCENT = 0.8
 export const CAMP_ENERGY_PERCENT = 0.8

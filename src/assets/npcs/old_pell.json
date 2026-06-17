@@ -1,1 +1,8 @@
-{"id":"old_pell","name":"Old Pell","role":"Forestry Tutor","dialogueId":"old_pell_dialogue","services":[]}
+{
+  "id": "old_pell",
+  "name": "Old Pell",
+  "role": "Forestry Tutor",
+  "dialogueId": "old_pell_dialogue",
+  "portrait": "/images/npcs/old_pell.png",
+  "services": []
+}

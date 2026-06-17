@@ -15,7 +15,6 @@ import {
   normalizeUnlockedProfessionTiers,
 } from './ProfessionTraining'
 import { normalizeGatherNodeState } from './GatherNodes'
-import { migrateParsedSave } from './saveMigration'
 
 function getStorage(): Storage | null {
   try {
@@ -54,16 +53,9 @@ export function loadGame(): { state: GameState | null; versionMismatch: boolean 
     if (!parsed.player || !parsed.currentRoom) return { state: null, versionMismatch: false }
 
     const savedVersion = parsed.saveVersion ?? 0
-    if (savedVersion > SAVE_VERSION) {
+    if (savedVersion !== SAVE_VERSION) {
       clearSave()
       return { state: null, versionMismatch: true }
-    }
-
-    if (savedVersion < SAVE_VERSION) {
-      parsed = migrateParsedSave(
-        parsed as unknown as Record<string, unknown>,
-        savedVersion
-      ) as unknown as GameState & { saveVersion?: number }
     }
 
     const meta = getDefaultGameMeta()

@@ -1,1 +1,9 @@
-{"id":"brannoch","name":"Brannoch","role":"Smithing Trainer","dialogueId":"brannoch_dialogue","services":["profession_training"]}
+{
+  "id": "brannoch",
+  "name": "Brannoch",
+  "role": "Smithing Trainer",
+  "dialogueId": "brannoch_dialogue",
+  "portrait": "/images/npcs/brannoch.png",
+  "profession": "smithing",
+  "services": ["profession_training"]
+}
