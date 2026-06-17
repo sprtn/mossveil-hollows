@@ -1,9 +1,13 @@
 {
   "id": "fresh_produce",
   "name": "Fresh Produce",
-  "description": "Wild berries, roots, and edible greens.",
-  "type": "crafting",
+  "description": "Wild greens and roots. Eat to restore a little health.",
+  "type": "consumable",
   "stackable": true,
   "maxStackSize": 99,
+  "weight": 0.15,
+  "effect": "heal_health",
+  "power": 3,
+  "duration": null,
   "sellPrice": 2
 }

@@ -2,7 +2,7 @@
  * Local market supply/demand and dynamic pricing.
  */
 
-import type { GameState } from './GameLoopDesign'
+import type { GameState, Player } from './GameLoopDesign'
 import type { MarketCategoryState } from './ContentSchemas'
 import {
   getItemCategory,
@@ -10,7 +10,7 @@ import {
   MARKET_TUNING,
   type MarketCategory,
 } from './MarketCatalog'
-import { getItemTemplate, getItemName } from './ItemDatabase'
+import { getItemTemplate, getItemName, getInventoryQuantity } from './ItemDatabase'
 import { applyQualityToPrice, DEFAULT_QUALITY, normalizeQuality, type Quality } from './Quality'
 import { getMaterialCount } from './Materials'
 
@@ -47,9 +47,17 @@ export function ensureMarketMaterialStock(state: GameState): GameState {
 
 function isMarketMaterial(templateId: string): boolean {
   const template = getItemTemplate(templateId)
-  return template?.type === 'crafting'
-    && template.sellPrice !== undefined
-    && getItemCategory(templateId) !== undefined
+  if (!template?.sellPrice || getItemCategory(templateId) === undefined) return false
+  return template.type === 'crafting' || template.type === 'consumable'
+}
+
+/** Player-owned stock for market trades — materials bag or inventory (gathered consumables). */
+export function getMarketPlayerStock(player: Player, templateId: string): number {
+  const template = getItemTemplate(templateId)
+  if (template?.type === 'consumable') {
+    return getInventoryQuantity(player, templateId)
+  }
+  return getMaterialCount(player, templateId)
 }
 
 export function getMaterialMarketStock(state: GameState, materialId: string): number {
@@ -95,6 +103,12 @@ export function getMarketMaterialListings(state: GameState): MarketMaterialListi
     ...Object.keys(result.marketMaterialStock ?? {}),
     ...Object.keys(result.player.materials ?? {}),
   ])
+  for (const item of result.player.inventory) {
+    if (isMarketMaterial(item.templateId)) {
+      const template = getItemTemplate(item.templateId)
+      if (template?.type === 'consumable') ids.add(item.templateId)
+    }
+  }
 
   return [...ids]
     .filter((id) => isMarketMaterial(id))
@@ -104,7 +118,7 @@ export function getMarketMaterialListings(state: GameState): MarketMaterialListi
       buyPrice: getMarketMaterialBuyPrice(result, materialId),
       sellPrice: getPrice(result, materialId, 'sell'),
     }))
-    .filter((row) => row.stock > 0 || getMaterialCount(result.player, row.materialId) > 0)
+    .filter((row) => row.stock > 0 || getMarketPlayerStock(result.player, row.materialId) > 0)
     .sort((a, b) => getItemName(a.materialId).localeCompare(getItemName(b.materialId)))
 }
 

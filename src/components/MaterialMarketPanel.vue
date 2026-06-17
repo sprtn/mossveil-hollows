@@ -53,9 +53,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { GameState } from '@/engine/GameLoopDesign'
-import { getMarketMaterialListings } from '@/engine/MarketSystem'
+import { getMarketMaterialListings, getMarketPlayerStock } from '@/engine/MarketSystem'
 import { getItemName } from '@/engine/ItemDatabase'
-import { getMaterialCount } from '@/engine/Materials'
 import { materialIcon } from '@/utils/icons'
 
 const props = defineProps<{
@@ -72,7 +71,7 @@ const gameDay = computed(() => props.gameState.day ?? 1)
 const marketListings = computed(() => getMarketMaterialListings(props.gameState))
 
 function materialCount(matId: string) {
-  return getMaterialCount(player.value, matId)
+  return getMarketPlayerStock(player.value, matId)
 }
 </script>
 

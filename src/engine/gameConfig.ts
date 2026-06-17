@@ -43,6 +43,10 @@ export const BERRY_NODE_REGEN_PER_DAY = 2
 /** Energy restored when eating gathered berries (also berries.json power). */
 export const BERRY_ENERGY_RESTORE = 2
 
+/** Farming & Fishing — raw food HP restore (also item JSON power). Placeholders for playtest. */
+export const RAW_FISH_HP_RESTORE = 5
+export const FRESH_PRODUCE_HP_RESTORE = 3
+
 /** Energy — combat resource (persists across expedition) */
 export const DEFAULT_MAX_ENERGY = 6
 export const ENERGY_PER_WIN = 1

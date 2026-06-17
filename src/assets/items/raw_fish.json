@@ -1,9 +1,13 @@
 {
   "id": "raw_fish",
   "name": "Raw Fish",
-  "description": "Fresh catch from forest streams.",
-  "type": "crafting",
+  "description": "A fresh-caught fish. Eat to restore a little health.",
+  "type": "consumable",
   "stackable": true,
   "maxStackSize": 99,
+  "weight": 0.2,
+  "effect": "heal_health",
+  "power": 5,
+  "duration": null,
   "sellPrice": 2
 }

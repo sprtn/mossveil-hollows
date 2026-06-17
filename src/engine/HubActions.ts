@@ -39,6 +39,7 @@ import {
   ensureMarketState,
   getMarketMaterialBuyPrice,
   getMaterialMarketStock,
+  getMarketPlayerStock,
 } from './MarketSystem'
 import {
   ensureVendorState,
@@ -50,7 +51,7 @@ import {
 } from './VendorSystem'
 import { vendorAcceptsItem, getItemCategory } from './MarketCatalog'
 import { setProductionEnabled, setProductionLabour } from './EconomyTick'
-import { getMaterialCount, addMaterial } from './Materials'
+import { addMaterial } from './Materials'
 import { appendStatus } from './statusMessages'
 import type { Quality } from './Quality'
 import { DEFAULT_QUALITY } from './Quality'
@@ -64,7 +65,7 @@ export function sellMaterialToMarket(
   if (!template || template.sellPrice === undefined) return state
   if (!getItemCategory(materialId)) return state
 
-  const owned = getMaterialCount(state.player, materialId)
+  const owned = getMarketPlayerStock(state.player, materialId)
   const sellQty = Math.min(Math.max(1, qty), owned)
   if (sellQty <= 0) return state
 
@@ -73,13 +74,19 @@ export function sellMaterialToMarket(
   const total = unitPrice * sellQty
   const name = getItemName(materialId)
 
+  let player = { ...result.player, gold: result.player.gold + total }
+  if (template.type === 'consumable') {
+    player = {
+      ...player,
+      inventory: removeItemFromInventory(player.inventory, materialId, sellQty),
+    }
+  } else {
+    player = addMaterial(player, materialId, -sellQty)
+  }
+
   result = {
     ...result,
-    player: addMaterial(
-      { ...result.player, gold: result.player.gold + total },
-      materialId,
-      -sellQty
-    ),
+    player,
     statusMessage: `Sold ${sellQty} ${name} to the local market for ${total}g (${unitPrice}g each).`,
   }
   return recordTrade(result, materialId, sellQty, 'sell')
@@ -104,13 +111,19 @@ export function buyMaterialFromMarket(
   if (result.player.gold < total) return state
 
   const name = getItemName(materialId)
+  let player = { ...result.player, gold: result.player.gold - total }
+  if (template.type === 'consumable') {
+    player = {
+      ...player,
+      inventory: addItemToInventory(player.inventory, materialId, buyQty, DEFAULT_QUALITY),
+    }
+  } else {
+    player = addMaterial(player, materialId, buyQty)
+  }
+
   result = {
     ...result,
-    player: addMaterial(
-      { ...result.player, gold: result.player.gold - total },
-      materialId,
-      buyQty
-    ),
+    player,
     statusMessage: `Bought ${buyQty} ${name} from the local market for ${total}g (${unitPrice}g each).`,
   }
   return recordTrade(result, materialId, buyQty, 'buy')
