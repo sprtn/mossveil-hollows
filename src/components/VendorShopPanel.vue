@@ -4,7 +4,7 @@
     <div class="shop-list">
       <div
         v-for="item in buyList"
-        :key="`${item.templateId}::${item.quality ?? 'common'}`"
+        :key="buyKey(item)"
         class="shop-item"
       >
         <div class="shop-item-info">
@@ -17,11 +17,18 @@
           </span>
           <span v-if="itemDesc(item.templateId)" class="item-desc">{{ itemDesc(item.templateId) }}</span>
         </div>
-        <button
-          class="shop-btn"
-          :disabled="player.gold < buyPrice(item.templateId, item.quality)"
-          @click="$emit('buy', item.templateId, item.quality)"
-        >Buy</button>
+        <div class="trade-side">
+          <TradeQuantityStepper
+            :model-value="buyQty[buyKey(item)] ?? 1"
+            :max="maxBuy(item)"
+            @update:model-value="(v) => setBuyQty(buyKey(item), v)"
+          />
+          <button
+            class="shop-btn action-btn"
+            :disabled="maxBuy(item) < 1"
+            @click="emitBuy(item)"
+          >Buy</button>
+        </div>
       </div>
       <div v-if="buyList.length === 0" class="empty">Nothing for sale right now.</div>
     </div>
@@ -30,7 +37,7 @@
     <div class="shop-list">
       <div
         v-for="item in sellList"
-        :key="`${item.templateId}::${item.quality}`"
+        :key="sellKey(item)"
         class="shop-item"
       >
         <div class="shop-item-info">
@@ -42,25 +49,26 @@
             {{ itemStats(item.templateId, item.quality) }}
           </span>
         </div>
-        <button class="shop-btn" @click="$emit('sell', item.templateId, item.quality)">Sell</button>
+        <div class="trade-side">
+          <TradeQuantityStepper
+            :model-value="sellQty[sellKey(item)] ?? 1"
+            :max="item.quantity"
+            @update:model-value="(v) => setSellQty(sellKey(item), v)"
+          />
+          <button
+            class="shop-btn action-btn"
+            :disabled="item.quantity < 1"
+            @click="emitSell(item)"
+          >Sell</button>
+        </div>
       </div>
       <div v-if="sellList.length === 0" class="empty">Nothing to sell here.</div>
-    </div>
-
-    <div v-if="pendingSwap" class="swap-prompt">
-      <p>
-        Equip
-        <strong>{{ formatItemName(getItemName(pendingSwap.templateId), pendingSwap.quality) }}</strong>
-        (+{{ pendingSwap.newBonus }})?
-      </p>
-      <button class="shop-btn" @click="$emit('confirmSwap')">Equip</button>
-      <button class="shop-btn secondary" @click="$emit('dismissSwap')">Keep</button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { GameState } from '@/engine/GameLoopDesign'
 import type { Quality } from '@/engine/Quality'
 import { getItemName, getItemTemplate } from '@/engine/ItemDatabase'
@@ -72,32 +80,49 @@ import {
 } from '@/engine/VendorSystem'
 import { getPrice } from '@/engine/MarketSystem'
 import { formatItemName, itemStatSummary, qualityColor } from '@/utils/icons'
-
-export type PendingEquipSwap = {
-  templateId: string
-  quality: Quality
-  slot: 'weapon' | 'armor'
-  currentId: string
-  newBonus: number
-  currentBonus: number
-}
+import TradeQuantityStepper from './TradeQuantityStepper.vue'
 
 const props = defineProps<{
   gameState: GameState
   vendorId: string
-  pendingSwap?: PendingEquipSwap | null
 }>()
 
-defineEmits<{
-  buy: [templateId: string, quality?: Quality]
-  sell: [templateId: string, quality?: Quality]
-  confirmSwap: []
-  dismissSwap: []
+const emit = defineEmits<{
+  buy: [templateId: string, quality: Quality | undefined, qty: number]
+  sell: [templateId: string, quality: Quality | undefined, qty: number]
 }>()
 
 const player = computed(() => props.gameState.player)
 const buyList = computed(() => getVendorBuyList(props.gameState, props.vendorId))
 const sellList = computed(() => getVendorSellList(props.gameState, props.vendorId))
+
+const buyQty = ref<Record<string, number>>({})
+const sellQty = ref<Record<string, number>>({})
+
+watch(
+  [buyList, sellList],
+  ([buys, sells]) => {
+    const nextBuy: Record<string, number> = {}
+    const nextSell: Record<string, number> = {}
+    for (const item of buys) {
+      nextBuy[buyKey(item)] = 1
+    }
+    for (const item of sells) {
+      nextSell[sellKey(item)] = 1
+    }
+    buyQty.value = nextBuy
+    sellQty.value = nextSell
+  },
+  { immediate: true }
+)
+
+function buyKey(item: { templateId: string; quality?: Quality }) {
+  return `${item.templateId}::${item.quality ?? 'common'}`
+}
+
+function sellKey(item: { templateId: string; quality: Quality }) {
+  return `${item.templateId}::${item.quality}`
+}
 
 function buyPrice(templateId: string, quality?: Quality) {
   return getPrice(props.gameState, templateId, 'buy', {
@@ -111,6 +136,30 @@ function sellPrice(templateId: string, quality?: Quality) {
     sellBonus: getVendorSellBonus(props.gameState, props.vendorId),
     quality,
   })
+}
+
+function maxBuy(item: { templateId: string; stock: number; quality?: Quality }) {
+  const unit = buyPrice(item.templateId, item.quality)
+  if (item.stock <= 0 || unit <= 0) return 0
+  return Math.min(item.stock, Math.floor(player.value.gold / unit))
+}
+
+function setBuyQty(key: string, value: number) {
+  buyQty.value = { ...buyQty.value, [key]: value }
+}
+
+function setSellQty(key: string, value: number) {
+  sellQty.value = { ...sellQty.value, [key]: value }
+}
+
+function emitBuy(item: { templateId: string; quality?: Quality }) {
+  const key = buyKey(item)
+  emit('buy', item.templateId, item.quality, buyQty.value[key] ?? 1)
+}
+
+function emitSell(item: { templateId: string; quality: Quality }) {
+  const key = sellKey(item)
+  emit('sell', item.templateId, item.quality, sellQty.value[key] ?? 1)
 }
 
 function itemStats(id: string, quality?: Quality) {
@@ -138,11 +187,24 @@ function itemDesc(id: string) {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   margin-bottom: 6px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 .shop-item-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.trade-side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.action-btn {
+  min-width: 3.5rem;
 }
 .shop-item-name { color: var(--color-text); }
 .item-stats, .item-desc {
@@ -157,20 +219,9 @@ function itemDesc(id: string) {
   color: var(--color-text);
   cursor: pointer;
 }
-.shop-btn.secondary {
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-}
-.swap-prompt {
-  padding: 12px;
-  background: var(--color-panel-inset);
-  border: 1px solid var(--color-water);
-  border-radius: var(--radius-md);
-  margin-top: 8px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
+.shop-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 .empty {
   font-size: 13px;

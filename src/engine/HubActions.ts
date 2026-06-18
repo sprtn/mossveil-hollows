@@ -44,6 +44,7 @@ import {
 import {
   ensureVendorState,
   vendorHasStock,
+  getVendorStock,
   decrementVendorStock,
   addVendorXp,
   getVendorBuyDiscount,
@@ -103,12 +104,14 @@ export function buyMaterialFromMarket(
 
   let result = ensureMarketState(state)
   const stock = getMaterialMarketStock(result, materialId)
-  const buyQty = Math.min(Math.max(1, qty), stock)
-  if (buyQty <= 0) return state
-
   const unitPrice = getMarketMaterialBuyPrice(result, materialId)
+  if (unitPrice <= 0 || stock <= 0) return state
+
+  const affordable = Math.floor(result.player.gold / unitPrice)
+  const buyQty = Math.min(Math.max(1, qty), stock, affordable)
+  if (buyQty < 1) return state
+
   const total = unitPrice * buyQty
-  if (result.player.gold < total) return state
 
   const name = getItemName(materialId)
   let player = { ...result.player, gold: result.player.gold - total }
@@ -133,7 +136,8 @@ export function buyItem(
   state: GameState,
   vendorId: string,
   templateId: string,
-  quality: Quality = DEFAULT_QUALITY
+  quality: Quality = DEFAULT_QUALITY,
+  qty = 1
 ): GameState {
   const template = getItemTemplate(templateId)
   if (!template || template.buyPrice === undefined) return state
@@ -141,23 +145,30 @@ export function buyItem(
   let result = ensureVendorState(ensureMarketState(state))
   if (!vendorHasStock(result, vendorId, templateId, quality)) return result
 
-  const price = getPrice(result, templateId, 'buy', {
+  const unitPrice = getPrice(result, templateId, 'buy', {
     buyDiscount: getVendorBuyDiscount(result, vendorId),
     quality,
   })
-  if (result.player.gold < price) return result
+  if (unitPrice <= 0) return state
+
+  const vendorStock = getVendorStock(result, vendorId, templateId, quality)
+  const affordable = Math.floor(result.player.gold / unitPrice)
+  const buyQty = Math.min(Math.max(1, qty), vendorStock, affordable)
+  if (buyQty < 1) return state
+
+  const total = unitPrice * buyQty
 
   result = {
     ...result,
     player: {
       ...result.player,
-      gold: result.player.gold - price,
-      inventory: addItemToInventory(result.player.inventory, templateId, 1, quality),
+      gold: result.player.gold - total,
+      inventory: addItemToInventory(result.player.inventory, templateId, buyQty, quality),
     },
   }
-  result = decrementVendorStock(result, vendorId, templateId, 1, quality)
-  result = recordTrade(result, templateId, 1, 'buy')
-  result = addVendorXp(result, vendorId, price)
+  result = decrementVendorStock(result, vendorId, templateId, buyQty, quality)
+  result = recordTrade(result, templateId, buyQty, 'buy')
+  result = addVendorXp(result, vendorId, total)
   return result
 }
 
@@ -165,7 +176,8 @@ export function sellItem(
   state: GameState,
   vendorId: string,
   templateId: string,
-  quality: Quality = DEFAULT_QUALITY
+  quality: Quality = DEFAULT_QUALITY,
+  qty = 1
 ): GameState {
   const template = getItemTemplate(templateId)
   if (!template || template.sellPrice === undefined) return state
@@ -180,24 +192,27 @@ export function sellItem(
     (w?.templateId === templateId && w.quality === quality) ||
     (a?.templateId === templateId && a.quality === quality)
   const reserved = isEquipped ? 1 : 0
-  if (owned - reserved <= 0) return state
+  const sellable = owned - reserved
+  const sellQty = Math.min(Math.max(1, qty), sellable)
+  if (sellQty < 1) return state
 
   let result = ensureVendorState(ensureMarketState(state))
-  const price = getPrice(result, templateId, 'sell', {
+  const unitPrice = getPrice(result, templateId, 'sell', {
     sellBonus: getVendorSellBonus(result, vendorId),
     quality,
   })
+  const total = unitPrice * sellQty
 
   result = {
     ...result,
     player: {
       ...result.player,
-      gold: result.player.gold + price,
-      inventory: removeItemFromInventory(result.player.inventory, templateId, 1, quality),
+      gold: result.player.gold + total,
+      inventory: removeItemFromInventory(result.player.inventory, templateId, sellQty, quality),
     },
   }
-  result = recordTrade(result, templateId, 1, 'sell')
-  result = addVendorXp(result, vendorId, price)
+  result = recordTrade(result, templateId, sellQty, 'sell')
+  result = addVendorXp(result, vendorId, total)
   return result
 }
 

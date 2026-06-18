@@ -37,7 +37,6 @@
         :npc-id="selectedNpcId"
         :game-state="gameState"
         :focus-section="hubFocusSection"
-        :pending-swap="pendingSwap"
         @back="closeNpcHub"
         @talk="talkToSelected"
         @heal="handleHeal"
@@ -45,8 +44,6 @@
         @self-craft="handleSelfCraft"
         @buy="handleBuy"
         @sell="handleSell"
-        @confirm-swap="confirmSwap"
-        @dismiss-swap="pendingSwap = null"
         @attempt-training="handleAttemptTraining"
         @unlock-tier="handleUnlockTier"
         @purchase-recipe="handlePurchaseRecipe"
@@ -115,7 +112,6 @@
 import { inject, computed, ref, watch } from 'vue'
 import type { Ref } from 'vue'
 import type { GameState } from '@/engine/GameLoopDesign'
-import { equipItemAction } from '@/engine/GameLoop'
 import {
   buyItem,
   sellItem,
@@ -135,13 +131,14 @@ import {
   hubUnlockProfessionTier,
   hubPurchaseRecipe,
 } from '@/engine/HubActions'
-import { getItemName, getItemTemplate, getEquipBonus, hasItem } from '@/engine/ItemDatabase'
+import { getItemName, hasItem } from '@/engine/ItemDatabase'
 import { getNpc } from '@/engine/NpcData'
 import { startDialogue } from '@/engine/DialogueSystem'
 import { getAllBuildings, canUpgradeBuilding, getBuildingLevel } from '@/engine/BuildingSystem'
 import { getMaterialCount } from '@/engine/Materials'
 import { materialIcon, resourceIcons } from '@/utils/icons'
 import type { Quality } from '@/engine/Quality'
+import { DEFAULT_QUALITY } from '@/engine/Quality'
 import { getTrainerProfession } from '@/engine/ProfessionTraining'
 import { getSkill } from '@/engine/SkillSystem'
 import {
@@ -154,7 +151,6 @@ import NpcHub from './NpcHub.vue'
 import MaterialMarketPanel from './MaterialMarketPanel.vue'
 import QuestPanel from './QuestPanel.vue'
 import ProductionPanel from './ProductionPanel.vue'
-import type { PendingEquipSwap } from './VendorShopPanel.vue'
 
 type TownTab = 'people' | 'market' | 'buildings' | 'quests'
 
@@ -165,7 +161,6 @@ const activeTab = ref<TownTab>('people')
 const selectedNpcId = ref<string | null>(null)
 const hubFocusSection = ref<HubSection | null>(null)
 const npcHubRef = ref<InstanceType<typeof NpcHub> | null>(null)
-const pendingSwap = ref<PendingEquipSwap | null>(null)
 
 const tabs: { id: TownTab; label: string }[] = [
   { id: 'people', label: 'People' },
@@ -199,7 +194,6 @@ function openNpcHub(npcId: string) {
 function closeNpcHub() {
   selectedNpcId.value = null
   hubFocusSection.value = null
-  pendingSwap.value = null
 }
 
 function talkToSelected() {
@@ -281,58 +275,32 @@ function handleProductionLabour(buildingId: string, gold: number) {
   dispatch(hubSetProductionLabour(gameState.value, buildingId, gold))
 }
 
-function handleBuy(templateId: string, quality?: Quality) {
+function handleBuy(templateId: string, quality?: Quality, qty = 1) {
   const vendorId = selectedNpcId.value
   if (!vendorId) return
-
-  const goldBefore = gameState.value.player.gold
-  let newState = buyItem(gameState.value, vendorId, templateId, quality)
-  if (newState.player.gold === goldBefore) return
-
-  const template = getItemTemplate(templateId)
-  const boughtQuality = quality ?? 'common'
-  if (template && (template.type === 'weapon' || template.type === 'armor')) {
-    const slot: 'weapon' | 'armor' = template.type === 'weapon' ? 'weapon' : 'armor'
-    const equipped = newState.player.equipment[slot]
-    if (!equipped) {
-      newState = equipItemAction(newState, templateId, boughtQuality)
-    } else if (equipped.templateId !== templateId || equipped.quality !== boughtQuality) {
-      const newBonus = getEquipBonus(template, boughtQuality)
-      const currentBonus = getEquipBonus(
-        getItemTemplate(equipped.templateId),
-        equipped.quality
-      )
-      if (newBonus > currentBonus) {
-        pendingSwap.value = {
-          templateId,
-          quality: boughtQuality,
-          slot,
-          currentId: equipped.templateId,
-          newBonus,
-          currentBonus,
-        }
-      }
-    }
-  }
-  dispatch(newState)
-}
-
-function confirmSwap() {
-  if (!pendingSwap.value) return
   dispatch(
-    equipItemAction(
+    buyItem(
       gameState.value,
-      pendingSwap.value.templateId,
-      pendingSwap.value.quality
+      vendorId,
+      templateId,
+      quality ?? DEFAULT_QUALITY,
+      qty
     )
   )
-  pendingSwap.value = null
 }
 
-function handleSell(templateId: string, quality?: Quality) {
+function handleSell(templateId: string, quality?: Quality, qty = 1) {
   const vendorId = selectedNpcId.value
   if (!vendorId) return
-  dispatch(sellItem(gameState.value, vendorId, templateId, quality))
+  dispatch(
+    sellItem(
+      gameState.value,
+      vendorId,
+      templateId,
+      quality ?? DEFAULT_QUALITY,
+      qty
+    )
+  )
 }
 
 function handleSellMaterial(materialId: string, qty: number) {

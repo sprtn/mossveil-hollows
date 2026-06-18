@@ -53,11 +53,8 @@
         v-else
         :game-state="gameState"
         :vendor-id="npc.id"
-        :pending-swap="pendingSwap"
-        @buy="(id, q) => $emit('buy', id, q)"
-        @sell="(id, q) => $emit('sell', id, q)"
-        @confirm-swap="$emit('confirmSwap')"
-        @dismiss-swap="$emit('dismissSwap')"
+        @buy="(id, q, qty) => $emit('buy', id, q, qty)"
+        @sell="(id, q, qty) => $emit('sell', id, q, qty)"
       />
     </section>
 
@@ -105,7 +102,6 @@ import {
   NPC_PORTRAIT_PLACEHOLDER,
   type HubSection,
 } from '@/engine/NpcHubCatalog'
-import type { PendingEquipSwap } from './VendorShopPanel.vue'
 import CraftPanel from './CraftPanel.vue'
 import TrainPanel from './TrainPanel.vue'
 import ProfessionTrainPanel from './ProfessionTrainPanel.vue'
@@ -115,7 +111,6 @@ const props = defineProps<{
   npcId: string
   gameState: GameState
   focusSection?: HubSection | null
-  pendingSwap?: PendingEquipSwap | null
 }>()
 
 defineEmits<{
@@ -124,10 +119,8 @@ defineEmits<{
   heal: []
   craft: [recipeId: string]
   selfCraft: [recipeId: string]
-  buy: [templateId: string, quality?: Quality]
-  sell: [templateId: string, quality?: Quality]
-  confirmSwap: []
-  dismissSwap: []
+  buy: [templateId: string, quality?: Quality, qty?: number]
+  sell: [templateId: string, quality?: Quality, qty?: number]
   attemptTraining: [skillId: string]
   unlockTier: [tier: number]
   purchaseRecipe: [recipeId: string]
