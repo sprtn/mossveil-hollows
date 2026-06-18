@@ -2,8 +2,32 @@
  * Player stat helpers — effective max HP with wounded penalty, etc.
  */
 
-import type { Player } from './GameLoopDesign'
+import type { GameState, Player, PlayerStatKey } from './GameLoopDesign'
 import { WOUNDED_MAX_HP_PENALTY } from './gameConfig'
+import { calculateMaxHp } from './ProgressionSystem'
+
+/** Permanently raise one base stat by 1 (CON also recalculates maxHp). */
+export function raisePlayerStat(state: GameState, stat: PlayerStatKey): GameState {
+  const newStats = {
+    ...state.player.stats,
+    [stat]: state.player.stats[stat] + 1,
+  }
+  let player: Player = {
+    ...state.player,
+    stats: newStats,
+  }
+
+  if (stat === 'constitution') {
+    const newMaxHp = calculateMaxHp(player.level, newStats.constitution)
+    player = {
+      ...player,
+      maxHp: newMaxHp,
+      hp: Math.min(player.hp + 3, newMaxHp),
+    }
+  }
+
+  return { ...state, player }
+}
 
 export function getEffectiveMaxHp(player: Player): number {
   if (player.wounded) {

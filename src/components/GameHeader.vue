@@ -68,6 +68,8 @@
         @input="setVolume"
       />
     </div>
+
+    <span class="game-version" aria-label="Game version">v{{ GAME_VERSION }}</span>
   </header>
 </template>
 
@@ -78,6 +80,7 @@ import type { GameState } from '@/engine/GameLoopDesign'
 import { getXpForNextLevel, LEVEL_XP_REQUIREMENTS, MAX_LEVEL } from '@/engine/ProgressionSystem'
 import { resourceIcons } from '@/utils/icons'
 import { audioManager } from '@/engine/AudioManager'
+import { GAME_VERSION } from '@/engine/gameConfig'
 
 const gameState = inject<Ref<GameState>>('gameState')!
 const setPlayerScreenOpen = inject<(open: boolean) => void>('setPlayerScreenOpen')!
@@ -144,6 +147,7 @@ function setVolume(e: Event) {
 
 <style scoped>
 .game-header {
+  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -232,5 +236,18 @@ function setVolume(e: Event) {
   filter: grayscale(1);
   opacity: 0.4;
   accent-color: var(--color-text-muted);
+}
+
+.game-version {
+  position: absolute;
+  right: 10px;
+  bottom: 2px;
+  font-size: 0.6rem;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  opacity: 0.45;
+  font-family: var(--font-display);
+  pointer-events: none;
+  user-select: none;
 }
 </style>

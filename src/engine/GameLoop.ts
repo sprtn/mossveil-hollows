@@ -72,7 +72,7 @@ import {
 } from './gameConfig'
 import { saveGame, clearSave } from './saveGame'
 import { getDefaultGameMeta } from './Outcomes'
-import { getEffectiveMaxHp, applyWounded, clampPlayerHp } from './PlayerStats'
+import { getEffectiveMaxHp, applyWounded, clampPlayerHp, raisePlayerStat } from './PlayerStats'
 import { addMaterial } from './Materials'
 import { pickRandomEvent, startEvent, pickGatherHazardEvent } from './EventSystem'
 import { advanceDay } from './DayAdvance'
@@ -750,26 +750,14 @@ export function allocateAttributePoint(
   const available = state.player.unallocatedAttributePoints || 0
   if (available <= 0) return state
 
-  const newStats = {
-    ...state.player.stats,
-    [stat]: state.player.stats[stat] + 1,
+  const raised = raisePlayerStat(state, stat)
+  return {
+    ...raised,
+    player: {
+      ...raised.player,
+      unallocatedAttributePoints: available - 1,
+    },
   }
-  let player = {
-    ...state.player,
-    unallocatedAttributePoints: available - 1,
-    stats: newStats,
-  }
-
-  if (stat === 'constitution') {
-    const newMaxHp = calculateMaxHp(player.level, newStats.constitution)
-    player = {
-      ...player,
-      maxHp: newMaxHp,
-      hp: Math.min(player.hp + 3, newMaxHp),
-    }
-  }
-
-  return { ...state, player }
 }
 
 function detectZoneBossDefeated(enemies: Enemy[], zoneId?: string): ZoneId | null {

@@ -2,7 +2,7 @@
  * Hub services: shop, healer, rest, save, training, crafting, buildings
  */
 
-import type { GameState } from './GameLoopDesign'
+import type { GameState, PlayerStatKey } from './GameLoopDesign'
 import {
   addItemToInventory,
   getItemTemplate,
@@ -24,6 +24,7 @@ import {
 import { saveGame } from './saveGame'
 import { getEffectiveMaxHp, applyWoundedClear } from './PlayerStats'
 import { attemptTraining } from './SkillTraining'
+import { attemptBrynStatPractice } from './BrynStatTraining'
 import { placeCraftOrder } from './CraftOrderSystem'
 import { selfCraft } from './SelfCraft'
 import {
@@ -356,6 +357,14 @@ export function hubAttemptTraining(
   }
   saveGame(result)
   return { ...result, statusMessage: message }
+}
+
+export function hubAttemptBrynStatPractice(state: GameState, stat: PlayerStatKey): GameState {
+  if (!state.currentRoom.isHub) return state
+  const { state: result, outcome } = attemptBrynStatPractice(state, stat)
+  if (!outcome) return state
+  saveGame(result)
+  return { ...result, statusMessage: outcome.message }
 }
 
 export function hubCraft(state: GameState, recipeId: string): GameState {

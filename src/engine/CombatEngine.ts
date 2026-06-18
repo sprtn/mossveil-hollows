@@ -820,6 +820,7 @@ export function createDefaultPlayer(overrides: Partial<Player> = {}): Player {
     professions: createDefaultProfessions(),
     unlockedProfessionTiers: createDefaultUnlockedProfessionTiers(),
     purchasedRecipes: [],
+    brynStatSessionsUsed: 0,
     ...overrides,
   }
 }

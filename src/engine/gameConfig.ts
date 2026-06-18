@@ -6,7 +6,10 @@ export const GAME_TITLE_SUB = 'Shards of the Shadow'
 export const START_ROOM_ID = 'town_hub'
 export const FINAL_BOSS_ENEMY_ID = 'shadow_lord'
 export const SAVE_KEY = 'strat_rpg_save'
-export const SAVE_VERSION = 10
+export const SAVE_VERSION = 11
+
+/** Display version — independent of SAVE_VERSION. */
+export const GAME_VERSION = '0.0.11'
 
 export const ZONE_IDS = ['forest', 'cave', 'ruins'] as const
 export type ZoneId = (typeof ZONE_IDS)[number]
@@ -73,6 +76,10 @@ export const WOUNDED_MAX_HP_PENALTY = 0.2
 export const TRAINING_DAYS_PER_ATTEMPT = 1
 /** Success chance at exactly minStat (linear ramp to 100% at maxStat). */
 export const TRAINING_MIN_SUCCESS_PCT = 0.08
+
+/** Captain Bryn — paid stat practice (deterministic +1 stat, shared session cap). */
+export const BRYN_STAT_PRACTICE_GOLD = 10
+export const BRYN_STAT_PRACTICE_MAX_SESSIONS = 15
 
 /** Make Camp — out-of-combat rest in zones. */
 export const CAMP_HP_PERCENT = 0.8

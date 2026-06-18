@@ -45,6 +45,7 @@
         @buy="handleBuy"
         @sell="handleSell"
         @attempt-training="handleAttemptTraining"
+        @attempt-stat-practice="handleAttemptStatPractice"
         @unlock-tier="handleUnlockTier"
         @purchase-recipe="handlePurchaseRecipe"
       />
@@ -111,7 +112,7 @@
 <script setup lang="ts">
 import { inject, computed, ref, watch } from 'vue'
 import type { Ref } from 'vue'
-import type { GameState } from '@/engine/GameLoopDesign'
+import type { GameState, PlayerStatKey } from '@/engine/GameLoopDesign'
 import {
   buyItem,
   sellItem,
@@ -123,6 +124,7 @@ import {
   useInn,
   sleepAtHome,
   hubAttemptTraining,
+  hubAttemptBrynStatPractice,
   hubCraft,
   hubSelfCraft,
   hubUpgradeBuilding,
@@ -225,6 +227,13 @@ function handleAttemptTraining(skillId: string) {
   dispatch(newState)
   const success = !knownBefore && (newState.player.knownSkills ?? []).includes(skillId)
   npcHubRef.value?.showTrainingResult(success, skill?.name ?? skillId)
+}
+
+function handleAttemptStatPractice(stat: PlayerStatKey) {
+  const newState = hubAttemptBrynStatPractice(gameState.value, stat)
+  if (newState === gameState.value) return
+  dispatch(newState)
+  npcHubRef.value?.showStatPracticeResult(newState.statusMessage ?? '')
 }
 
 function handleUnlockTier(tier: number) {

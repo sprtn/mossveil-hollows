@@ -50,6 +50,8 @@
         </div>
       </footer>
     </div>
+
+    <span class="game-version" aria-label="Game version">v{{ GAME_VERSION }}</span>
   </div>
 </template>
 
@@ -59,7 +61,7 @@ import type { GameState } from '@/engine/GameLoopDesign'
 import { createDefaultPlayer } from '@/engine/CombatEngine'
 import { startGameFromRoom } from '@/engine/GameLoop'
 import { hasSaveGame, loadGame } from '@/engine/saveGame'
-import { START_ROOM_ID, GAME_TITLE_MAIN, GAME_TITLE_SUB } from '@/engine/gameConfig'
+import { START_ROOM_ID, GAME_TITLE_MAIN, GAME_TITLE_SUB, GAME_VERSION } from '@/engine/gameConfig'
 import { audioManager } from '@/engine/AudioManager'
 
 const dispatch = inject<(state: GameState) => void>('dispatch')!
@@ -113,6 +115,19 @@ function continueGame() {
   width: 100%;
   overflow: hidden;
   color: var(--color-text);
+}
+
+.game-version {
+  position: absolute;
+  right: clamp(12px, 2vw, 20px);
+  bottom: clamp(10px, 2vh, 16px);
+  z-index: 2;
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  color: rgba(184, 176, 160, 0.45);
+  font-family: var(--font-display);
+  pointer-events: none;
+  user-select: none;
 }
 
 .start-bg {

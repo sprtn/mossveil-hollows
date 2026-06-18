@@ -62,6 +62,14 @@ describe('loadGame save version cutoff', () => {
     expect(storage.has(SAVE_KEY)).toBe(false)
   })
 
+  it('rejects and clears v10 save after SAVE_VERSION bump to 11', () => {
+    storage.set(SAVE_KEY, JSON.stringify(minimalSave({ saveVersion: 10 })))
+    const { state, versionMismatch } = loadGame()
+    expect(versionMismatch).toBe(true)
+    expect(state).toBeNull()
+    expect(storage.has(SAVE_KEY)).toBe(false)
+  })
+
   it('rejects and clears a save from a newer client', () => {
     storage.set(SAVE_KEY, JSON.stringify(minimalSave({ saveVersion: SAVE_VERSION + 1 })))
     const { state, versionMismatch } = loadGame()

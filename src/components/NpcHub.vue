@@ -69,6 +69,7 @@
         :npc-id="npc.id"
         :npc-name="npc.name"
         @attempt-training="$emit('attemptTraining', $event)"
+        @attempt-stat-practice="$emit('attemptStatPractice', $event)"
       />
     </section>
 
@@ -90,7 +91,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
-import type { GameState } from '@/engine/GameLoopDesign'
+import type { GameState, PlayerStatKey } from '@/engine/GameLoopDesign'
 import type { Quality } from '@/engine/Quality'
 import { HEALER_COST } from '@/engine/gameConfig'
 import { getNpc } from '@/engine/NpcData'
@@ -122,6 +123,7 @@ defineEmits<{
   buy: [templateId: string, quality?: Quality, qty?: number]
   sell: [templateId: string, quality?: Quality, qty?: number]
   attemptTraining: [skillId: string]
+  attemptStatPractice: [stat: PlayerStatKey]
   unlockTier: [tier: number]
   purchaseRecipe: [recipeId: string]
 }>()
@@ -171,6 +173,9 @@ watch(
 defineExpose({
   showTrainingResult: (success: boolean, skillName: string) => {
     trainPanelRef.value?.showResult(success, skillName)
+  },
+  showStatPracticeResult: (message: string) => {
+    trainPanelRef.value?.showStatPracticeResult(message)
   },
 })
 </script>

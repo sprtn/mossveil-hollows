@@ -73,6 +73,7 @@ export function loadGame(): { state: GameState | null; versionMismatch: boolean 
         professions: normalizePlayerProfessions(parsed.player),
         unlockedProfessionTiers: normalizeUnlockedProfessionTiers(parsed.player),
         purchasedRecipes: normalizePurchasedRecipes(parsed.player),
+        brynStatSessionsUsed: parsed.player.brynStatSessionsUsed ?? 0,
       },
       quests: parsed.quests ?? meta.quests,
       flags: parsed.flags ?? meta.flags,

@@ -26,6 +26,42 @@
       </div>
     </div>
 
+    <div
+      v-if="isBryn && showStatPractice"
+      class="stat-practice-block panel-inset"
+      :class="{ disabled: !statPracticeEnabled }"
+    >
+      <h5 class="branch-title">Physical Conditioning</h5>
+      <p v-if="statPracticeComplete" class="stat-practice-complete">Practice complete.</p>
+      <template v-else>
+        <p class="stat-practice-header">
+          Practice ({{ statPracticeGold }}g, 1 day) — {{ statSessionsLeft }} sessions left
+        </p>
+        <p v-if="!canAffordPractice" class="skill-lock">Need {{ statPracticeGold }}g.</p>
+        <div v-if="confirmStat" class="confirm-box confirm-box--nested">
+          <p>
+            Practice <strong>{{ statLabel(confirmStat) }}</strong>?
+            Costs <strong>{{ statPracticeGold }}g</strong> and <strong>1 day</strong> (+1 {{ statLabel(confirmStat) }}).
+          </p>
+          <div class="confirm-actions">
+            <button class="btn btn-primary" @click="confirmStatAttempt">Confirm</button>
+            <button class="btn" @click="cancelStatConfirm">Cancel</button>
+          </div>
+        </div>
+        <div v-else class="stat-practice-buttons">
+          <button
+            v-for="stat in statKeys"
+            :key="stat"
+            class="btn"
+            :disabled="!statPracticeEnabled || !!confirmSkillId"
+            @click="requestStatAttempt(stat)"
+          >
+            {{ statLabel(stat) }}
+          </button>
+        </div>
+      </template>
+    </div>
+
     <div v-for="branch in branches" :key="branch" class="skill-branch-group">
       <h5 class="branch-title">{{ branchLabel(branch) }}</h5>
       <div v-for="skill in skillsByBranch(branch)" :key="skill.id" class="skill-card panel-inset">
@@ -49,7 +85,7 @@
         <button
           class="btn"
           :class="skillButtonClass(skill.id)"
-          :disabled="!canAttempt(skill.id) || !!confirmSkillId"
+          :disabled="!canAttempt(skill.id) || !!confirmSkillId || !!confirmStat"
           @click="requestAttempt(skill.id)"
         >
           {{ skillButtonLabel(skill.id) }}
@@ -61,9 +97,14 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { GameState } from '@/engine/GameLoopDesign'
+import type { GameState, PlayerStatKey } from '@/engine/GameLoopDesign'
 import type { SkillDef } from '@/engine/ContentSchemas'
 import { getAllSkills, getSkill, getTrainingPreview } from '@/engine/SkillSystem'
+import { statLabel as statLabelDisplay } from '@/engine/statDisplay'
+import {
+  BRYN_STAT_PRACTICE_GOLD,
+} from '@/engine/gameConfig'
+import { brynStatSessionsRemaining } from '@/engine/BrynStatTraining'
 
 const props = defineProps<{
   gameState: GameState
@@ -73,10 +114,23 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   attemptTraining: [skillId: string]
+  attemptStatPractice: [stat: PlayerStatKey]
 }>()
 
 const confirmSkillId = ref<string | null>(null)
+const confirmStat = ref<PlayerStatKey | null>(null)
 const lastResult = ref<{ success: boolean; message: string } | null>(null)
+
+const isBryn = computed(() => props.npcId === 'captain_bryn')
+const showStatPractice = computed(() => isBryn.value)
+const statKeys: PlayerStatKey[] = ['strength', 'constitution', 'dexterity', 'agility', 'defense']
+const statPracticeGold = BRYN_STAT_PRACTICE_GOLD
+const statSessionsLeft = computed(() => brynStatSessionsRemaining(props.gameState.player))
+const statPracticeComplete = computed(() => statSessionsLeft.value <= 0)
+const canAffordPractice = computed(() => props.gameState.player.gold >= statPracticeGold)
+const statPracticeEnabled = computed(
+  () => !statPracticeComplete.value && canAffordPractice.value
+)
 
 const trainerLine = computed(() => {
   if (props.npcId === 'captain_bryn') {
@@ -122,14 +176,7 @@ function preview(skillId: string) {
 }
 
 function statLabel(stat: string): string {
-  const labels: Record<string, string> = {
-    strength: 'Strength',
-    constitution: 'Constitution',
-    dexterity: 'Dexterity',
-    agility: 'Agility',
-    defense: 'Defense',
-  }
-  return labels[stat] ?? stat
+  return statLabelDisplay(stat as PlayerStatKey)
 }
 
 function formatPct(chance: number): string {
@@ -172,6 +219,7 @@ function skillButtonClass(skillId: string): string {
 
 function requestAttempt(skillId: string) {
   if (!canAttempt(skillId)) return
+  confirmStat.value = null
   confirmSkillId.value = skillId
   lastResult.value = null
 }
@@ -187,6 +235,24 @@ function confirmAttempt() {
   emit('attemptTraining', skillId)
 }
 
+function requestStatAttempt(stat: PlayerStatKey) {
+  if (!statPracticeEnabled.value) return
+  confirmSkillId.value = null
+  confirmStat.value = stat
+  lastResult.value = null
+}
+
+function cancelStatConfirm() {
+  confirmStat.value = null
+}
+
+function confirmStatAttempt() {
+  if (!confirmStat.value) return
+  const stat = confirmStat.value
+  confirmStat.value = null
+  emit('attemptStatPractice', stat)
+}
+
 /** Called by parent after hubAttemptTraining resolves. */
 function showResult(success: boolean, skillName: string) {
   lastResult.value = success
@@ -194,7 +260,12 @@ function showResult(success: boolean, skillName: string) {
     : { success: false, message: `You drill all day, but ${skillName} won't come together. The day is spent.` }
 }
 
-defineExpose({ showResult })
+/** Called by parent after hubAttemptBrynStatPractice resolves. */
+function showStatPracticeResult(message: string) {
+  lastResult.value = { success: true, message }
+}
+
+defineExpose({ showResult, showStatPracticeResult })
 </script>
 
 <style scoped>
@@ -235,4 +306,10 @@ defineExpose({ showResult })
 .skill-lock { font-size: 12px; color: var(--color-text-muted); margin: 4px 0 0; font-style: italic; }
 .btn-known { opacity: 0.6; cursor: default; }
 .btn-locked { opacity: 0.5; cursor: not-allowed; }
+.stat-practice-block { margin-bottom: 16px; padding: 12px; }
+.stat-practice-block.disabled { opacity: 0.65; }
+.stat-practice-header { font-size: 13px; color: var(--color-accent-warm); margin: 0 0 10px; }
+.stat-practice-complete { font-size: 13px; color: var(--color-text-muted); font-style: italic; margin: 0; }
+.stat-practice-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.confirm-box--nested { padding: 10px; margin-top: 8px; margin-bottom: 0; background: var(--color-bg-elevated); }
 </style>

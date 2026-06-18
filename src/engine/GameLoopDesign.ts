@@ -128,6 +128,8 @@ export interface Player {
   unlockedProfessionTiers?: Partial<Record<ProfessionId, number>>
   /** Recipe ids bought from profession trainers. */
   purchasedRecipes?: string[]
+  /** Captain Bryn stat-practice sessions completed (lifetime cap, all stats shared). */
+  brynStatSessionsUsed?: number
 }
 
 export interface LootDrop {
