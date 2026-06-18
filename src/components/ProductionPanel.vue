@@ -3,7 +3,7 @@
     <h5>Logging Camp Production</h5>
     <p class="prod-desc">
       While enabled, workers cut oak each time you <strong>end a day</strong> by resting in town
-      (Free Rest, Inn, or Sleep at Home). Logs are sold straight to the local market — they never
+      (Sleep Outside, Inn, or Sleep at Home). Logs are sold straight to the local market — they never
       sit in your pack. Wages go into the camp payroll, then circulate through town traders.
     </p>
     <p class="prod-day">Town day: <strong>{{ gameDay }}</strong></p>

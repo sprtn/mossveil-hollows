@@ -1,7 +1,7 @@
 <template>
   <div class="town-actions-strip">
     <button class="action-button" @click="$emit('rest')">
-      {{ resourceIcons.hp }} Free Rest (~60% cap)
+      {{ resourceIcons.hp }} Sleep Outside (~60% cap)
     </button>
     <button
       class="action-button"

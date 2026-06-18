@@ -57,7 +57,7 @@ export const HEALER_HP_RESTORE = 999
 export const HEALER_ENERGY_RESTORE = 999
 export const HEALER_STAMINA_RESTORE = 999
 
-/** Free rest — safe partial recovery (never lowers current values) */
+/** Sleep Outside — safe partial recovery (never lowers current values) */
 export const REST_HP_PERCENT = 0.6
 export const REST_ENERGY_PERCENT = 0.6
 export const REST_STAMINA_PERCENT = 0.6

@@ -8,7 +8,7 @@
       @save="handleSave"
     />
     <p class="hint">
-      Free rest never lowers HP. Inn/Home clear wounded. Visit Maren to heal fully.
+      Sleeping outside never lowers HP. Inn/Home clear wounded. Visit Maren to heal fully.
     </p>
 
     <div class="town-tabs">

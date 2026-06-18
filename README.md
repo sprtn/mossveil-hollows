@@ -16,7 +16,7 @@ npm test         # run vitest suite
 1. In **town**, talk to NPCs, accept quests, heal, rest, craft, train, and upgrade buildings.
 2. Spend **stamina** exploring a region; each move and encounter drains it.
 3. Win fights to earn XP, gold, materials, and **energy** (the per-expedition skill resource).
-4. Return to town when stamina or HP runs low (the **Healer** fully restores and clears *wounded*; **free rest** is cheaper but risky).
+4. Return to town when stamina or HP runs low (the **Healer** fully restores and clears *wounded*; **sleep outside** is cheaper but risky).
 5. Craft gear and learn skills to beat the region boss, which drops a **shard** and unlocks the next region.
 6. Collect all three shards to open the **Shadow Gate** and end the game.
 

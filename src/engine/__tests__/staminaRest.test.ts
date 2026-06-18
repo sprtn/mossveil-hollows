@@ -77,7 +77,7 @@ describe('Stamina and Rest', () => {
     expect(state.player.hp).toBe(40)
   })
 
-  it('free rest never lowers HP when already healthy', () => {
+  it('sleep outside never lowers HP when already healthy', () => {
     const player = createDefaultPlayer({ hp: 40, maxHp: 40, energy: 6, stamina: 10 })
     let state = initGame(player, hubRoom)
     state = enterRoom(state, hubRoom)
@@ -86,7 +86,7 @@ describe('Stamina and Rest', () => {
     expect(state.player.stamina).toBe(10)
   })
 
-  it('free rest returns partial recovery when damaged', () => {
+  it('sleep outside returns partial recovery when damaged', () => {
     const player = createDefaultPlayer({ hp: 15, energy: 2, stamina: 3 })
     let state = initGame(player, hubRoom)
     state = enterRoom(state, hubRoom)
