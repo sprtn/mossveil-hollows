@@ -122,6 +122,16 @@ export interface ProductionBuildingState {
   lastSkipReason?: string
 }
 
+/** Per-NPC daily craft telemetry + recipe rotation (foundation for living economy). */
+export interface NpcEconomicState {
+  rotationIndex: number
+  lastRunDay?: number
+  lastProducedItemId?: string
+  lastProducedQty?: number
+  lastConsumed?: Record<string, number>
+  lastSkipReason?: string
+}
+
 export interface BuildingProductionDef {
   outputMaterialId: string
   outputPerDay: number

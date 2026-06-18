@@ -22,6 +22,7 @@ import {
   rollBonusLog,
   LABOUR_FAIR_WAGE,
 } from './productionLabour'
+import { processTownSupply, processNpcCrafters } from './NpcEconomy'
 
 function defaultProductionState(): ProductionBuildingState {
   return {
@@ -195,6 +196,8 @@ export function tickEconomy(state: GameState): GameState {
   let result = decayMarkets(state)
   result = restockVendors(result)
   result = processLoggingCamp(result)
+  result = processTownSupply(result)
+  result = processNpcCrafters(result)
   return result
 }
 

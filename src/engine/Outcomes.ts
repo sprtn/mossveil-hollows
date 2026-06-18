@@ -286,6 +286,7 @@ export function getDefaultGameMeta(): Pick<
   | 'marketMaterialStock'
   | 'vendorState'
   | 'productionState'
+  | 'npcEconomicState'
 > {
   return {
     quests: {},
@@ -301,5 +302,6 @@ export function getDefaultGameMeta(): Pick<
     marketMaterialStock: { oak_wood: 6, cloth_scrap: 3 },
     vendorState: {},
     productionState: {},
+    npcEconomicState: {},
   }
 }

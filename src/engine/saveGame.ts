@@ -87,6 +87,7 @@ export function loadGame(): { state: GameState | null; versionMismatch: boolean 
       marketMaterialStock: parsed.marketMaterialStock ?? meta.marketMaterialStock,
       vendorState: parsed.vendorState ?? meta.vendorState,
       productionState: parsed.productionState ?? meta.productionState,
+      npcEconomicState: parsed.npcEconomicState ?? meta.npcEconomicState,
       gatherNodeState: normalizeGatherNodeState(parsed),
       currentEncounter: undefined,
       combatResults: undefined,

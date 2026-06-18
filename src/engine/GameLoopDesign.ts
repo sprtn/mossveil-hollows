@@ -12,6 +12,7 @@ import type {
   CraftOrder,
   DialogueState,
   MarketCategoryState,
+  NpcEconomicState,
   ProductionBuildingState,
   QuestProgress,
   VendorState,
@@ -272,6 +273,7 @@ export interface GameState {
   marketMaterialStock?: Record<string, number>
   vendorState?: Record<string, VendorState>
   productionState?: Record<string, ProductionBuildingState>
+  npcEconomicState?: Record<string, NpcEconomicState>
   pendingHubPanel?: {
     panel: 'train' | 'craft' | 'shop' | 'profession_train'
     npcId: string
