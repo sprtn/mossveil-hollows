@@ -8,34 +8,16 @@ import { applyOutcomes, meetsRequirements } from './Outcomes'
 import { triggerEncounter } from './GameLoop'
 import type { Enemy } from './GameLoopDesign'
 import { SeededRandom } from './CombatEngine'
-
-import woundedTraveler from '../assets/events/wounded_traveler.json'
-import fallenLog from '../assets/events/fallen_log.json'
-import oldShrine from '../assets/events/old_shrine.json'
-import ambush from '../assets/events/ambush.json'
-import gatherForestSnare from '../assets/events/gather_forest_snare.json'
-import gatherCaveRockslide from '../assets/events/gather_cave_rockslide.json'
-import gatherCaveGas from '../assets/events/gather_cave_gas.json'
-import gatherRuinsWard from '../assets/events/gather_ruins_ward.json'
+import { getEvent, getAllEvents } from './admin/ContentRegistry'
 import { forfeitPendingGather } from './GatherDanger'
 
-const FOREST_EVENTS: EventCard[] = [
-  woundedTraveler as EventCard,
-  fallenLog as EventCard,
-  oldShrine as EventCard,
-  ambush as EventCard,
-]
+function explorationEvents(): EventCard[] {
+  return getAllEvents().filter((e) => !e.gatherHazard)
+}
 
-const GATHER_HAZARD_EVENTS: EventCard[] = [
-  gatherForestSnare as EventCard,
-  gatherCaveRockslide as EventCard,
-  gatherCaveGas as EventCard,
-  gatherRuinsWard as EventCard,
-]
-
-const ALL_EVENTS: EventCard[] = [...FOREST_EVENTS, ...GATHER_HAZARD_EVENTS]
-
-const eventMap = new Map(ALL_EVENTS.map((e) => [e.id, e]))
+function gatherHazardEvents(): EventCard[] {
+  return getAllEvents().filter((e) => e.gatherHazard)
+}
 
 /** Enemy templates for event-triggered combat */
 const ENCOUNTER_TEMPLATES: Record<string, Enemy[]> = {
@@ -64,11 +46,11 @@ export function getEnemyEncounter(encounterId: string): Enemy[] {
 }
 
 export function getEventCard(eventId: string): EventCard | undefined {
-  return eventMap.get(eventId)
+  return getEvent(eventId)
 }
 
 export function pickRandomEvent(state: GameState, zone: string): EventCard | null {
-  const candidates = FOREST_EVENTS.filter((e) => {
+  const candidates = explorationEvents().filter((e) => {
     if (e.zone !== zone) return false
     if (e.once && state.flags?.[`event_done_${e.id}`]) return false
     return true
@@ -91,7 +73,7 @@ export function pickRandomEvent(state: GameState, zone: string): EventCard | nul
 }
 
 export function pickGatherHazardEvent(state: GameState, zone: string): EventCard | null {
-  const candidates = GATHER_HAZARD_EVENTS.filter((e) => {
+  const candidates = gatherHazardEvents().filter((e) => {
     if (e.zone !== zone) return false
     if (!e.gatherHazard) return false
     if (e.once && state.flags?.[`event_done_${e.id}`]) return false

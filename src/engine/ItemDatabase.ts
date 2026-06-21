@@ -1,5 +1,5 @@
 /**
- * Item database - loads and resolves item templates from JSON
+ * Item database - loads and resolves item templates from ContentRegistry
  */
 
 import type {
@@ -18,96 +18,24 @@ import {
   type Quality,
 } from './Quality'
 import { addMaterial } from './Materials'
-
-import healthPotion from '../assets/items/health_potion.json'
-import manaPotion from '../assets/items/mana_potion.json'
-import antidote from '../assets/items/antidote.json'
-import ironSword from '../assets/items/iron_sword.json'
-import steelSword from '../assets/items/steel_sword.json'
-import legendarySword from '../assets/items/legendary_sword.json'
-import leatherArmor from '../assets/items/leather_armor.json'
-import ironPlateArmor from '../assets/items/iron_plate_armor.json'
-import guardianAmulet from '../assets/items/guardian_amulet.json'
-import ironOre from '../assets/items/iron_ore.json'
-import forestShard from '../assets/items/forest_shard.json'
-import caveShard from '../assets/items/cave_shard.json'
-import ruinsShard from '../assets/items/ruins_shard.json'
-import rustyShortsword from '../assets/items/rusty_shortsword.json'
-import wornTunic from '../assets/items/worn_tunic.json'
-import oakSpear from '../assets/items/oak_spear.json'
-import hideJerkin from '../assets/items/hide_jerkin.json'
-import wolfCloak from '../assets/items/wolf_cloak.json'
-import woodenStake from '../assets/items/wooden_stake.json'
-import wolfPelt from '../assets/items/wolf_pelt.json'
-import canineTooth from '../assets/items/canine_tooth.json'
-import boarHide from '../assets/items/boar_hide.json'
-import boarTusk from '../assets/items/boar_tusk.json'
-import spiderSilk from '../assets/items/spider_silk.json'
-import spiderFang from '../assets/items/spider_fang.json'
-import batWing from '../assets/items/bat_wing.json'
-import crystalSliver from '../assets/items/crystal_sliver.json'
-import trollTusk from '../assets/items/troll_tusk.json'
-import tarnishedCoin from '../assets/items/tarnished_coin.json'
-import oakWood from '../assets/items/oak_wood.json'
-import corruptedSap from '../assets/items/corrupted_sap.json'
-import clothScrap from '../assets/items/cloth_scrap.json'
-import cleansingDraught from '../assets/items/cleansing_draught.json'
-import stone from '../assets/items/stone.json'
-import greenHerb from '../assets/items/green_herb.json'
-import moonshadeHerb from '../assets/items/moonshade_herb.json'
-import rawFish from '../assets/items/raw_fish.json'
-import freshProduce from '../assets/items/fresh_produce.json'
-import berries from '../assets/items/berries.json'
-
-const RAW_ITEMS: ItemTemplate[] = [
-  healthPotion as ItemTemplate,
-  manaPotion as ItemTemplate,
-  antidote as ItemTemplate,
-  ironSword as ItemTemplate,
-  steelSword as ItemTemplate,
-  legendarySword as ItemTemplate,
-  leatherArmor as ItemTemplate,
-  ironPlateArmor as ItemTemplate,
-  guardianAmulet as ItemTemplate,
-  ironOre as ItemTemplate,
-  forestShard as ItemTemplate,
-  caveShard as ItemTemplate,
-  ruinsShard as ItemTemplate,
-  rustyShortsword as ItemTemplate,
-  wornTunic as ItemTemplate,
-  oakSpear as ItemTemplate,
-  hideJerkin as ItemTemplate,
-  wolfCloak as ItemTemplate,
-  woodenStake as ItemTemplate,
-  wolfPelt as ItemTemplate,
-  canineTooth as ItemTemplate,
-  boarHide as ItemTemplate,
-  boarTusk as ItemTemplate,
-  spiderSilk as ItemTemplate,
-  spiderFang as ItemTemplate,
-  batWing as ItemTemplate,
-  crystalSliver as ItemTemplate,
-  trollTusk as ItemTemplate,
-  tarnishedCoin as ItemTemplate,
-  oakWood as ItemTemplate,
-  corruptedSap as ItemTemplate,
-  clothScrap as ItemTemplate,
-  cleansingDraught as ItemTemplate,
-  stone as ItemTemplate,
-  greenHerb as ItemTemplate,
-  moonshadeHerb as ItemTemplate,
-  rawFish as ItemTemplate,
-  freshProduce as ItemTemplate,
-  berries as ItemTemplate,
-]
+import {
+  getItemTemplate as getItemTemplateFromRegistry,
+  getAllItems as getAllItemsFromRegistry,
+} from './admin/ContentRegistry'
 
 const itemMap = new Map<string, ItemTemplate>()
-for (const item of RAW_ITEMS) {
-  itemMap.set(item.id, item)
+
+export function refreshItemDatabase(): void {
+  itemMap.clear()
+  for (const item of getAllItemsFromRegistry()) {
+    itemMap.set(item.id, item)
+  }
 }
 
+refreshItemDatabase()
+
 export function getItemTemplate(id: string): ItemTemplate | undefined {
-  return itemMap.get(id)
+  return itemMap.get(id) ?? getItemTemplateFromRegistry(id)
 }
 
 export function getItemName(id: string): string {

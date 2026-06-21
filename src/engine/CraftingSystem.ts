@@ -13,35 +13,9 @@ import {
   purchaseRecipe as purchaseRecipeCore,
   unlockProfessionTier as unlockProfessionTierCore,
 } from './ProfessionTraining'
+import { getRecipe, getAllRecipes } from './admin/ContentRegistry'
 
-import oakSpear from '../assets/recipes/oak_spear.json'
-import hideJerkin from '../assets/recipes/hide_jerkin.json'
-import woodenStake from '../assets/recipes/wooden_stake.json'
-import antidoteRecipe from '../assets/recipes/antidote_recipe.json'
-import cleansingDraught from '../assets/recipes/cleansing_draught.json'
-
-import clothBandage from '../assets/recipes/cloth_bandage.json'
-import wolfCloak from '../assets/recipes/wolf_cloak.json'
-import paddedWrap from '../assets/recipes/padded_wrap.json'
-
-const RECIPES: RecipeDef[] = [
-  oakSpear as RecipeDef,
-  hideJerkin as RecipeDef,
-  woodenStake as RecipeDef,
-  wolfCloak as RecipeDef,
-  paddedWrap as RecipeDef,
-  antidoteRecipe as RecipeDef,
-  cleansingDraught as RecipeDef,
-  clothBandage as RecipeDef,
-]
-
-export function getRecipe(id: string): RecipeDef | undefined {
-  return RECIPES.find((r) => r.id === id)
-}
-
-export function getAllRecipes(): RecipeDef[] {
-  return [...RECIPES]
-}
+export { getRecipe, getAllRecipes }
 
 export function totalRecipeMaterialCount(recipe: RecipeDef): number {
   return Object.values(recipe.requires.materials).reduce((sum, qty) => sum + qty, 0)
@@ -70,7 +44,7 @@ export function isRecipeUnlocked(state: GameState, recipe: RecipeDef): boolean {
 }
 
 export function getRecipeCatalogForNpc(state: GameState, npcId: string): RecipeDef[] {
-  return filterRecipeCatalog(RECIPES, npcId, (r) => passesRecipePrerequisites(state, r))
+  return filterRecipeCatalog(getAllRecipes(), npcId, (r) => passesRecipePrerequisites(state, r))
 }
 
 export function getRecipesForNpc(state: GameState, npcId: string): RecipeDef[] {
@@ -89,7 +63,7 @@ export function canUnlockProfessionTier(
   profession: import('./Professions').ProfessionId,
   tier: number
 ): boolean {
-  return canUnlockProfessionTierCore(state, profession, tier, RECIPES)
+  return canUnlockProfessionTierCore(state, profession, tier, getAllRecipes())
 }
 
 export function canPurchaseRecipe(state: GameState, recipeId: string): boolean {
@@ -110,5 +84,5 @@ export function unlockProfessionTier(
   profession: import('./Professions').ProfessionId,
   tier: number
 ): GameState {
-  return unlockProfessionTierCore(state, profession, tier, RECIPES)
+  return unlockProfessionTierCore(state, profession, tier, getAllRecipes())
 }

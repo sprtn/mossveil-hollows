@@ -6,24 +6,9 @@ import type { GameState } from './GameLoopDesign'
 import type { BuildingDef } from './ContentSchemas'
 import { applyOutcomes } from './Outcomes'
 import { hasMaterials, spendMaterials } from './Materials'
+import { getBuilding, getAllBuildings } from './admin/ContentRegistry'
 
-import loggingCamp from '../assets/buildings/logging_camp.json'
-import workbench from '../assets/buildings/workbench.json'
-import house from '../assets/buildings/house.json'
-
-const BUILDINGS: BuildingDef[] = [
-  loggingCamp as BuildingDef,
-  workbench as BuildingDef,
-  house as BuildingDef,
-]
-
-export function getAllBuildings(): BuildingDef[] {
-  return BUILDINGS
-}
-
-export function getBuilding(id: string): BuildingDef | undefined {
-  return BUILDINGS.find((b) => b.id === id)
-}
+export { getBuilding, getAllBuildings }
 
 export function getBuildingLevel(state: GameState, buildingId: string): number {
   return state.townBuildings?.[buildingId] ?? 0
