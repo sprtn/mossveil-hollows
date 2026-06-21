@@ -11,6 +11,8 @@ import {
   getAllBuildings,
   getSkill,
   getAllSkills,
+  getEncounterTemplate,
+  getAllEncounterTemplates,
   refreshContentRegistry,
 } from '../../admin/ContentRegistry'
 import { refreshItemDatabase, getItemTemplate as getItemFromDatabase } from '../../ItemDatabase'
@@ -125,11 +127,41 @@ describe('ContentRegistry items, events, recipes, buildings, skills', () => {
     expect(getSkill('skill_empowered_strike')?.name).toBe('Overlay Strike')
   })
 
+  it('loads shipped forest_ambush encounter template', () => {
+    const enemies = getEncounterTemplate('forest_ambush')
+    expect(enemies?.length).toBe(1)
+    expect(enemies?.[0]?.name).toBe('Bandit Scout')
+  })
+
+  it('overlay upsert overrides base encounter template enemy name', () => {
+    const base = getEncounterTemplate('forest_ambush')!
+    const overlayEnemies = base.map((e, i) => (i === 0 ? { ...e, name: 'Overlay Bandit' } : e))
+    let overlay = createEmptyOverlay()
+    overlay = {
+      ...overlay,
+      upserts: {
+        ...overlay.upserts,
+        encounterTemplates: { forest_ambush: overlayEnemies },
+      },
+    }
+    saveOverlay(overlay)
+    refreshContentRegistry()
+    expect(getEncounterTemplate('forest_ambush')?.[0]?.name).toBe('Overlay Bandit')
+  })
+
+  it('deleted id hides base encounter template', () => {
+    let overlay = markDeleted(createEmptyOverlay(), 'encounterTemplates', 'forest_ambush')
+    saveOverlay(overlay)
+    refreshContentRegistry()
+    expect(getAllEncounterTemplates().some((t) => t.id === 'forest_ambush')).toBe(false)
+  })
+
   it('getAll* return base content counts', () => {
     expect(getAllItems().length).toBeGreaterThanOrEqual(39)
     expect(getAllEvents().length).toBeGreaterThanOrEqual(8)
     expect(getAllRecipes().length).toBeGreaterThanOrEqual(8)
     expect(getAllBuildings().length).toBeGreaterThanOrEqual(3)
     expect(getAllSkills().length).toBeGreaterThanOrEqual(19)
+    expect(getAllEncounterTemplates().length).toBeGreaterThanOrEqual(1)
   })
 })

@@ -57,7 +57,9 @@ interface EntityItem {
 }
 
 /** Content types that have base JSON asset files (vs overlay-only types like questlines). */
-const HAS_BASE_ASSETS = new Set<ContentType>(['rooms', 'npcs', 'quests', 'dialogues'])
+const HAS_BASE_ASSETS = new Set<ContentType>([
+  'rooms', 'npcs', 'quests', 'dialogues', 'encounterTemplates',
+])
 
 const entityItems = ref<EntityItem[]>([])
 

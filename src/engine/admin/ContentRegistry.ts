@@ -2,7 +2,7 @@ import type { Room } from '../RoomSystem'
 import type {
   NpcDef, QuestDef, QuestlineDef, DialogueDef, EventCard, RecipeDef, BuildingDef, SkillDef,
 } from '../ContentSchemas'
-import type { ItemTemplate } from '../GameLoopDesign'
+import type { ItemTemplate, Enemy } from '../GameLoopDesign'
 import { loadOverlay } from './ContentOverlayStore'
 import type { ContentEntityMap, ContentOverlayState, ContentType } from './ContentOverlayTypes'
 
@@ -15,6 +15,10 @@ const eventModules = import.meta.glob<{ default: EventCard }>('../../assets/even
 const recipeModules = import.meta.glob<{ default: RecipeDef }>('../../assets/recipes/*.json', { eager: true })
 const buildingModules = import.meta.glob<{ default: BuildingDef }>('../../assets/buildings/*.json', { eager: true })
 const skillModules = import.meta.glob<{ default: SkillDef }>('../../assets/skills/*.json', { eager: true })
+const encounterModules = import.meta.glob<{ default: Enemy[] | { id: string; enemies: Enemy[] } }>(
+  '../../assets/encounters/*.json',
+  { eager: true },
+)
 
 function loadBaseRooms(): Record<string, Room> {
   const map: Record<string, Room> = {}
@@ -97,6 +101,25 @@ function loadBaseSkills(): Record<string, SkillDef> {
   return map
 }
 
+function encounterIdFromPath(path: string): string | undefined {
+  return path.match(/\/([^/]+)\.json$/)?.[1]
+}
+
+function normalizeEncounterTemplate(data: Enemy[] | { id: string; enemies: Enemy[] }): Enemy[] {
+  if (Array.isArray(data)) return data
+  return data.enemies
+}
+
+function loadBaseEncounterTemplates(): Record<string, Enemy[]> {
+  const map: Record<string, Enemy[]> = {}
+  for (const [path, mod] of Object.entries(encounterModules)) {
+    const id = encounterIdFromPath(path)
+    if (!id) continue
+    map[id] = normalizeEncounterTemplate(mod.default)
+  }
+  return map
+}
+
 function mergeMaps<K extends ContentType>(
   base: Record<string, ContentEntityMap[K]>,
   overlay: ContentOverlayState,
@@ -116,6 +139,7 @@ let baseEvents: Record<string, EventCard> = {}
 let baseRecipes: Record<string, RecipeDef> = {}
 let baseBuildings: Record<string, BuildingDef> = {}
 let baseSkills: Record<string, SkillDef> = {}
+let baseEncounterTemplates: Record<string, Enemy[]> = {}
 let effectiveRooms: Record<string, Room> = {}
 let effectiveNpcs: Record<string, NpcDef> = {}
 let effectiveQuests: Record<string, QuestDef> = {}
@@ -125,6 +149,7 @@ let effectiveEvents: Record<string, EventCard> = {}
 let effectiveRecipes: Record<string, RecipeDef> = {}
 let effectiveBuildings: Record<string, BuildingDef> = {}
 let effectiveSkills: Record<string, SkillDef> = {}
+let effectiveEncounterTemplates: Record<string, Enemy[]> = {}
 let initialized = false
 
 export function initContentRegistry(): void {
@@ -137,6 +162,7 @@ export function initContentRegistry(): void {
   baseRecipes = loadBaseRecipes()
   baseBuildings = loadBaseBuildings()
   baseSkills = loadBaseSkills()
+  baseEncounterTemplates = loadBaseEncounterTemplates()
   initialized = true
   refreshContentRegistry()
 }
@@ -152,6 +178,7 @@ export function refreshContentRegistry(): void {
     baseRecipes = loadBaseRecipes()
     baseBuildings = loadBaseBuildings()
     baseSkills = loadBaseSkills()
+    baseEncounterTemplates = loadBaseEncounterTemplates()
     initialized = true
   }
   const overlay = loadOverlay()
@@ -164,6 +191,7 @@ export function refreshContentRegistry(): void {
   effectiveRecipes = mergeMaps(baseRecipes, overlay, 'recipes')
   effectiveBuildings = mergeMaps(baseBuildings, overlay, 'buildings')
   effectiveSkills = mergeMaps(baseSkills, overlay, 'skills')
+  effectiveEncounterTemplates = mergeMaps(baseEncounterTemplates, overlay, 'encounterTemplates')
 }
 
 export function getRoom(id: string): Room | undefined {
@@ -256,6 +284,18 @@ export function getAllSkills(): SkillDef[] {
   return Object.values(effectiveSkills)
 }
 
+export function getEncounterTemplate(id: string): Enemy[] | undefined {
+  if (!initialized) initContentRegistry()
+  const enemies = effectiveEncounterTemplates[id]
+  if (!enemies) return undefined
+  return enemies.map((e) => ({ ...e, statusEffects: e.statusEffects ?? [] }))
+}
+
+export function getAllEncounterTemplates(): { id: string; enemies: Enemy[] }[] {
+  if (!initialized) initContentRegistry()
+  return Object.entries(effectiveEncounterTemplates).map(([id, enemies]) => ({ id, enemies }))
+}
+
 export function getAllQuestlines(): QuestlineDef[] {
   return Object.values(getEffectiveMap('questlines')) as QuestlineDef[]
 }
@@ -281,6 +321,8 @@ export function getEffectiveMap<K extends ContentType>(type: K): Record<string, 
       return effectiveBuildings as Record<string, ContentEntityMap[K]>
     case 'skills':
       return effectiveSkills as Record<string, ContentEntityMap[K]>
+    case 'encounterTemplates':
+      return effectiveEncounterTemplates as Record<string, ContentEntityMap[K]>
     default: {
       const overlay = loadOverlay()
       return mergeMaps({} as Record<string, ContentEntityMap[K]>, overlay, type)

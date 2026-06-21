@@ -8,7 +8,7 @@ import { applyOutcomes, meetsRequirements } from './Outcomes'
 import { triggerEncounter } from './GameLoop'
 import type { Enemy } from './GameLoopDesign'
 import { SeededRandom } from './CombatEngine'
-import { getEvent, getAllEvents } from './admin/ContentRegistry'
+import { getEvent, getAllEvents, getEncounterTemplate } from './admin/ContentRegistry'
 import { forfeitPendingGather } from './GatherDanger'
 
 function explorationEvents(): EventCard[] {
@@ -19,30 +19,8 @@ function gatherHazardEvents(): EventCard[] {
   return getAllEvents().filter((e) => e.gatherHazard)
 }
 
-/** Enemy templates for event-triggered combat */
-const ENCOUNTER_TEMPLATES: Record<string, Enemy[]> = {
-  forest_ambush: [
-    {
-      id: 'ambush_bandit',
-      name: 'Bandit Scout',
-      hp: 26,
-      maxHp: 26,
-      level: 2,
-      stats: { strength: 13, defense: 3, constitution: 8, dexterity: 6, agility: 7 },
-      archetype: 'attacker',
-      xpReward: 40,
-      goldReward: 8,
-      loot: [
-        { templateId: 'cloth_scrap', quantity: 1, chance: 0.65 },
-        { templateId: 'rusty_shortsword', quantity: 1, chance: 0.06 },
-      ],
-    },
-  ],
-}
-
 export function getEnemyEncounter(encounterId: string): Enemy[] {
-  const enemies = ENCOUNTER_TEMPLATES[encounterId]
-  return enemies ? enemies.map((e) => ({ ...e, statusEffects: e.statusEffects ?? [] })) : []
+  return getEncounterTemplate(encounterId) ?? []
 }
 
 export function getEventCard(eventId: string): EventCard | undefined {

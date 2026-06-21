@@ -113,6 +113,17 @@
                 @deleted="onEntityDeleted"
               />
             </template>
+            <template v-else-if="selectedType === 'encounterTemplates'">
+              <EncounterTemplateForm
+                ref="encounterTemplateForm"
+                :template-id="selectedEntityId"
+                :base-ids="encounterTemplateBaseIds"
+                :overlay-ids="encounterTemplateOverlayIds"
+                :all-templates="allEncounterTemplates"
+                @saved="onEntitySaved"
+                @deleted="onEntityDeleted"
+              />
+            </template>
             <template v-else>
               <p v-if="!selectedType" class="empty">Select a type to edit</p>
               <p v-else class="empty">Detail form stub ({{ selectedType }})</p>
@@ -140,6 +151,7 @@ import {
   getAllQuests,
   getAllDialogues,
   getAllQuestlines,
+  getAllEncounterTemplates,
   refreshContentRegistry,
 } from '@/engine/admin/ContentRegistry'
 import type { Room } from '@/engine/RoomSystem'
@@ -150,6 +162,8 @@ import NpcForm from './forms/NpcForm.vue'
 import QuestForm from './forms/QuestForm.vue'
 import QuestlineForm from './forms/QuestlineForm.vue'
 import DialogueForm from './forms/DialogueForm.vue'
+import EncounterTemplateForm from './forms/EncounterTemplateForm.vue'
+import type { EncounterTemplateEntry } from './forms/EncounterTemplateForm.vue'
 
 const open = defineModel<boolean>('open', { default: false })
 
@@ -163,6 +177,7 @@ const npcForm = useTemplateRef<InstanceType<typeof NpcForm>>('npcForm')
 const questForm = useTemplateRef<InstanceType<typeof QuestForm>>('questForm')
 const questlineForm = useTemplateRef<InstanceType<typeof QuestlineForm>>('questlineForm')
 const dialogueForm = useTemplateRef<InstanceType<typeof DialogueForm>>('dialogueForm')
+const encounterTemplateForm = useTemplateRef<InstanceType<typeof EncounterTemplateForm>>('encounterTemplateForm')
 
 // Rooms
 const allRooms = ref<Room[]>([])
@@ -193,6 +208,11 @@ const questlineOverlayIds = ref<Set<string>>(new Set())
 const allDialogues = ref<DialogueDef[]>([])
 const dialogueBaseIds = ref<Set<string>>(new Set())
 const dialogueOverlayIds = ref<Set<string>>(new Set())
+
+// Encounter templates
+const allEncounterTemplates = ref<EncounterTemplateEntry[]>([])
+const encounterTemplateBaseIds = ref<Set<string>>(new Set())
+const encounterTemplateOverlayIds = ref<Set<string>>(new Set())
 
 const dialogueOptions = computed<{ id: string; label: string }[]>(() => {
   const source = allDialogues.value.length ? allDialogues.value : getAllDialogues()
@@ -257,12 +277,23 @@ function syncDialogueData() {
   dialogueOverlayIds.value = overlayIds
 }
 
+function syncEncounterTemplateData() {
+  refreshContentRegistry()
+  allEncounterTemplates.value = getAllEncounterTemplates()
+  const overlay = loadOverlay()
+  const oIds = new Set(Object.keys(overlay.upserts.encounterTemplates))
+  const { baseIds, overlayIds } = computeIdSets(allEncounterTemplates.value, oIds)
+  encounterTemplateBaseIds.value = baseIds
+  encounterTemplateOverlayIds.value = overlayIds
+}
+
 function syncDataForType(type: ContentType | null) {
   if (type === 'rooms') syncRoomData()
   else if (type === 'npcs') syncNpcData()
   else if (type === 'quests') syncQuestData()
   else if (type === 'questlines') syncQuestlineData()
   else if (type === 'dialogues') syncDialogueData()
+  else if (type === 'encounterTemplates') syncEncounterTemplateData()
 }
 
 function onSelectEntity(id: string) {
@@ -277,6 +308,7 @@ function onCreateEntity() {
   else if (type === 'quests') questForm.value?.createNew()
   else if (type === 'questlines') questlineForm.value?.createNew()
   else if (type === 'dialogues') dialogueForm.value?.createNew()
+  else if (type === 'encounterTemplates') encounterTemplateForm.value?.createNew()
 }
 
 function onEntitySaved() {
