@@ -1,4 +1,6 @@
 /** Game-wide constants */
+export const DEV_ADMIN_ENABLED = import.meta.env.DEV
+
 export const GAME_TITLE = 'Mossveil Hollow: Shards of the Shadow'
 export const GAME_TITLE_MAIN = 'Mossveil Hollow'
 export const GAME_TITLE_SUB = 'Shards of the Shadow'
