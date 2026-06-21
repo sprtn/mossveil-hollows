@@ -1,45 +1,39 @@
 <template>
   <div class="admin-entity-list">
-    <template v-if="contentType === 'rooms'">
-      <div class="list-toolbar">
-        <input
-          v-model="search"
-          type="text"
-          class="list-search"
-          placeholder="Search rooms…"
-          @input="selectedId = null"
-        />
-        <button type="button" class="btn btn-primary btn-sm" @click="createNew">+ New</button>
-      </div>
-      <div v-if="filteredRooms.length === 0" class="list-empty">No rooms found.</div>
-      <ul v-else class="list-items" role="listbox">
-        <li
-          v-for="item in filteredRooms"
-          :key="item.room.id"
-          role="option"
-          :aria-selected="selectedId === item.room.id"
-          class="list-item"
-          :class="{ active: selectedId === item.room.id }"
-          @click="select(item.room.id)"
-        >
-          <span class="item-name">{{ item.room.name || item.room.id }}</span>
-          <span class="item-id">{{ item.room.id }}</span>
-          <span class="badge" :class="`badge-${item.badge}`">{{ item.badge }}</span>
-        </li>
-      </ul>
-    </template>
-    <template v-else>
-      <p v-if="!contentType" class="empty">Select a type</p>
-      <p v-else class="empty">Entity list stub ({{ contentType }})</p>
-    </template>
+    <div class="list-toolbar">
+      <input
+        v-model="search"
+        type="text"
+        class="list-search"
+        :placeholder="`Search ${contentType ?? ''}…`"
+        @input="selectedId = null"
+      />
+      <button type="button" class="btn btn-primary btn-sm" @click="createNew">+ New</button>
+    </div>
+    <div v-if="!contentType" class="list-empty">Select a type.</div>
+    <div v-else-if="filteredItems.length === 0" class="list-empty">No {{ contentType }} found.</div>
+    <ul v-else class="list-items" role="listbox">
+      <li
+        v-for="item in filteredItems"
+        :key="item.id"
+        role="option"
+        :aria-selected="selectedId === item.id"
+        class="list-item"
+        :class="{ active: selectedId === item.id }"
+        @click="select(item.id)"
+      >
+        <span class="item-name">{{ item.name || item.id }}</span>
+        <span class="item-id">{{ item.id }}</span>
+        <span class="badge" :class="`badge-${item.badge}`">{{ item.badge }}</span>
+      </li>
+    </ul>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { ContentType } from '@/engine/admin/ContentOverlayTypes'
-import type { Room } from '@/engine/RoomSystem'
-import { getAllRooms, refreshContentRegistry } from '@/engine/admin/ContentRegistry'
+import { getEffectiveMap, refreshContentRegistry } from '@/engine/admin/ContentRegistry'
 import { loadOverlay } from '@/engine/admin/ContentOverlayStore'
 
 const props = defineProps<{
@@ -54,63 +48,65 @@ const emit = defineEmits<{
 const search = ref('')
 const selectedId = ref<string | null>(null)
 
-type RoomBadge = 'base' | 'overlay' | 'modified'
+type Badge = 'base' | 'overlay' | 'modified'
 
-interface RoomItem {
-  room: Room
-  badge: RoomBadge
+interface EntityItem {
+  id: string
+  name: string
+  badge: Badge
 }
 
-const roomItems = ref<RoomItem[]>([])
-const overlayOnlyIds = ref<Set<string>>(new Set())
+/** Content types that have base JSON asset files (vs overlay-only types like questlines). */
+const HAS_BASE_ASSETS = new Set<ContentType>(['rooms', 'npcs', 'quests', 'dialogues'])
 
-function refreshRooms() {
-  const overlay = loadOverlay()
-  const overlayUpsertIds = new Set(Object.keys(overlay.upserts.rooms))
+const entityItems = ref<EntityItem[]>([])
+
+function refreshList() {
+  const type = props.contentType
+  if (!type) {
+    entityItems.value = []
+    return
+  }
 
   refreshContentRegistry()
-  const allRooms = getAllRooms()
-  const allIds = new Set(allRooms.map((r) => r.id))
+  const overlay = loadOverlay()
+  const overlayUpsertIds = new Set(Object.keys(overlay.upserts[type] ?? {}))
+  const effectiveMap = getEffectiveMap(type)
 
-  const baseIds = new Set<string>()
-  for (const id of allIds) {
-    if (!overlayUpsertIds.has(id)) {
-      baseIds.add(id)
-    }
-  }
+  const hasBase = HAS_BASE_ASSETS.has(type)
 
-  overlayOnlyIds.value = new Set<string>()
-  for (const id of overlayUpsertIds) {
-    if (!baseIds.has(id)) {
-      overlayOnlyIds.value.add(id)
+  const items: EntityItem[] = Object.entries(effectiveMap).map(([id, entity]) => {
+    const e = entity as { id: string; name?: string }
+    const inOverlay = overlayUpsertIds.has(id)
+    let badge: Badge
+    if (!inOverlay) {
+      badge = 'base'
+    } else if (hasBase) {
+      badge = 'modified'
+    } else {
+      badge = 'overlay'
     }
-  }
-
-  roomItems.value = allRooms.map((room) => {
-    let badge: RoomBadge = 'base'
-    if (overlayUpsertIds.has(room.id)) {
-      if (overlayOnlyIds.value.has(room.id)) {
-        badge = 'overlay'
-      } else {
-        badge = 'modified'
-      }
-    }
-    return { room, badge }
+    return { id, name: e.name ?? id, badge }
   })
+
+  entityItems.value = items
 }
 
-watch(() => props.contentType, (type) => {
-  if (type === 'rooms') refreshRooms()
-}, { immediate: true })
+watch(
+  () => props.contentType,
+  () => {
+    search.value = ''
+    selectedId.value = null
+    refreshList()
+  },
+  { immediate: true }
+)
 
-const filteredRooms = computed(() => {
+const filteredItems = computed(() => {
   const q = search.value.toLowerCase()
-  if (!q) return roomItems.value
-  return roomItems.value.filter(
-    (item) =>
-      item.room.id.toLowerCase().includes(q) ||
-      item.room.name.toLowerCase().includes(q) ||
-      (item.room.zoneId ?? '').toLowerCase().includes(q)
+  if (!q) return entityItems.value
+  return entityItems.value.filter(
+    (item) => item.id.toLowerCase().includes(q) || item.name.toLowerCase().includes(q)
   )
 })
 
@@ -124,7 +120,7 @@ function createNew() {
   emit('create')
 }
 
-defineExpose({ refresh: refreshRooms, selectedId })
+defineExpose({ refresh: refreshList, selectedId })
 </script>
 
 <style scoped>
@@ -248,13 +244,5 @@ defineExpose({ refresh: refreshRooms, selectedId })
   background: rgba(212, 168, 75, 0.12);
   color: var(--color-warning, #d4a84b);
   border: 1px solid rgba(212, 168, 75, 0.25);
-}
-
-.empty {
-  padding: 20px;
-  text-align: center;
-  color: var(--color-text-soft);
-  font-style: italic;
-  font-size: 13px;
 }
 </style>

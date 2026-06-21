@@ -337,6 +337,15 @@ export interface SkillDef {
   outOfCombat?: SkillOutOfCombatDef
 }
 
+export interface QuestlineDef {
+  id: string
+  name: string
+  description?: string
+  questIds: string[]
+  requiredQuestIds?: string[]
+  startFlag?: string
+}
+
 export interface ActiveEventState {
   eventId: string
   title: string

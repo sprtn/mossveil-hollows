@@ -49,8 +49,8 @@
             <AdminEntityList
               ref="entityList"
               :content-type="selectedType"
-              @select="onSelectRoom"
-              @create="onCreateRoom"
+              @select="onSelectEntity"
+              @create="onCreateEntity"
             />
           </section>
 
@@ -58,13 +58,47 @@
             <template v-if="selectedType === 'rooms'">
               <RoomForm
                 ref="roomForm"
-                :room-id="selectedRoomId"
+                :room-id="selectedEntityId"
                 :base-ids="roomBaseIds"
                 :overlay-ids="roomOverlayIds"
                 :room-options="roomOptions"
                 :all-rooms="allRooms"
-                @saved="onRoomSaved"
-                @deleted="onRoomDeleted"
+                @saved="onEntitySaved"
+                @deleted="onEntityDeleted"
+              />
+            </template>
+            <template v-else-if="selectedType === 'npcs'">
+              <NpcForm
+                ref="npcForm"
+                :npc-id="selectedEntityId"
+                :base-ids="npcBaseIds"
+                :overlay-ids="npcOverlayIds"
+                :all-npcs="allNpcs"
+                :dialogue-options="dialogueOptions"
+                @saved="onEntitySaved"
+                @deleted="onEntityDeleted"
+              />
+            </template>
+            <template v-else-if="selectedType === 'quests'">
+              <QuestForm
+                ref="questForm"
+                :quest-id="selectedEntityId"
+                :base-ids="questBaseIds"
+                :overlay-ids="questOverlayIds"
+                :all-quests="allQuests"
+                @saved="onEntitySaved"
+                @deleted="onEntityDeleted"
+              />
+            </template>
+            <template v-else-if="selectedType === 'questlines'">
+              <QuestlineForm
+                ref="questlineForm"
+                :questline-id="selectedEntityId"
+                :overlay-ids="questlineOverlayIds"
+                :all-questlines="allQuestlines"
+                :quest-options="questOptions"
+                @saved="onEntitySaved"
+                @deleted="onEntityDeleted"
               />
             </template>
             <template v-else>
@@ -88,59 +122,141 @@ import {
   resetOverlay,
 } from '@/engine/admin/ContentOverlayStore'
 import { OVERLAY_BUNDLE_VERSION, type ContentOverlayBundle, type ContentType } from '@/engine/admin/ContentOverlayTypes'
-import { getAllRooms, refreshContentRegistry } from '@/engine/admin/ContentRegistry'
+import {
+  getAllRooms,
+  getAllNpcs,
+  getAllQuests,
+  getAllDialogues,
+  getAllQuestlines,
+  refreshContentRegistry,
+} from '@/engine/admin/ContentRegistry'
 import type { Room } from '@/engine/RoomSystem'
+import type { NpcDef, QuestDef, QuestlineDef } from '@/engine/ContentSchemas'
 import AdminEntityList from './AdminEntityList.vue'
 import RoomForm from './forms/RoomForm.vue'
+import NpcForm from './forms/NpcForm.vue'
+import QuestForm from './forms/QuestForm.vue'
+import QuestlineForm from './forms/QuestlineForm.vue'
 
 const open = defineModel<boolean>('open', { default: false })
 
 const selectedType = ref<ContentType | null>(null)
+const selectedEntityId = ref<string | null>(null)
 const importInput = useTemplateRef<HTMLInputElement>('importInput')
 const dirtyTick = ref(0)
 const entityList = useTemplateRef<InstanceType<typeof AdminEntityList>>('entityList')
 const roomForm = useTemplateRef<InstanceType<typeof RoomForm>>('roomForm')
+const npcForm = useTemplateRef<InstanceType<typeof NpcForm>>('npcForm')
+const questForm = useTemplateRef<InstanceType<typeof QuestForm>>('questForm')
+const questlineForm = useTemplateRef<InstanceType<typeof QuestlineForm>>('questlineForm')
 
-const selectedRoomId = ref<string | null>(null)
+// Rooms
 const allRooms = ref<Room[]>([])
 const roomBaseIds = ref<Set<string>>(new Set())
 const roomOverlayIds = ref<Set<string>>(new Set())
-
 const roomOptions = computed<{ id: string; label: string }[]>(() =>
   allRooms.value.map((r) => ({ id: r.id, label: r.name || r.id }))
 )
+
+// NPCs
+const allNpcs = ref<NpcDef[]>([])
+const npcBaseIds = ref<Set<string>>(new Set())
+const npcOverlayIds = ref<Set<string>>(new Set())
+
+// Quests
+const allQuests = ref<QuestDef[]>([])
+const questBaseIds = ref<Set<string>>(new Set())
+const questOverlayIds = ref<Set<string>>(new Set())
+const questOptions = computed<{ id: string; label: string }[]>(() =>
+  allQuests.value.map((q) => ({ id: q.id, label: q.name || q.id }))
+)
+
+// Questlines
+const allQuestlines = ref<QuestlineDef[]>([])
+const questlineOverlayIds = ref<Set<string>>(new Set())
+
+// Dialogues (options for NpcForm)
+const dialogueOptions = computed<{ id: string; label: string }[]>(() =>
+  getAllDialogues().map((d) => ({ id: d.id, label: d.npcId ? `(npc: ${d.npcId})` : d.id }))
+)
+
+function computeIdSets(
+  allEntities: { id: string }[],
+  overlayUpsertIds: Set<string>,
+): { baseIds: Set<string>; overlayIds: Set<string> } {
+  const baseIds = new Set<string>()
+  for (const e of allEntities) {
+    if (!overlayUpsertIds.has(e.id)) baseIds.add(e.id)
+  }
+  return { baseIds, overlayIds: overlayUpsertIds }
+}
 
 function syncRoomData() {
   refreshContentRegistry()
   allRooms.value = getAllRooms()
   const overlay = loadOverlay()
   const oIds = new Set(Object.keys(overlay.upserts.rooms))
-  roomOverlayIds.value = oIds
-  const bIds = new Set<string>()
-  for (const r of allRooms.value) {
-    if (!oIds.has(r.id)) bIds.add(r.id)
-  }
-  roomBaseIds.value = bIds
+  const { baseIds, overlayIds } = computeIdSets(allRooms.value, oIds)
+  roomBaseIds.value = baseIds
+  roomOverlayIds.value = overlayIds
 }
 
-function onSelectRoom(id: string) {
-  selectedRoomId.value = id
+function syncNpcData() {
+  refreshContentRegistry()
+  allNpcs.value = getAllNpcs()
+  const overlay = loadOverlay()
+  const oIds = new Set(Object.keys(overlay.upserts.npcs))
+  const { baseIds, overlayIds } = computeIdSets(allNpcs.value, oIds)
+  npcBaseIds.value = baseIds
+  npcOverlayIds.value = overlayIds
 }
 
-function onCreateRoom() {
-  selectedRoomId.value = null
-  roomForm.value?.createNew()
+function syncQuestData() {
+  refreshContentRegistry()
+  allQuests.value = getAllQuests()
+  const overlay = loadOverlay()
+  const oIds = new Set(Object.keys(overlay.upserts.quests))
+  const { baseIds, overlayIds } = computeIdSets(allQuests.value, oIds)
+  questBaseIds.value = baseIds
+  questOverlayIds.value = overlayIds
 }
 
-function onRoomSaved() {
-  syncRoomData()
+function syncQuestlineData() {
+  refreshContentRegistry()
+  allQuestlines.value = getAllQuestlines()
+  const overlay = loadOverlay()
+  questlineOverlayIds.value = new Set(Object.keys(overlay.upserts.questlines))
+}
+
+function syncDataForType(type: ContentType | null) {
+  if (type === 'rooms') syncRoomData()
+  else if (type === 'npcs') syncNpcData()
+  else if (type === 'quests') syncQuestData()
+  else if (type === 'questlines') syncQuestlineData()
+}
+
+function onSelectEntity(id: string) {
+  selectedEntityId.value = id
+}
+
+function onCreateEntity() {
+  selectedEntityId.value = null
+  const type = selectedType.value
+  if (type === 'rooms') roomForm.value?.createNew()
+  else if (type === 'npcs') npcForm.value?.createNew()
+  else if (type === 'quests') questForm.value?.createNew()
+  else if (type === 'questlines') questlineForm.value?.createNew()
+}
+
+function onEntitySaved() {
+  syncDataForType(selectedType.value)
   entityList.value?.refresh()
   refreshDirty()
 }
 
-function onRoomDeleted() {
-  selectedRoomId.value = null
-  syncRoomData()
+function onEntityDeleted() {
+  selectedEntityId.value = null
+  syncDataForType(selectedType.value)
   entityList.value?.refresh()
   refreshDirty()
 }
@@ -200,6 +316,8 @@ async function handleImport(event: Event) {
     }
     importBundle(bundle)
     refreshContentRegistry()
+    syncDataForType(selectedType.value)
+    entityList.value?.refresh()
     refreshDirty()
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to import overlay bundle'
@@ -213,19 +331,21 @@ function handleReset() {
   if (!window.confirm('Reset all content overlay changes? This cannot be undone.')) return
   resetOverlay()
   refreshContentRegistry()
+  syncDataForType(selectedType.value)
+  entityList.value?.refresh()
   refreshDirty()
 }
 
 watch(open, (isOpen) => {
   if (isOpen) {
     refreshDirty()
-    syncRoomData()
+    syncDataForType(selectedType.value)
   }
 })
 
 watch(selectedType, (type) => {
-  selectedRoomId.value = null
-  if (type === 'rooms') syncRoomData()
+  selectedEntityId.value = null
+  syncDataForType(type)
 })
 </script>
 

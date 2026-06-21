@@ -1,5 +1,5 @@
 import type { Room } from '../RoomSystem'
-import type { NpcDef, QuestDef, DialogueDef } from '../ContentSchemas'
+import type { NpcDef, QuestDef, QuestlineDef, DialogueDef } from '../ContentSchemas'
 import { loadOverlay } from './ContentOverlayStore'
 import type { ContentEntityMap, ContentOverlayState, ContentType } from './ContentOverlayTypes'
 
@@ -126,6 +126,10 @@ export function getDialogue(id: string): DialogueDef | undefined {
 export function getAllDialogues(): DialogueDef[] {
   if (!initialized) initContentRegistry()
   return Object.values(effectiveDialogues)
+}
+
+export function getAllQuestlines(): QuestlineDef[] {
+  return Object.values(getEffectiveMap('questlines')) as QuestlineDef[]
 }
 
 export function getEffectiveMap<K extends ContentType>(type: K): Record<string, ContentEntityMap[K]> {

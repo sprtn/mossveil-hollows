@@ -1,20 +1,13 @@
 import type { Room } from '../RoomSystem'
 import type {
-  NpcDef, QuestDef, DialogueDef, EventCard, RecipeDef, BuildingDef, SkillDef,
+  NpcDef, QuestDef, QuestlineDef, DialogueDef, EventCard, RecipeDef, BuildingDef, SkillDef,
 } from '../ContentSchemas'
 import type { ItemTemplate, Enemy } from '../GameLoopDesign'
 
+export type { QuestlineDef }
+
 export const OVERLAY_BUNDLE_VERSION = 1 as const
 export const OVERLAY_STORAGE_KEY = 'strat_content_overlay_v1'
-
-export interface QuestlineDef {
-  id: string
-  name: string
-  description?: string
-  questIds: string[]
-  requiredQuestIds?: string[]
-  startFlag?: string
-}
 
 export type ContentType =
   | 'rooms' | 'npcs' | 'quests' | 'questlines' | 'dialogues'
