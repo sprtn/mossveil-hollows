@@ -3,7 +3,6 @@
  */
 
 import type { GameState } from './GameLoopDesign'
-import type { BuildingDef } from './ContentSchemas'
 import { applyOutcomes } from './Outcomes'
 import { hasMaterials, spendMaterials } from './Materials'
 import { getBuilding, getAllBuildings } from './admin/ContentRegistry'
