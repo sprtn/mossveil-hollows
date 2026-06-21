@@ -124,6 +124,61 @@
                 @deleted="onEntityDeleted"
               />
             </template>
+            <template v-else-if="selectedType === 'items'">
+              <ItemForm
+                ref="itemForm"
+                :item-id="selectedEntityId"
+                :base-ids="itemBaseIds"
+                :overlay-ids="itemOverlayIds"
+                :all-items="allItems"
+                @saved="onEntitySaved"
+                @deleted="onEntityDeleted"
+              />
+            </template>
+            <template v-else-if="selectedType === 'events'">
+              <EventForm
+                ref="eventForm"
+                :event-id="selectedEntityId"
+                :base-ids="eventBaseIds"
+                :overlay-ids="eventOverlayIds"
+                :all-events="allEvents"
+                @saved="onEntitySaved"
+                @deleted="onEntityDeleted"
+              />
+            </template>
+            <template v-else-if="selectedType === 'recipes'">
+              <RecipeForm
+                ref="recipeForm"
+                :recipe-id="selectedEntityId"
+                :base-ids="recipeBaseIds"
+                :overlay-ids="recipeOverlayIds"
+                :all-recipes="allRecipes"
+                @saved="onEntitySaved"
+                @deleted="onEntityDeleted"
+              />
+            </template>
+            <template v-else-if="selectedType === 'buildings'">
+              <BuildingForm
+                ref="buildingForm"
+                :building-id="selectedEntityId"
+                :base-ids="buildingBaseIds"
+                :overlay-ids="buildingOverlayIds"
+                :all-buildings="allBuildings"
+                @saved="onEntitySaved"
+                @deleted="onEntityDeleted"
+              />
+            </template>
+            <template v-else-if="selectedType === 'skills'">
+              <SkillForm
+                ref="skillForm"
+                :skill-id="selectedEntityId"
+                :base-ids="skillBaseIds"
+                :overlay-ids="skillOverlayIds"
+                :all-skills="allSkills"
+                @saved="onEntitySaved"
+                @deleted="onEntityDeleted"
+              />
+            </template>
             <template v-else>
               <p v-if="!selectedType" class="empty">Select a type to edit</p>
               <p v-else class="empty">Detail form stub ({{ selectedType }})</p>
@@ -152,10 +207,16 @@ import {
   getAllDialogues,
   getAllQuestlines,
   getAllEncounterTemplates,
+  getAllItems,
+  getAllEvents,
+  getAllRecipes,
+  getAllBuildings,
+  getAllSkills,
   refreshContentRegistry,
 } from '@/engine/admin/ContentRegistry'
 import type { Room } from '@/engine/RoomSystem'
-import type { NpcDef, QuestDef, QuestlineDef, DialogueDef } from '@/engine/ContentSchemas'
+import type { NpcDef, QuestDef, QuestlineDef, DialogueDef, EventCard, RecipeDef, BuildingDef, SkillDef } from '@/engine/ContentSchemas'
+import type { ItemTemplate } from '@/engine/GameLoopDesign'
 import AdminEntityList from './AdminEntityList.vue'
 import RoomForm from './forms/RoomForm.vue'
 import NpcForm from './forms/NpcForm.vue'
@@ -163,6 +224,11 @@ import QuestForm from './forms/QuestForm.vue'
 import QuestlineForm from './forms/QuestlineForm.vue'
 import DialogueForm from './forms/DialogueForm.vue'
 import EncounterTemplateForm from './forms/EncounterTemplateForm.vue'
+import ItemForm from './forms/ItemForm.vue'
+import EventForm from './forms/EventForm.vue'
+import RecipeForm from './forms/RecipeForm.vue'
+import BuildingForm from './forms/BuildingForm.vue'
+import SkillForm from './forms/SkillForm.vue'
 import type { EncounterTemplateEntry } from './forms/EncounterTemplateForm.vue'
 
 const open = defineModel<boolean>('open', { default: false })
@@ -178,6 +244,11 @@ const questForm = useTemplateRef<InstanceType<typeof QuestForm>>('questForm')
 const questlineForm = useTemplateRef<InstanceType<typeof QuestlineForm>>('questlineForm')
 const dialogueForm = useTemplateRef<InstanceType<typeof DialogueForm>>('dialogueForm')
 const encounterTemplateForm = useTemplateRef<InstanceType<typeof EncounterTemplateForm>>('encounterTemplateForm')
+const itemForm = useTemplateRef<InstanceType<typeof ItemForm>>('itemForm')
+const eventForm = useTemplateRef<InstanceType<typeof EventForm>>('eventForm')
+const recipeForm = useTemplateRef<InstanceType<typeof RecipeForm>>('recipeForm')
+const buildingForm = useTemplateRef<InstanceType<typeof BuildingForm>>('buildingForm')
+const skillForm = useTemplateRef<InstanceType<typeof SkillForm>>('skillForm')
 
 // Rooms
 const allRooms = ref<Room[]>([])
@@ -213,6 +284,31 @@ const dialogueOverlayIds = ref<Set<string>>(new Set())
 const allEncounterTemplates = ref<EncounterTemplateEntry[]>([])
 const encounterTemplateBaseIds = ref<Set<string>>(new Set())
 const encounterTemplateOverlayIds = ref<Set<string>>(new Set())
+
+// Items
+const allItems = ref<ItemTemplate[]>([])
+const itemBaseIds = ref<Set<string>>(new Set())
+const itemOverlayIds = ref<Set<string>>(new Set())
+
+// Events
+const allEvents = ref<EventCard[]>([])
+const eventBaseIds = ref<Set<string>>(new Set())
+const eventOverlayIds = ref<Set<string>>(new Set())
+
+// Recipes
+const allRecipes = ref<RecipeDef[]>([])
+const recipeBaseIds = ref<Set<string>>(new Set())
+const recipeOverlayIds = ref<Set<string>>(new Set())
+
+// Buildings
+const allBuildings = ref<BuildingDef[]>([])
+const buildingBaseIds = ref<Set<string>>(new Set())
+const buildingOverlayIds = ref<Set<string>>(new Set())
+
+// Skills
+const allSkills = ref<SkillDef[]>([])
+const skillBaseIds = ref<Set<string>>(new Set())
+const skillOverlayIds = ref<Set<string>>(new Set())
 
 const dialogueOptions = computed<{ id: string; label: string }[]>(() => {
   const source = allDialogues.value.length ? allDialogues.value : getAllDialogues()
@@ -287,6 +383,56 @@ function syncEncounterTemplateData() {
   encounterTemplateOverlayIds.value = overlayIds
 }
 
+function syncItemData() {
+  refreshContentRegistry()
+  allItems.value = getAllItems()
+  const overlay = loadOverlay()
+  const oIds = new Set(Object.keys(overlay.upserts.items))
+  const { baseIds, overlayIds } = computeIdSets(allItems.value, oIds)
+  itemBaseIds.value = baseIds
+  itemOverlayIds.value = overlayIds
+}
+
+function syncEventData() {
+  refreshContentRegistry()
+  allEvents.value = getAllEvents()
+  const overlay = loadOverlay()
+  const oIds = new Set(Object.keys(overlay.upserts.events))
+  const { baseIds, overlayIds } = computeIdSets(allEvents.value, oIds)
+  eventBaseIds.value = baseIds
+  eventOverlayIds.value = overlayIds
+}
+
+function syncRecipeData() {
+  refreshContentRegistry()
+  allRecipes.value = getAllRecipes()
+  const overlay = loadOverlay()
+  const oIds = new Set(Object.keys(overlay.upserts.recipes))
+  const { baseIds, overlayIds } = computeIdSets(allRecipes.value, oIds)
+  recipeBaseIds.value = baseIds
+  recipeOverlayIds.value = overlayIds
+}
+
+function syncBuildingData() {
+  refreshContentRegistry()
+  allBuildings.value = getAllBuildings()
+  const overlay = loadOverlay()
+  const oIds = new Set(Object.keys(overlay.upserts.buildings))
+  const { baseIds, overlayIds } = computeIdSets(allBuildings.value, oIds)
+  buildingBaseIds.value = baseIds
+  buildingOverlayIds.value = overlayIds
+}
+
+function syncSkillData() {
+  refreshContentRegistry()
+  allSkills.value = getAllSkills()
+  const overlay = loadOverlay()
+  const oIds = new Set(Object.keys(overlay.upserts.skills))
+  const { baseIds, overlayIds } = computeIdSets(allSkills.value, oIds)
+  skillBaseIds.value = baseIds
+  skillOverlayIds.value = overlayIds
+}
+
 function syncDataForType(type: ContentType | null) {
   if (type === 'rooms') syncRoomData()
   else if (type === 'npcs') syncNpcData()
@@ -294,6 +440,11 @@ function syncDataForType(type: ContentType | null) {
   else if (type === 'questlines') syncQuestlineData()
   else if (type === 'dialogues') syncDialogueData()
   else if (type === 'encounterTemplates') syncEncounterTemplateData()
+  else if (type === 'items') syncItemData()
+  else if (type === 'events') syncEventData()
+  else if (type === 'recipes') syncRecipeData()
+  else if (type === 'buildings') syncBuildingData()
+  else if (type === 'skills') syncSkillData()
 }
 
 function onSelectEntity(id: string) {
@@ -309,6 +460,11 @@ function onCreateEntity() {
   else if (type === 'questlines') questlineForm.value?.createNew()
   else if (type === 'dialogues') dialogueForm.value?.createNew()
   else if (type === 'encounterTemplates') encounterTemplateForm.value?.createNew()
+  else if (type === 'items') itemForm.value?.createNew()
+  else if (type === 'events') eventForm.value?.createNew()
+  else if (type === 'recipes') recipeForm.value?.createNew()
+  else if (type === 'buildings') buildingForm.value?.createNew()
+  else if (type === 'skills') skillForm.value?.createNew()
 }
 
 function onEntitySaved() {
