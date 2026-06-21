@@ -185,6 +185,8 @@
             </template>
           </aside>
         </div>
+
+        <AdminValidationPanel ref="validationPanel" />
       </div>
     </div>
   </Teleport>
@@ -229,6 +231,7 @@ import EventForm from './forms/EventForm.vue'
 import RecipeForm from './forms/RecipeForm.vue'
 import BuildingForm from './forms/BuildingForm.vue'
 import SkillForm from './forms/SkillForm.vue'
+import AdminValidationPanel from './AdminValidationPanel.vue'
 import type { EncounterTemplateEntry } from './forms/EncounterTemplateForm.vue'
 
 const open = defineModel<boolean>('open', { default: false })
@@ -249,6 +252,7 @@ const eventForm = useTemplateRef<InstanceType<typeof EventForm>>('eventForm')
 const recipeForm = useTemplateRef<InstanceType<typeof RecipeForm>>('recipeForm')
 const buildingForm = useTemplateRef<InstanceType<typeof BuildingForm>>('buildingForm')
 const skillForm = useTemplateRef<InstanceType<typeof SkillForm>>('skillForm')
+const validationPanel = useTemplateRef<InstanceType<typeof AdminValidationPanel>>('validationPanel')
 
 // Rooms
 const allRooms = ref<Room[]>([])
@@ -471,6 +475,7 @@ function onEntitySaved() {
   syncDataForType(selectedType.value)
   entityList.value?.refresh()
   refreshDirty()
+  validationPanel.value?.runValidation()
 }
 
 function onEntityDeleted() {
@@ -538,6 +543,7 @@ async function handleImport(event: Event) {
     syncDataForType(selectedType.value)
     entityList.value?.refresh()
     refreshDirty()
+    validationPanel.value?.runValidation()
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to import overlay bundle'
     window.alert(`Import failed: ${message}`)
@@ -553,12 +559,14 @@ function handleReset() {
   syncDataForType(selectedType.value)
   entityList.value?.refresh()
   refreshDirty()
+  validationPanel.value?.runValidation()
 }
 
 watch(open, (isOpen) => {
   if (isOpen) {
     refreshDirty()
     syncDataForType(selectedType.value)
+    validationPanel.value?.runValidation()
   }
 })
 
