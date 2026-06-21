@@ -46,12 +46,31 @@
           </nav>
 
           <section class="admin-center panel-inset">
-            <AdminEntityList :content-type="selectedType" />
+            <AdminEntityList
+              ref="entityList"
+              :content-type="selectedType"
+              @select="onSelectRoom"
+              @create="onCreateRoom"
+            />
           </section>
 
           <aside class="admin-detail panel-inset">
-            <p v-if="!selectedType" class="empty">Select a type to edit</p>
-            <p v-else class="empty">Detail form stub ({{ selectedType }})</p>
+            <template v-if="selectedType === 'rooms'">
+              <RoomForm
+                ref="roomForm"
+                :room-id="selectedRoomId"
+                :base-ids="roomBaseIds"
+                :overlay-ids="roomOverlayIds"
+                :room-options="roomOptions"
+                :all-rooms="allRooms"
+                @saved="onRoomSaved"
+                @deleted="onRoomDeleted"
+              />
+            </template>
+            <template v-else>
+              <p v-if="!selectedType" class="empty">Select a type to edit</p>
+              <p v-else class="empty">Detail form stub ({{ selectedType }})</p>
+            </template>
           </aside>
         </div>
       </div>
@@ -65,17 +84,66 @@ import {
   exportBundle,
   importBundle,
   isOverlayDirty,
+  loadOverlay,
   resetOverlay,
 } from '@/engine/admin/ContentOverlayStore'
 import { OVERLAY_BUNDLE_VERSION, type ContentOverlayBundle, type ContentType } from '@/engine/admin/ContentOverlayTypes'
-import { refreshContentRegistry } from '@/engine/admin/ContentRegistry'
+import { getAllRooms, refreshContentRegistry } from '@/engine/admin/ContentRegistry'
+import type { Room } from '@/engine/RoomSystem'
 import AdminEntityList from './AdminEntityList.vue'
+import RoomForm from './forms/RoomForm.vue'
 
 const open = defineModel<boolean>('open', { default: false })
 
 const selectedType = ref<ContentType | null>(null)
 const importInput = useTemplateRef<HTMLInputElement>('importInput')
 const dirtyTick = ref(0)
+const entityList = useTemplateRef<InstanceType<typeof AdminEntityList>>('entityList')
+const roomForm = useTemplateRef<InstanceType<typeof RoomForm>>('roomForm')
+
+const selectedRoomId = ref<string | null>(null)
+const allRooms = ref<Room[]>([])
+const roomBaseIds = ref<Set<string>>(new Set())
+const roomOverlayIds = ref<Set<string>>(new Set())
+
+const roomOptions = computed<{ id: string; label: string }[]>(() =>
+  allRooms.value.map((r) => ({ id: r.id, label: r.name || r.id }))
+)
+
+function syncRoomData() {
+  refreshContentRegistry()
+  allRooms.value = getAllRooms()
+  const overlay = loadOverlay()
+  const oIds = new Set(Object.keys(overlay.upserts.rooms))
+  roomOverlayIds.value = oIds
+  const bIds = new Set<string>()
+  for (const r of allRooms.value) {
+    if (!oIds.has(r.id)) bIds.add(r.id)
+  }
+  roomBaseIds.value = bIds
+}
+
+function onSelectRoom(id: string) {
+  selectedRoomId.value = id
+}
+
+function onCreateRoom() {
+  selectedRoomId.value = null
+  roomForm.value?.createNew()
+}
+
+function onRoomSaved() {
+  syncRoomData()
+  entityList.value?.refresh()
+  refreshDirty()
+}
+
+function onRoomDeleted() {
+  selectedRoomId.value = null
+  syncRoomData()
+  entityList.value?.refresh()
+  refreshDirty()
+}
 
 const dirty = computed(() => {
   dirtyTick.value
@@ -149,7 +217,15 @@ function handleReset() {
 }
 
 watch(open, (isOpen) => {
-  if (isOpen) refreshDirty()
+  if (isOpen) {
+    refreshDirty()
+    syncRoomData()
+  }
+})
+
+watch(selectedType, (type) => {
+  selectedRoomId.value = null
+  if (type === 'rooms') syncRoomData()
 })
 </script>
 
@@ -281,13 +357,23 @@ watch(open, (isOpen) => {
   overflow: hidden;
 }
 
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-text-soft);
+  font-style: italic;
+  font-size: 13px;
+  padding: 24px;
+}
+
 .admin-center {
   padding: 0;
 }
 
 .admin-detail {
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
+  padding: 0;
+  overflow: hidden;
 }
 </style>
