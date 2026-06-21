@@ -13,7 +13,11 @@ function loadBaseRooms(): Record<string, Room> {
   return map
 }
 
-function mergeMaps<T>(base: Record<string, T>, overlay: ContentOverlayState, type: ContentType): Record<string, T> {
+function mergeMaps<K extends ContentType>(
+  base: Record<string, ContentEntityMap[K]>,
+  overlay: ContentOverlayState,
+  type: K,
+): Record<string, ContentEntityMap[K]> {
   const result = { ...base, ...overlay.upserts[type] }
   for (const id of overlay.deletedIds[type]) delete result[id]
   return result

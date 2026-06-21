@@ -1,0 +1,217 @@
+<template>
+  <Teleport to="body">
+    <div
+      v-if="open"
+      class="admin-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Content admin"
+      @click.self="close"
+    >
+      <div class="admin-shell panel" @click.stop>
+        <header class="admin-topbar">
+          <div class="admin-topbar-left">
+            <h2 class="admin-title">Content Admin</h2>
+            <span v-if="dirty" class="dirty-badge">Unsaved changes</span>
+          </div>
+          <div class="admin-topbar-actions">
+            <button type="button" class="btn btn-secondary" disabled>Import</button>
+            <button type="button" class="btn btn-secondary" disabled>Export</button>
+            <button type="button" class="btn btn-danger" disabled>Reset overlay</button>
+            <button type="button" class="btn close-btn" aria-label="Close admin overlay" @click="close">
+              ×
+            </button>
+          </div>
+        </header>
+
+        <div class="admin-body">
+          <nav class="admin-tabs panel-inset" aria-label="Content types">
+            <button
+              v-for="tab in contentTabs"
+              :key="tab.type"
+              type="button"
+              class="admin-tab"
+              :class="{ active: selectedType === tab.type }"
+              @click="selectedType = tab.type"
+            >
+              {{ tab.label }}
+            </button>
+          </nav>
+
+          <section class="admin-center panel-inset">
+            <AdminEntityList :content-type="selectedType" />
+          </section>
+
+          <aside class="admin-detail panel-inset">
+            <p v-if="!selectedType" class="empty">Select a type to edit</p>
+            <p v-else class="empty">Detail form stub ({{ selectedType }})</p>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import type { ContentType } from '@/engine/admin/ContentOverlayTypes'
+import AdminEntityList from './AdminEntityList.vue'
+
+const open = defineModel<boolean>('open', { default: false })
+
+const selectedType = ref<ContentType | null>(null)
+const dirty = ref(false)
+
+const contentTabs: { type: ContentType; label: string }[] = [
+  { type: 'rooms', label: 'Locations' },
+  { type: 'npcs', label: 'NPCs' },
+  { type: 'quests', label: 'Quests' },
+  { type: 'questlines', label: 'Questlines' },
+  { type: 'dialogues', label: 'Dialogue' },
+  { type: 'items', label: 'Items' },
+  { type: 'events', label: 'Events' },
+  { type: 'encounterTemplates', label: 'Encounters' },
+  { type: 'recipes', label: 'Recipes' },
+  { type: 'buildings', label: 'Buildings' },
+  { type: 'skills', label: 'Skills' },
+]
+
+function close() {
+  open.value = false
+}
+</script>
+
+<style scoped>
+.admin-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.78);
+}
+
+.admin-shell {
+  display: flex;
+  flex-direction: column;
+  width: min(1400px, 100%);
+  max-height: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+
+.admin-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+}
+
+.admin-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.admin-title {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  color: var(--color-accent-bright);
+}
+
+.dirty-badge {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-warning);
+  border: 1px solid rgba(212, 168, 75, 0.35);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  background: rgba(212, 168, 75, 0.1);
+}
+
+.admin-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.close-btn {
+  min-width: 36px;
+  padding: 4px 10px;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.admin-body {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) minmax(280px, 360px);
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  padding: 12px;
+  overflow: hidden;
+}
+
+.admin-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  overflow-y: auto;
+}
+
+.admin-tab {
+  text-align: left;
+  padding: 8px 10px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-soft);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.admin-tab:hover {
+  color: var(--color-text);
+  background: var(--color-bg-elevated);
+  border-color: var(--color-border);
+}
+
+.admin-tab.active {
+  color: var(--color-text);
+  background: rgba(95, 143, 80, 0.15);
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-glow);
+}
+
+.admin-center,
+.admin-detail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.admin-center {
+  padding: 0;
+}
+
+.admin-detail {
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+</style>

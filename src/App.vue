@@ -6,17 +6,19 @@
       <GameScreen />
     </div>
     <PlayerScreen v-if="playerScreenOpen" />
+    <AdminOverlay v-if="DEV_ADMIN_ENABLED" v-model:open="adminOpen" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, provide, computed, onMounted, watch } from 'vue'
+import { ref, provide, computed, onMounted, onUnmounted, watch } from 'vue'
 import type { Ref } from 'vue'
 import type { GameState } from './engine/GameLoopDesign'
 import { createDefaultPlayer } from './engine/CombatEngine'
 import { loadRoom } from './engine/RoomManager'
 import { roomFromAsset } from './engine/GameLoop'
-import { START_ROOM_ID } from './engine/gameConfig'
+import { DEV_ADMIN_ENABLED, START_ROOM_ID } from './engine/gameConfig'
+import AdminOverlay from './components/admin/AdminOverlay.vue'
 import { getDefaultGameMeta } from './engine/Outcomes'
 import { audioManager } from './engine/AudioManager'
 import GameHeader from './components/GameHeader.vue'
@@ -51,6 +53,15 @@ const gameState = ref<GameState>({
 })
 
 const playerScreenOpen = ref(false)
+const adminOpen = ref(false)
+
+function onKeydown(e: KeyboardEvent) {
+  if (!DEV_ADMIN_ENABLED) return
+  if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'a') {
+    e.preventDefault()
+    adminOpen.value = !adminOpen.value
+  }
+}
 
 const showHeader = computed(
   () => gameState.value.phase !== 'game_start' && gameState.value.phase !== 'victory'
@@ -73,6 +84,8 @@ watch(
 )
 
 onMounted(async () => {
+  window.addEventListener('keydown', onKeydown)
+
   try {
     const hub = await loadRoom(START_ROOM_ID)
     gameState.value = {
@@ -82,6 +95,10 @@ onMounted(async () => {
   } catch (e) {
     console.error('Failed to preload hub room:', e)
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown)
 })
 </script>
 

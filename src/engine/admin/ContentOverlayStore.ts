@@ -32,11 +32,22 @@ function getStorage(): Storage | null {
   }
 }
 
+type UpsertsByType = ContentOverlayState['upserts']
+type DeletedIdsByType = ContentOverlayState['deletedIds']
+
+function setUpsertsSlice(
+  upserts: UpsertsByType,
+  type: ContentType,
+  value: UpsertsByType[ContentType],
+): void {
+  ;(upserts as Record<ContentType, UpsertsByType[ContentType]>)[type] = value
+}
+
 export function createEmptyOverlay(): ContentOverlayState {
-  const upserts = {} as ContentOverlayState['upserts']
-  const deletedIds = {} as ContentOverlayState['deletedIds']
+  const upserts = {} as UpsertsByType
+  const deletedIds = {} as DeletedIdsByType
   for (const type of CONTENT_TYPES) {
-    upserts[type] = {} as ContentOverlayState['upserts'][typeof type]
+    upserts[type] = {}
     deletedIds[type] = []
   }
   return { upserts, deletedIds }
@@ -48,7 +59,7 @@ function normalizeOverlayState(raw: Partial<ContentOverlayState> | null | undefi
 
   for (const type of CONTENT_TYPES) {
     if (raw.upserts?.[type]) {
-      empty.upserts[type] = { ...raw.upserts[type] } as ContentOverlayState['upserts'][typeof type]
+      setUpsertsSlice(empty.upserts, type, { ...raw.upserts[type] } as UpsertsByType[ContentType])
     }
     if (raw.deletedIds?.[type]) {
       empty.deletedIds[type] = [...raw.deletedIds[type]]
@@ -111,15 +122,16 @@ export function removeUpsert(
   id: string,
 ): ContentOverlayState {
   const next = normalizeOverlayState(state)
-  const { [id]: _removed, ...rest } = next.upserts[type] as Record<string, ContentEntityMap[typeof type]>
-  next.upserts[type] = rest as ContentOverlayState['upserts'][typeof type]
+  const upsertsForType = next.upserts[type] as Record<string, ContentEntityMap[typeof type]>
+  const { [id]: _removed, ...rest } = upsertsForType
+  setUpsertsSlice(next.upserts, type, rest as UpsertsByType[ContentType])
   return next
 }
 
 export function resetOverlay(type?: ContentType): void {
   if (type) {
     const state = loadOverlay()
-    state.upserts[type] = {} as ContentOverlayState['upserts'][typeof type]
+    setUpsertsSlice(state.upserts, type, {})
     state.deletedIds[type] = []
     saveOverlay(state)
     return
@@ -147,10 +159,10 @@ export function importBundle(bundle: ContentOverlayBundle): void {
   const merged = createEmptyOverlay()
 
   for (const type of CONTENT_TYPES) {
-    merged.upserts[type] = {
+    setUpsertsSlice(merged.upserts, type, {
       ...current.upserts[type],
       ...(bundle.upserts?.[type] ?? {}),
-    } as ContentOverlayState['upserts'][typeof type]
+    } as UpsertsByType[ContentType])
     merged.deletedIds[type] = [
       ...new Set([...current.deletedIds[type], ...(bundle.deletedIds?.[type] ?? [])]),
     ]
