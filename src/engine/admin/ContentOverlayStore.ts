@@ -128,6 +128,15 @@ export function removeUpsert(
   return next
 }
 
+export function isOverlayDirty(): boolean {
+  const state = loadOverlay()
+  for (const type of CONTENT_TYPES) {
+    if (Object.keys(state.upserts[type]).length > 0) return true
+    if (state.deletedIds[type].length > 0) return true
+  }
+  return false
+}
+
 export function resetOverlay(type?: ContentType): void {
   if (type) {
     const state = loadOverlay()

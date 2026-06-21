@@ -5,8 +5,10 @@ import {
   markDeleted,
   exportBundle,
   importBundle,
+  isOverlayDirty,
   loadOverlay,
   saveOverlay,
+  resetOverlay,
   OVERLAY_STORAGE_KEY,
 } from '../../admin/ContentOverlayStore'
 
@@ -33,6 +35,28 @@ describe('ContentOverlayStore', () => {
 
   it('starts empty', () => {
     expect(loadOverlay()).toEqual(createEmptyOverlay())
+  })
+
+  it('isOverlayDirty is false when empty', () => {
+    expect(isOverlayDirty()).toBe(false)
+  })
+
+  it('isOverlayDirty is true when upserts or deletions exist', () => {
+    saveOverlay(
+      upsertEntity(createEmptyOverlay(), 'rooms', {
+        id: 'test_room',
+        type: 'static',
+        name: 'Test',
+        description: 'Desc',
+        exits: [],
+      }),
+    )
+    expect(isOverlayDirty()).toBe(true)
+    resetOverlay()
+    expect(isOverlayDirty()).toBe(false)
+
+    saveOverlay(markDeleted(createEmptyOverlay(), 'rooms', 'town_hub'))
+    expect(isOverlayDirty()).toBe(true)
   })
 
   it('upserts and exports a room', () => {
