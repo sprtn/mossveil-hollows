@@ -9,6 +9,14 @@
         @input="selectedId = null"
       />
       <button type="button" class="btn btn-primary btn-sm" @click="createNew">+ New</button>
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm"
+        :disabled="!selectedId"
+        @click="duplicateSelected"
+      >
+        Duplicate
+      </button>
     </div>
     <div v-if="!contentType" class="list-empty">Select a type.</div>
     <div v-else-if="filteredItems.length === 0" class="list-empty">No {{ contentType }} found.</div>
@@ -34,7 +42,7 @@
 import { computed, ref, watch } from 'vue'
 import type { ContentType } from '@/engine/admin/ContentOverlayTypes'
 import { getEffectiveMap, refreshContentRegistry } from '@/engine/admin/ContentRegistry'
-import { loadOverlay } from '@/engine/admin/ContentOverlayStore'
+import { loadOverlay, saveOverlay, upsertEntity } from '@/engine/admin/ContentOverlayStore'
 
 const props = defineProps<{
   contentType?: ContentType | null
@@ -43,6 +51,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'select', id: string): void
   (e: 'create'): void
+  (e: 'duplicated', id: string): void
 }>()
 
 const search = ref('')
@@ -122,7 +131,37 @@ function createNew() {
   emit('create')
 }
 
-defineExpose({ refresh: refreshList, selectedId })
+function generateCopyId(sourceId: string, existingIds: Set<string>): string {
+  const base = `${sourceId}_copy`
+  if (!existingIds.has(base)) return base
+  return `${sourceId}_copy_${Date.now()}`
+}
+
+function duplicateSelected() {
+  const type = props.contentType
+  const id = selectedId.value
+  if (!type || !id) return
+
+  refreshContentRegistry()
+  const effectiveMap = getEffectiveMap(type)
+  const source = effectiveMap[id]
+  if (!source) return
+
+  const existingIds = new Set(Object.keys(effectiveMap))
+  const newId = generateCopyId(id, existingIds)
+  const clone = structuredClone(source) as typeof source & { id: string }
+  clone.id = newId
+
+  const overlay = loadOverlay()
+  const next = upsertEntity(overlay, type, clone)
+  saveOverlay(next)
+  refreshContentRegistry()
+  refreshList()
+  select(newId)
+  emit('duplicated', newId)
+}
+
+defineExpose({ refresh: refreshList, selectedId, select })
 </script>
 
 <style scoped>

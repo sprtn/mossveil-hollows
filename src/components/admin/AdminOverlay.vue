@@ -51,7 +51,23 @@
               :content-type="selectedType"
               @select="onSelectEntity"
               @create="onCreateEntity"
+              @duplicated="onEntityDuplicated"
             />
+            <div v-if="selectedType === 'rooms'" class="room-map-section">
+              <button
+                type="button"
+                class="map-preview-toggle"
+                :aria-expanded="showMapPreview"
+                @click="showMapPreview = !showMapPreview"
+              >
+                {{ showMapPreview ? 'Hide map preview' : 'Map preview' }}
+              </button>
+              <RoomGraphPreview
+                v-if="showMapPreview"
+                :rooms="allRooms"
+                :selected-room-id="selectedEntityId"
+              />
+            </div>
           </section>
 
           <aside class="admin-detail panel-inset">
@@ -220,6 +236,7 @@ import type { Room } from '@/engine/RoomSystem'
 import type { NpcDef, QuestDef, QuestlineDef, DialogueDef, EventCard, RecipeDef, BuildingDef, SkillDef } from '@/engine/ContentSchemas'
 import type { ItemTemplate } from '@/engine/GameLoopDesign'
 import AdminEntityList from './AdminEntityList.vue'
+import RoomGraphPreview from './RoomGraphPreview.vue'
 import RoomForm from './forms/RoomForm.vue'
 import NpcForm from './forms/NpcForm.vue'
 import QuestForm from './forms/QuestForm.vue'
@@ -238,6 +255,7 @@ const open = defineModel<boolean>('open', { default: false })
 
 const selectedType = ref<ContentType | null>(null)
 const selectedEntityId = ref<string | null>(null)
+const showMapPreview = ref(false)
 const importInput = useTemplateRef<HTMLInputElement>('importInput')
 const dirtyTick = ref(0)
 const entityList = useTemplateRef<InstanceType<typeof AdminEntityList>>('entityList')
@@ -478,6 +496,14 @@ function onEntitySaved() {
   validationPanel.value?.runValidation()
 }
 
+function onEntityDuplicated(id: string) {
+  selectedEntityId.value = id
+  syncDataForType(selectedType.value)
+  entityList.value?.refresh()
+  refreshDirty()
+  validationPanel.value?.runValidation()
+}
+
 function onEntityDeleted() {
   selectedEntityId.value = null
   syncDataForType(selectedType.value)
@@ -572,6 +598,7 @@ watch(open, (isOpen) => {
 
 watch(selectedType, (type) => {
   selectedEntityId.value = null
+  showMapPreview.value = false
   syncDataForType(type)
 })
 </script>
@@ -717,6 +744,29 @@ watch(selectedType, (type) => {
 
 .admin-center {
   padding: 0;
+}
+
+.room-map-section {
+  flex-shrink: 0;
+}
+
+.map-preview-toggle {
+  width: 100%;
+  padding: 6px 10px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-soft);
+  background: var(--color-bg-elevated);
+  border: none;
+  border-top: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+
+.map-preview-toggle:hover {
+  color: var(--color-text);
+  background: rgba(95, 143, 80, 0.08);
 }
 
 .admin-detail {
