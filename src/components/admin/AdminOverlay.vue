@@ -101,6 +101,18 @@
                 @deleted="onEntityDeleted"
               />
             </template>
+            <template v-else-if="selectedType === 'dialogues'">
+              <DialogueForm
+                ref="dialogueForm"
+                :dialogue-id="selectedEntityId"
+                :base-ids="dialogueBaseIds"
+                :overlay-ids="dialogueOverlayIds"
+                :all-dialogues="allDialogues"
+                :all-npcs="allNpcs"
+                @saved="onEntitySaved"
+                @deleted="onEntityDeleted"
+              />
+            </template>
             <template v-else>
               <p v-if="!selectedType" class="empty">Select a type to edit</p>
               <p v-else class="empty">Detail form stub ({{ selectedType }})</p>
@@ -131,12 +143,13 @@ import {
   refreshContentRegistry,
 } from '@/engine/admin/ContentRegistry'
 import type { Room } from '@/engine/RoomSystem'
-import type { NpcDef, QuestDef, QuestlineDef } from '@/engine/ContentSchemas'
+import type { NpcDef, QuestDef, QuestlineDef, DialogueDef } from '@/engine/ContentSchemas'
 import AdminEntityList from './AdminEntityList.vue'
 import RoomForm from './forms/RoomForm.vue'
 import NpcForm from './forms/NpcForm.vue'
 import QuestForm from './forms/QuestForm.vue'
 import QuestlineForm from './forms/QuestlineForm.vue'
+import DialogueForm from './forms/DialogueForm.vue'
 
 const open = defineModel<boolean>('open', { default: false })
 
@@ -149,6 +162,7 @@ const roomForm = useTemplateRef<InstanceType<typeof RoomForm>>('roomForm')
 const npcForm = useTemplateRef<InstanceType<typeof NpcForm>>('npcForm')
 const questForm = useTemplateRef<InstanceType<typeof QuestForm>>('questForm')
 const questlineForm = useTemplateRef<InstanceType<typeof QuestlineForm>>('questlineForm')
+const dialogueForm = useTemplateRef<InstanceType<typeof DialogueForm>>('dialogueForm')
 
 // Rooms
 const allRooms = ref<Room[]>([])
@@ -175,10 +189,15 @@ const questOptions = computed<{ id: string; label: string }[]>(() =>
 const allQuestlines = ref<QuestlineDef[]>([])
 const questlineOverlayIds = ref<Set<string>>(new Set())
 
-// Dialogues (options for NpcForm)
-const dialogueOptions = computed<{ id: string; label: string }[]>(() =>
-  getAllDialogues().map((d) => ({ id: d.id, label: d.npcId ? `(npc: ${d.npcId})` : d.id }))
-)
+// Dialogues
+const allDialogues = ref<DialogueDef[]>([])
+const dialogueBaseIds = ref<Set<string>>(new Set())
+const dialogueOverlayIds = ref<Set<string>>(new Set())
+
+const dialogueOptions = computed<{ id: string; label: string }[]>(() => {
+  const source = allDialogues.value.length ? allDialogues.value : getAllDialogues()
+  return source.map((d) => ({ id: d.id, label: d.npcId ? `(npc: ${d.npcId})` : d.id }))
+})
 
 function computeIdSets(
   allEntities: { id: string }[],
@@ -228,11 +247,22 @@ function syncQuestlineData() {
   questlineOverlayIds.value = new Set(Object.keys(overlay.upserts.questlines))
 }
 
+function syncDialogueData() {
+  refreshContentRegistry()
+  allDialogues.value = getAllDialogues()
+  const overlay = loadOverlay()
+  const oIds = new Set(Object.keys(overlay.upserts.dialogues))
+  const { baseIds, overlayIds } = computeIdSets(allDialogues.value, oIds)
+  dialogueBaseIds.value = baseIds
+  dialogueOverlayIds.value = overlayIds
+}
+
 function syncDataForType(type: ContentType | null) {
   if (type === 'rooms') syncRoomData()
   else if (type === 'npcs') syncNpcData()
   else if (type === 'quests') syncQuestData()
   else if (type === 'questlines') syncQuestlineData()
+  else if (type === 'dialogues') syncDialogueData()
 }
 
 function onSelectEntity(id: string) {
@@ -246,6 +276,7 @@ function onCreateEntity() {
   else if (type === 'npcs') npcForm.value?.createNew()
   else if (type === 'quests') questForm.value?.createNew()
   else if (type === 'questlines') questlineForm.value?.createNew()
+  else if (type === 'dialogues') dialogueForm.value?.createNew()
 }
 
 function onEntitySaved() {
