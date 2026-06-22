@@ -65,6 +65,9 @@ function normalizeOverlayState(raw: Partial<ContentOverlayState> | null | undefi
       empty.deletedIds[type] = [...raw.deletedIds[type]]
     }
   }
+  if (raw.roomLayouts) {
+    empty.roomLayouts = { ...raw.roomLayouts }
+  }
   return empty
 }
 
@@ -130,6 +133,7 @@ export function removeUpsert(
 
 export function isOverlayDirty(): boolean {
   const state = loadOverlay()
+  if (state.roomLayouts && Object.keys(state.roomLayouts).length > 0) return true
   for (const type of CONTENT_TYPES) {
     if (Object.keys(state.upserts[type]).length > 0) return true
     if (state.deletedIds[type].length > 0) return true
@@ -150,13 +154,17 @@ export function resetOverlay(type?: ContentType): void {
 
 export function exportBundle(): ContentOverlayBundle {
   const state = loadOverlay()
-  return {
+  const bundle: ContentOverlayBundle = {
     version: OVERLAY_BUNDLE_VERSION,
     exportedAt: new Date().toISOString(),
     gameVersion: GAME_VERSION,
     upserts: state.upserts,
     deletedIds: state.deletedIds,
   }
+  if (state.roomLayouts && Object.keys(state.roomLayouts).length > 0) {
+    bundle.roomLayouts = state.roomLayouts
+  }
+  return bundle
 }
 
 export function importBundle(bundle: ContentOverlayBundle): void {
@@ -177,5 +185,25 @@ export function importBundle(bundle: ContentOverlayBundle): void {
     ]
   }
 
+  if (bundle.roomLayouts) {
+    merged.roomLayouts = { ...current.roomLayouts, ...bundle.roomLayouts }
+  }
+
   saveOverlay(merged)
+}
+
+export function setRoomLayout(
+  state: ContentOverlayState,
+  roomId: string,
+  point: { x: number; y: number },
+): ContentOverlayState {
+  const next = normalizeOverlayState(state)
+  next.roomLayouts = { ...(next.roomLayouts ?? {}), [roomId]: point }
+  return next
+}
+
+export function resetRoomLayouts(state?: ContentOverlayState): ContentOverlayState {
+  const next = normalizeOverlayState(state ?? loadOverlay())
+  next.roomLayouts = {}
+  return next
 }

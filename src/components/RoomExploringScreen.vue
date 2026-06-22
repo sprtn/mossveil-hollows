@@ -9,6 +9,20 @@
 
     <div class="room-description">{{ room.description }}</div>
 
+    <div class="room-minimap">
+      <WorldMapCanvas
+        variant="minimap"
+        :rooms="mapRooms"
+        :layouts="roomLayouts"
+        :current-room-id="room.id"
+        :visited-room-ids="visitedRoomIds"
+        :game-state="gameState"
+        view-scope="zone"
+        :show-world-toggle="true"
+        @navigate="handleGoTo"
+      />
+    </div>
+
     <div v-if="room.isHub" class="hub-services">
       <TownScreen />
     </div>
@@ -90,7 +104,10 @@ import { isRoomGatherDangerous } from '@/engine/GatherDanger'
 import { hasItem } from '@/engine/ItemDatabase'
 import { loadRoom } from '@/engine/RoomManager'
 import { START_ROOM_ID, GAME_TITLE_MAIN } from '@/engine/gameConfig'
+import { getAllRooms, getAllRoomLayouts } from '@/engine/admin/ContentRegistry'
+import { getDiscoveredRoomIds } from '@/engine/map/worldMapUtils'
 import TownScreen from './TownScreen.vue'
+import WorldMapCanvas from './map/WorldMapCanvas.vue'
 
 const gameState = inject<Ref<GameState>>('gameState')!
 const dispatch = inject<(state: GameState) => void>('dispatch')!
@@ -104,6 +121,14 @@ const explorationMessage = ref('')
 const roomNameCache = ref<Map<string, string>>(new Map())
 const hubName = GAME_TITLE_MAIN
 const showReturnHome = computed(() => !room.value.isHub)
+
+const discoveredIds = computed(() => getDiscoveredRoomIds(gameState.value))
+const mapRooms = computed(() => getAllRooms().filter((r) => discoveredIds.value.has(r.id)))
+const roomLayouts = computed(() => getAllRoomLayouts())
+const visitedRoomIds = computed(() => [
+  ...(gameState.value.roomHistory ?? []),
+  gameState.value.currentRoom.id,
+])
 
 const gatherNodes = computed(() => room.value.gatherNodes ?? [])
 
@@ -238,6 +263,7 @@ async function handleReturnHome() {
 .room-image-container { max-width: 600px; margin: 0 auto; border-radius: 8px; overflow: hidden; border: 2px solid #444; max-height: 220px; }
 .room-image { width: 100%; height: 220px; object-fit: cover; display: block; }
 .room-description { font-size: 16px; line-height: 1.8; color: #e0e0e0; padding: 16px; background: #2a2a2a; border-radius: 8px; border-left: 4px solid #4caf50; }
+.room-minimap { max-width: 420px; }
 .hub-services { background: transparent; padding: 0; border: none; }
 .room-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 .action-button { padding: 12px 24px; font-size: 15px; font-weight: 600; background: #3a3a3a; color: #fff; border: 2px solid #555; border-radius: 6px; cursor: pointer; transition: all 0.2s; }

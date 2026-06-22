@@ -5,6 +5,9 @@ import type {
 import type { ItemTemplate, Enemy } from '../GameLoopDesign'
 import { loadOverlay } from './ContentOverlayStore'
 import type { ContentEntityMap, ContentOverlayState, ContentType } from './ContentOverlayTypes'
+import type { RoomLayoutsMap } from '../map/RoomLayout'
+import { resolveRoomLayouts } from '../map/worldMapUtils'
+import baseRoomLayoutsJson from '../../assets/map/room_layouts.json'
 
 const roomModules = import.meta.glob<{ default: Room }>('../../assets/rooms/*.json', { eager: true })
 const npcModules = import.meta.glob<{ default: NpcDef }>('../../assets/npcs/*.json', { eager: true })
@@ -150,6 +153,8 @@ let effectiveRecipes: Record<string, RecipeDef> = {}
 let effectiveBuildings: Record<string, BuildingDef> = {}
 let effectiveSkills: Record<string, SkillDef> = {}
 let effectiveEncounterTemplates: Record<string, Enemy[]> = {}
+let baseRoomLayouts: RoomLayoutsMap = {}
+let effectiveRoomLayouts: RoomLayoutsMap = {}
 let initialized = false
 
 export function initContentRegistry(): void {
@@ -163,6 +168,7 @@ export function initContentRegistry(): void {
   baseBuildings = loadBaseBuildings()
   baseSkills = loadBaseSkills()
   baseEncounterTemplates = loadBaseEncounterTemplates()
+  baseRoomLayouts = { ...(baseRoomLayoutsJson as RoomLayoutsMap) }
   initialized = true
   refreshContentRegistry()
 }
@@ -179,6 +185,7 @@ export function refreshContentRegistry(): void {
     baseBuildings = loadBaseBuildings()
     baseSkills = loadBaseSkills()
     baseEncounterTemplates = loadBaseEncounterTemplates()
+    baseRoomLayouts = { ...(baseRoomLayoutsJson as RoomLayoutsMap) }
     initialized = true
   }
   const overlay = loadOverlay()
@@ -192,6 +199,11 @@ export function refreshContentRegistry(): void {
   effectiveBuildings = mergeMaps(baseBuildings, overlay, 'buildings')
   effectiveSkills = mergeMaps(baseSkills, overlay, 'skills')
   effectiveEncounterTemplates = mergeMaps(baseEncounterTemplates, overlay, 'encounterTemplates')
+  effectiveRoomLayouts = resolveRoomLayouts(
+    Object.values(effectiveRooms),
+    baseRoomLayouts,
+    overlay.roomLayouts ?? {},
+  )
 }
 
 export function getRoom(id: string): Room | undefined {
@@ -202,6 +214,16 @@ export function getRoom(id: string): Room | undefined {
 export function getAllRooms(): Room[] {
   if (!initialized) initContentRegistry()
   return Object.values(effectiveRooms)
+}
+
+export function getRoomLayout(id: string): { x: number; y: number } | undefined {
+  if (!initialized) initContentRegistry()
+  return effectiveRoomLayouts[id]
+}
+
+export function getAllRoomLayouts(): RoomLayoutsMap {
+  if (!initialized) initContentRegistry()
+  return { ...effectiveRoomLayouts }
 }
 
 export function getNpc(id: string): NpcDef | undefined {

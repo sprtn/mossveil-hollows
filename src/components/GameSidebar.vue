@@ -1,29 +1,18 @@
 <template>
   <div class="game-sidebar">
-    <div class="sidebar-section">
+    <div class="sidebar-section sidebar-section--map">
       <h3 class="sidebar-title">Room Map</h3>
-      <div class="room-map">
-        <div 
-          v-for="room in visibleRooms" 
-          :key="room.id"
-          :class="['room-node', { 
-            'current': room.id === currentRoomId,
-            'connected': room.isConnected && room.id !== currentRoomId,
-            'clickable': room.isConnected && room.id !== currentRoomId
-          }]"
-          :title="room.name"
-          @click="room.isConnected && room.id !== currentRoomId ? handleRoomClick(room.id) : null"
-        >
-          <div class="room-node-content">
-            <div class="room-node-name">{{ room.name }}</div>
-            <div v-if="room.id === currentRoomId" class="current-indicator">●</div>
-            <div v-else-if="room.isConnected" class="connection-indicator">→</div>
-          </div>
-        </div>
-        <div v-if="visibleRooms.length === 0" class="no-rooms">
-          No rooms discovered yet
-        </div>
-      </div>
+      <WorldMapCanvas
+        variant="navigation"
+        :rooms="mapRooms"
+        :layouts="roomLayouts"
+        :current-room-id="currentRoomId"
+        :visited-room-ids="visitedRoomIds"
+        :game-state="gameState"
+        view-scope="zone"
+        :show-world-toggle="true"
+        @navigate="handleRoomClick"
+      />
     </div>
     
     <div class="sidebar-section">
@@ -78,12 +67,13 @@ import { Teleport } from 'vue'
 import type { Ref } from 'vue'
 import type { GameState, PlayerStatKey } from '@/engine/GameLoopDesign'
 import { allocateAttributePoint, goToRoom } from '@/engine/GameLoop'
-import { START_ROOM_ID } from '@/engine/gameConfig'
-import { loadRoom } from '@/engine/RoomManager'
+import { getAllRooms, getAllRoomLayouts } from '@/engine/admin/ContentRegistry'
+import { getDiscoveredRoomIds } from '@/engine/map/worldMapUtils'
 import { getEffectiveStats } from '@/engine/ItemDatabase'
 import { statIcons, statDescriptions, resourceIcons } from '@/utils/icons'
 import { derivedStatText, derivedStatProjection, statLabel } from '@/engine/statDisplay'
 import ResourceList from './ResourceList.vue'
+import WorldMapCanvas from './map/WorldMapCanvas.vue'
 
 const statKeys: PlayerStatKey[] = ['strength', 'constitution', 'dexterity', 'agility', 'defense']
 
@@ -163,91 +153,11 @@ function allocatePoint(stat: PlayerStatKey) {
   dispatch(newState)
 }
 
-// Room name cache
-const roomNameCache = ref<Map<string, string>>(new Map())
-
-// Load room name asynchronously
-async function loadRoomName(roomId: string): Promise<string> {
-  if (roomNameCache.value.has(roomId)) {
-    return roomNameCache.value.get(roomId)!
-  }
-  
-  try {
-    const loadedRoom = await loadRoom(roomId)
-    roomNameCache.value.set(roomId, loadedRoom.name)
-    return loadedRoom.name
-  } catch {
-    return roomId.replace(/_/g, ' ').replace(/room\s*/i, '').replace(/\b\w/g, (l) => l.toUpperCase())
-  }
-}
-
-// Create a simplified list of rooms from history and current room exits
-const visibleRooms = computed(() => {
-  const rooms: Array<{ id: string; name: string; isConnected: boolean }> = []
-  const seen = new Set<string>()
-  
-  // Add current room first
-  rooms.push({
-    id: currentRoomId.value,
-    name: gameState.value.currentRoom.name,
-    isConnected: false, // Current room is not "connected" to itself
-  })
-  seen.add(currentRoomId.value)
-  
-  // Add connected rooms (from exits)
-  const currentRoom = gameState.value.currentRoom
-  const exits = currentRoom.exits || []
-  const inventoryIds = gameState.value.player.inventory.map((item) => item.templateId)
-  
-  for (const exit of exits) {
-    // Only show non-hidden exits
-    if (exit.hidden) continue
-    if (!currentRoom.isHub && exit.targetRoomId === START_ROOM_ID) continue
-    
-    // Check if locked exit requires item
-    if (exit.locked) {
-      if (exit.requiresItems?.length) {
-        if (!exit.requiresItems.every((id) => inventoryIds.includes(id))) continue
-      } else if (exit.requiresItem) {
-        if (!inventoryIds.includes(exit.requiresItem)) continue
-      } else {
-        continue
-      }
-    }
-    
-    if (!seen.has(exit.targetRoomId)) {
-      seen.add(exit.targetRoomId)
-      const cachedName = roomNameCache.value.get(exit.targetRoomId)
-      // Pre-load name if not cached
-      if (!cachedName) {
-        loadRoomName(exit.targetRoomId).catch(() => {})
-      }
-      rooms.push({
-        id: exit.targetRoomId,
-        name: cachedName || exit.targetRoomId.replace(/_/g, ' ').replace(/room\s*/i, '').replace(/\b\w/g, (l) => l.toUpperCase()),
-        isConnected: true,
-      })
-    }
-  }
-  
-  // Add rooms from history (visited but not current)
-  for (const roomId of roomHistory.value) {
-    if (!seen.has(roomId)) {
-      seen.add(roomId)
-      const cachedName = roomNameCache.value.get(roomId)
-      if (!cachedName) {
-        loadRoomName(roomId).catch(() => {})
-      }
-      rooms.push({
-        id: roomId,
-        name: cachedName || roomId.replace(/_/g, ' ').replace(/room\s*/i, '').replace(/\b\w/g, (l) => l.toUpperCase()),
-        isConnected: false,
-      })
-    }
-  }
-  
-  return rooms
-})
+// Room map — discovered rooms only (current, visited, reachable exits)
+const discoveredIds = computed(() => getDiscoveredRoomIds(gameState.value))
+const mapRooms = computed(() => getAllRooms().filter((r) => discoveredIds.value.has(r.id)))
+const roomLayouts = computed(() => getAllRoomLayouts())
+const visitedRoomIds = computed(() => [...roomHistory.value, currentRoomId.value])
 
 async function handleRoomClick(roomId: string) {
   isNavigating.value = true
@@ -266,7 +176,7 @@ const isNavigating = ref(false)
 
 <style scoped>
 .game-sidebar {
-  width: 220px;
+  width: 260px;
   background-color: var(--color-panel);
   border-right: 1px solid var(--color-border);
   padding: 16px;
@@ -293,6 +203,15 @@ const isNavigating = ref(false)
   letter-spacing: 1px;
   border-bottom: 1px solid var(--color-border);
   padding-bottom: 8px;
+}
+
+.sidebar-section--map {
+  min-height: 220px;
+}
+
+.sidebar-section--map :deep(.world-map) {
+  flex: 1;
+  min-height: 200px;
 }
 
 .room-map {

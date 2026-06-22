@@ -8,6 +8,7 @@
  * Reads an exported overlay bundle (version 1) and:
  *   - Writes each upsert to the matching asset file ({folder}/{id}.json)
  *   - Deletes asset files listed in deletedIds
+ *   - Merges roomLayouts into src/assets/map/room_layouts.json
  *
  * Intended for authors who edited content in the dev admin overlay and want
  * to commit changes back to the repo. Does not modify localStorage or the
@@ -66,6 +67,22 @@ function deleteEntity(dir, id) {
   return filePath
 }
 
+function mergeRoomLayouts(bundle) {
+  const layouts = bundle.roomLayouts
+  if (!layouts || Object.keys(layouts).length === 0) return 0
+
+  const filePath = join(ASSETS_ROOT, 'map', 'room_layouts.json')
+  let existing = {}
+  if (existsSync(filePath)) {
+    existing = JSON.parse(readFileSync(filePath, 'utf8'))
+  }
+  const merged = { ...existing, ...layouts }
+  ensureDir(filePath)
+  writeFileSync(filePath, `${JSON.stringify(merged, null, 2)}\n`, 'utf8')
+  console.log(`  write ${filePath} (${Object.keys(layouts).length} layout(s))`)
+  return Object.keys(layouts).length
+}
+
 function mergeOverlay(bundlePath) {
   const absPath = resolve(bundlePath)
   const raw = readFileSync(absPath, 'utf8')
@@ -97,7 +114,8 @@ function mergeOverlay(bundlePath) {
     }
   }
 
-  return { written, removed }
+  const layoutsWritten = mergeRoomLayouts(bundle)
+  return { written, removed, layoutsWritten }
 }
 
 const bundleArg = process.argv[2]
@@ -105,8 +123,8 @@ if (!bundleArg) usage()
 
 try {
   console.log(`Merging overlay bundle: ${resolve(bundleArg)}`)
-  const { written, removed } = mergeOverlay(bundleArg)
-  console.log(`Done. ${written} file(s) written, ${removed} file(s) deleted.`)
+  const { written, removed, layoutsWritten } = mergeOverlay(bundleArg)
+  console.log(`Done. ${written} file(s) written, ${removed} file(s) deleted, ${layoutsWritten} layout(s) merged.`)
 } catch (error) {
   console.error(error instanceof Error ? error.message : error)
   process.exit(1)

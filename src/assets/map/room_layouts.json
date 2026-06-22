@@ -1,0 +1,15 @@
+{
+  "town_hub": { "x": 120, "y": 500 },
+  "zone_forest_entrance": { "x": 280, "y": 500 },
+  "zone_forest_deep": { "x": 400, "y": 380 },
+  "zone_forest_cache": { "x": 450, "y": 520 },
+  "zone_forest_boss": { "x": 520, "y": 400 },
+  "zone_cave_entrance": { "x": 600, "y": 500 },
+  "zone_cave_deep": { "x": 720, "y": 320 },
+  "zone_cave_boss": { "x": 820, "y": 400 },
+  "zone_ruins_entrance": { "x": 500, "y": 680 },
+  "zone_ruins_deep": { "x": 620, "y": 780 },
+  "zone_ruins_boss": { "x": 750, "y": 720 },
+  "final_gate": { "x": 880, "y": 500 },
+  "final_boss_chamber": { "x": 960, "y": 500 }
+}

@@ -54,18 +54,13 @@
               @duplicated="onEntityDuplicated"
             />
             <div v-if="selectedType === 'rooms'" class="room-map-section">
-              <button
-                type="button"
-                class="map-preview-toggle"
-                :aria-expanded="showMapPreview"
-                @click="showMapPreview = !showMapPreview"
-              >
-                {{ showMapPreview ? 'Hide map preview' : 'Map preview' }}
-              </button>
-              <RoomGraphPreview
-                v-if="showMapPreview"
+              <RoomMapEditor
                 :rooms="allRooms"
+                :layouts="roomLayouts"
                 :selected-room-id="selectedEntityId"
+                @select-room="onSelectEntity"
+                @layouts-updated="syncRoomLayouts"
+                @rooms-updated="onRoomMapRoomsUpdated"
               />
             </div>
           </section>
@@ -220,6 +215,7 @@ import {
 import { OVERLAY_BUNDLE_VERSION, type ContentOverlayBundle, type ContentType } from '@/engine/admin/ContentOverlayTypes'
 import {
   getAllRooms,
+  getAllRoomLayouts,
   getAllNpcs,
   getAllQuests,
   getAllDialogues,
@@ -233,10 +229,11 @@ import {
   refreshContentRegistry,
 } from '@/engine/admin/ContentRegistry'
 import type { Room } from '@/engine/RoomSystem'
+import type { RoomLayoutsMap } from '@/engine/map/RoomLayout'
 import type { NpcDef, QuestDef, QuestlineDef, DialogueDef, EventCard, RecipeDef, BuildingDef, SkillDef } from '@/engine/ContentSchemas'
 import type { ItemTemplate } from '@/engine/GameLoopDesign'
 import AdminEntityList from './AdminEntityList.vue'
-import RoomGraphPreview from './RoomGraphPreview.vue'
+import RoomMapEditor from './RoomMapEditor.vue'
 import RoomForm from './forms/RoomForm.vue'
 import NpcForm from './forms/NpcForm.vue'
 import QuestForm from './forms/QuestForm.vue'
@@ -255,7 +252,7 @@ const open = defineModel<boolean>('open', { default: false })
 
 const selectedType = ref<ContentType | null>(null)
 const selectedEntityId = ref<string | null>(null)
-const showMapPreview = ref(false)
+const roomLayouts = ref<RoomLayoutsMap>({})
 const importInput = useTemplateRef<HTMLInputElement>('importInput')
 const dirtyTick = ref(0)
 const entityList = useTemplateRef<InstanceType<typeof AdminEntityList>>('entityList')
@@ -351,11 +348,29 @@ function computeIdSets(
 function syncRoomData() {
   refreshContentRegistry()
   allRooms.value = getAllRooms()
+  roomLayouts.value = getAllRoomLayouts()
   const overlay = loadOverlay()
   const oIds = new Set(Object.keys(overlay.upserts.rooms))
   const { baseIds, overlayIds } = computeIdSets(allRooms.value, oIds)
   roomBaseIds.value = baseIds
   roomOverlayIds.value = overlayIds
+}
+
+function syncRoomLayouts() {
+  refreshContentRegistry()
+  roomLayouts.value = getAllRoomLayouts()
+  refreshDirty()
+}
+
+function onRoomMapRoomsUpdated() {
+  syncRoomData()
+  entityList.value?.refresh()
+  refreshDirty()
+  validationPanel.value?.runValidation()
+  if (selectedEntityId.value) {
+    const room = allRooms.value.find((r) => r.id === selectedEntityId.value)
+    if (room) roomForm.value?.loadRoom(room)
+  }
 }
 
 function syncNpcData() {
@@ -598,7 +613,6 @@ watch(open, (isOpen) => {
 
 watch(selectedType, (type) => {
   selectedEntityId.value = null
-  showMapPreview.value = false
   syncDataForType(type)
 })
 </script>
@@ -747,26 +761,10 @@ watch(selectedType, (type) => {
 }
 
 .room-map-section {
-  flex-shrink: 0;
-}
-
-.map-preview-toggle {
-  width: 100%;
-  padding: 6px 10px;
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-soft);
-  background: var(--color-bg-elevated);
-  border: none;
-  border-top: 1px solid var(--color-border);
-  cursor: pointer;
-  transition: color 0.12s, background 0.12s;
-}
-
-.map-preview-toggle:hover {
-  color: var(--color-text);
-  background: rgba(95, 143, 80, 0.08);
+  flex: 1;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
 }
 
 .admin-detail {

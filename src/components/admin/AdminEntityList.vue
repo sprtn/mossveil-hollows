@@ -20,6 +20,35 @@
     </div>
     <div v-if="!contentType" class="list-empty">Select a type.</div>
     <div v-else-if="filteredItems.length === 0" class="list-empty">No {{ contentType }} found.</div>
+    <div v-else-if="zoneGroups" class="list-zones">
+      <section v-for="group in zoneGroups" :key="group.key" class="zone-group">
+        <button
+          type="button"
+          class="zone-header"
+          :aria-expanded="!collapsedZones.has(group.key)"
+          @click="toggleZone(group.key)"
+        >
+          <span class="zone-chevron">{{ collapsedZones.has(group.key) ? '▸' : '▾' }}</span>
+          {{ group.label }}
+          <span class="zone-count">{{ group.items.length }}</span>
+        </button>
+        <ul v-show="!collapsedZones.has(group.key)" class="list-items" role="listbox">
+          <li
+            v-for="item in group.items"
+            :key="item.id"
+            role="option"
+            :aria-selected="selectedId === item.id"
+            class="list-item"
+            :class="{ active: selectedId === item.id }"
+            @click="select(item.id)"
+          >
+            <span class="item-name">{{ item.name || item.id }}</span>
+            <span class="item-id">{{ item.id }}</span>
+            <span class="badge" :class="`badge-${item.badge}`">{{ item.badge }}</span>
+          </li>
+        </ul>
+      </section>
+    </div>
     <ul v-else class="list-items" role="listbox">
       <li
         v-for="item in filteredItems"
@@ -43,6 +72,8 @@ import { computed, ref, watch } from 'vue'
 import type { ContentType } from '@/engine/admin/ContentOverlayTypes'
 import { getEffectiveMap, refreshContentRegistry } from '@/engine/admin/ContentRegistry'
 import { loadOverlay, saveOverlay, upsertEntity } from '@/engine/admin/ContentOverlayStore'
+import type { Room } from '@/engine/RoomSystem'
+import { getRoomZoneKey, zoneDisplayLabel } from '@/engine/map/worldMapUtils'
 
 const props = defineProps<{
   contentType?: ContentType | null
@@ -56,6 +87,13 @@ const emit = defineEmits<{
 
 const search = ref('')
 const selectedId = ref<string | null>(null)
+const collapsedZones = ref<Set<string>>(new Set())
+
+interface ZoneGroup {
+  key: string
+  label: string
+  items: EntityItem[]
+}
 
 type Badge = 'base' | 'overlay' | 'modified'
 
@@ -120,6 +158,44 @@ const filteredItems = computed(() => {
     (item) => item.id.toLowerCase().includes(q) || item.name.toLowerCase().includes(q)
   )
 })
+
+const zoneGroups = computed<ZoneGroup[] | null>(() => {
+  if (props.contentType !== 'rooms') return null
+  const items = filteredItems.value
+  if (items.length === 0) return []
+
+  const effectiveMap = getEffectiveMap('rooms')
+  const groups = new Map<string, EntityItem[]>()
+
+  for (const item of items) {
+    const room = effectiveMap[item.id] as Room | undefined
+    const key = room ? getRoomZoneKey(room) : '__unzoned__'
+    const list = groups.get(key) ?? []
+    list.push(item)
+    groups.set(key, list)
+  }
+
+  const sortKey = (key: string) => {
+    if (key === '__hub__') return '0'
+    if (key === '__unzoned__') return 'z'
+    return key
+  }
+
+  return [...groups.entries()]
+    .sort(([a], [b]) => sortKey(a).localeCompare(sortKey(b)))
+    .map(([key, groupItems]) => ({
+      key,
+      label: zoneDisplayLabel(key),
+      items: groupItems.sort((a, b) => a.name.localeCompare(b.name)),
+    }))
+})
+
+function toggleZone(key: string) {
+  const next = new Set(collapsedZones.value)
+  if (next.has(key)) next.delete(key)
+  else next.add(key)
+  collapsedZones.value = next
+}
 
 function select(id: string) {
   selectedId.value = id
@@ -285,5 +361,48 @@ defineExpose({ refresh: refreshList, selectedId, select })
   background: rgba(212, 168, 75, 0.12);
   color: var(--color-warning, #d4a84b);
   border: 1px solid rgba(212, 168, 75, 0.25);
+}
+
+.list-zones {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.zone-group {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.zone-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 10px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-accent);
+  background: var(--color-bg-elevated);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.zone-header:hover {
+  background: rgba(95, 143, 80, 0.08);
+}
+
+.zone-chevron {
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+.zone-count {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--color-text-soft);
+  font-weight: 600;
 }
 </style>

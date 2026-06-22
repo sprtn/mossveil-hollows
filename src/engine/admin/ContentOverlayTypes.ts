@@ -4,6 +4,8 @@ import type {
 } from '../ContentSchemas'
 import type { ItemTemplate, Enemy } from '../GameLoopDesign'
 
+import type { RoomLayoutsMap } from '../map/RoomLayout'
+
 export type { QuestlineDef }
 
 export const OVERLAY_BUNDLE_VERSION = 1 as const
@@ -30,6 +32,8 @@ export type ContentEntityMap = {
 export interface ContentOverlayState {
   upserts: { [K in ContentType]: Record<string, ContentEntityMap[K]> }
   deletedIds: { [K in ContentType]: string[] }
+  /** Admin map node positions (merged over shipped room_layouts.json). */
+  roomLayouts?: RoomLayoutsMap
 }
 
 export interface ContentOverlayBundle {
@@ -38,4 +42,5 @@ export interface ContentOverlayBundle {
   gameVersion: string
   upserts: ContentOverlayState['upserts']
   deletedIds: ContentOverlayState['deletedIds']
+  roomLayouts?: RoomLayoutsMap
 }

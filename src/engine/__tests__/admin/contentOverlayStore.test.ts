@@ -10,6 +10,8 @@ import {
   saveOverlay,
   resetOverlay,
   OVERLAY_STORAGE_KEY,
+  setRoomLayout,
+  resetRoomLayouts,
 } from '../../admin/ContentOverlayStore'
 
 describe('ContentOverlayStore', () => {
@@ -91,5 +93,28 @@ describe('ContentOverlayStore', () => {
     const loaded = loadOverlay()
     expect(loaded.upserts.npcs.new_npc).toBeDefined()
     expect(loaded.deletedIds.quests).toContain('tainted_grove')
+  })
+
+  it('stores and exports room layouts', () => {
+    let state = setRoomLayout(createEmptyOverlay(), 'town_hub', { x: 42, y: 84 })
+    saveOverlay(state)
+    expect(isOverlayDirty()).toBe(true)
+    const bundle = exportBundle()
+    expect(bundle.roomLayouts?.town_hub).toEqual({ x: 42, y: 84 })
+
+    state = resetRoomLayouts(loadOverlay())
+    saveOverlay(state)
+    expect(loadOverlay().roomLayouts).toEqual({})
+    expect(exportBundle().roomLayouts).toBeUndefined()
+  })
+
+  it('import merges room layouts', () => {
+    importBundle({
+      version: 1,
+      roomLayouts: { town_hub: { x: 1, y: 2 } },
+      upserts: {},
+      deletedIds: {},
+    })
+    expect(loadOverlay().roomLayouts?.town_hub).toEqual({ x: 1, y: 2 })
   })
 })
