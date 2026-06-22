@@ -46,7 +46,8 @@
             <DialogueNodeEditor
               :model-value="item as DialogueNode"
               :index="index"
-              :node-ids="nodeIds"
+              :node-options="dialogueNodeOptions"
+              :ref-options="refOptions"
               @update:model-value="update($event)"
             />
           </template>
@@ -75,6 +76,7 @@ import { refreshContentRegistry } from '@/engine/admin/ContentRegistry'
 import RepeatableList from './RepeatableList.vue'
 import RefPicker from './RefPicker.vue'
 import DialogueNodeEditor from './DialogueNodeEditor.vue'
+import type { AdminRefOptions } from '@/engine/admin/contentIndexes'
 
 const props = defineProps<{
   dialogueId: string | null
@@ -82,6 +84,7 @@ const props = defineProps<{
   overlayIds: Set<string>
   allDialogues: DialogueDef[]
   allNpcs: NpcDef[]
+  refOptions?: Partial<AdminRefOptions>
 }>()
 
 const emit = defineEmits<{
@@ -108,7 +111,12 @@ const npcOptions = computed<{ id: string; label: string }[]>(() =>
   props.allNpcs.map((n) => ({ id: n.id, label: n.name || n.id }))
 )
 
-const nodeIds = computed<string[]>(() => form.value?.nodes.map((n) => n.id) ?? [])
+const dialogueNodeOptions = computed(() =>
+  (form.value?.nodes ?? []).map((n) => ({
+    id: n.id,
+    label: n.text ? (n.text.length > 36 ? `${n.text.slice(0, 34)}…` : n.text) : n.id,
+  })),
+)
 
 watch(
   () => props.dialogueId,

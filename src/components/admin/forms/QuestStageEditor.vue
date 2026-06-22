@@ -36,17 +36,17 @@
             :value="modelValue.objective.type"
             @change="updateObjectiveType(($event.target as HTMLSelectElement).value as QuestObjectiveType)"
           >
-            <option v-for="t in OBJECTIVE_TYPES" :key="t" :value="t">{{ t }}</option>
+            <option v-for="t in OBJECTIVE_TYPES" :key="t" :value="t">{{ objectiveTypeLabel(t) }}</option>
           </select>
         </label>
         <label class="field-label">
           Target
-          <input
-            :value="modelValue.objective.target"
-            type="text"
-            class="field-input"
-            placeholder="npc_id / item_id / room_id…"
-            @input="updateObjectiveField('target', ($event.target as HTMLInputElement).value)"
+          <RefPicker
+            :model-value="modelValue.objective.target"
+            :options="targetOptions"
+            :placeholder="targetPlaceholder"
+            allow-custom
+            @update:model-value="updateObjectiveField('target', $event)"
           />
         </label>
         <label v-if="showCount" class="field-label">
@@ -64,12 +64,12 @@
 
     <div class="rewards-section">
       <div class="rewards-title">Rewards</div>
-        <RepeatableList
-          :model-value="modelValue.rewards"
-          add-label="+ Add Reward"
-          :make-item="makeReward"
-          @update:model-value="update('rewards', $event as OutcomeEffect[])"
-        >
+      <RepeatableList
+        :model-value="modelValue.rewards"
+        add-label="+ Add Reward"
+        :make-item="makeReward"
+        @update:model-value="update('rewards', $event as OutcomeEffect[])"
+      >
         <template #default="{ item, update: updateReward }">
           <OutcomeEffectEditor
             :model-value="item as OutcomeEffect"
@@ -86,9 +86,12 @@
 import { computed } from 'vue'
 import type { QuestStage, QuestObjectiveType } from '@/engine/ContentSchemas'
 import type { OutcomeEffect } from '@/engine/Outcomes'
-import { makeDefaultEffect, type RefEntity } from '@/engine/admin/outcomeFormMeta'
+import type { AdminRefOptions, RefOption } from '@/engine/admin/contentIndexes'
+import type { RefEntity } from '@/engine/admin/outcomeFormMeta'
+import { makeDefaultEffect } from '@/engine/admin/outcomeFormMeta'
 import RepeatableList from './RepeatableList.vue'
 import OutcomeEffectEditor from './OutcomeEffectEditor.vue'
+import RefPicker from './RefPicker.vue'
 
 const OBJECTIVE_TYPES: QuestObjectiveType[] = [
   'talk_npc',
@@ -101,6 +104,28 @@ const OBJECTIVE_TYPES: QuestObjectiveType[] = [
   'set_flag',
 ]
 
+const OBJECTIVE_TARGET_REF: Partial<Record<QuestObjectiveType, RefEntity>> = {
+  talk_npc: 'npcs',
+  collect_material: 'materials',
+  collect_item: 'items',
+  craft_item: 'items',
+  visit_room: 'rooms',
+  set_flag: 'flags',
+  defeat_boss: 'rooms',
+  defeat_enemy: 'encounters',
+}
+
+const OBJECTIVE_LABELS: Record<QuestObjectiveType, string> = {
+  talk_npc: 'Talk to NPC',
+  collect_material: 'Collect material',
+  collect_item: 'Collect item',
+  craft_item: 'Craft item',
+  defeat_boss: 'Defeat boss (room)',
+  defeat_enemy: 'Defeat enemy',
+  visit_room: 'Visit room',
+  set_flag: 'Set flag',
+}
+
 const COUNT_TYPES = new Set<QuestObjectiveType>([
   'collect_material',
   'collect_item',
@@ -111,7 +136,7 @@ const COUNT_TYPES = new Set<QuestObjectiveType>([
 const props = defineProps<{
   modelValue: QuestStage
   index: number
-  refOptions?: Partial<Record<RefEntity, { id: string; label: string }[]>>
+  refOptions?: Partial<AdminRefOptions>
 }>()
 
 const emit = defineEmits<{
@@ -119,6 +144,21 @@ const emit = defineEmits<{
 }>()
 
 const showCount = computed(() => COUNT_TYPES.has(props.modelValue.objective.type))
+
+const targetOptions = computed((): RefOption[] => {
+  const refType = OBJECTIVE_TARGET_REF[props.modelValue.objective.type]
+  if (!refType) return []
+  return props.refOptions?.[refType] ?? []
+})
+
+const targetPlaceholder = computed(() => {
+  const label = OBJECTIVE_LABELS[props.modelValue.objective.type] ?? 'target'
+  return `Select ${label.toLowerCase()}…`
+})
+
+function objectiveTypeLabel(type: QuestObjectiveType): string {
+  return OBJECTIVE_LABELS[type] ?? type
+}
 
 function update<K extends keyof QuestStage>(key: K, value: QuestStage[K]) {
   emit('update:modelValue', { ...props.modelValue, [key]: value })
@@ -128,7 +168,7 @@ function updateObjectiveType(type: QuestObjectiveType) {
   const count = COUNT_TYPES.has(type) ? (props.modelValue.objective.count ?? 1) : undefined
   emit('update:modelValue', {
     ...props.modelValue,
-    objective: { ...props.modelValue.objective, type, count },
+    objective: { type, target: '', count },
   })
 }
 

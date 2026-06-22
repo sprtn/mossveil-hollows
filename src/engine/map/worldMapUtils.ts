@@ -158,6 +158,76 @@ export function getDiscoveredRoomIds(state: GameState): Set<string> {
   return ids
 }
 
+export function getBoundsForRoomIds(
+  roomIds: Iterable<string>,
+  layouts: RoomLayoutsMap,
+  padding = 110,
+): ZoneBounds {
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const id of roomIds) {
+    const p = layouts[id]
+    if (!p) continue
+    minX = Math.min(minX, p.x)
+    minY = Math.min(minY, p.y)
+    maxX = Math.max(maxX, p.x)
+    maxY = Math.max(maxY, p.y)
+  }
+  if (!Number.isFinite(minX)) {
+    return { minX: 0, minY: 0, maxX: MAP_COORD_SIZE, maxY: MAP_COORD_SIZE }
+  }
+  return {
+    minX: Math.max(0, minX - padding),
+    minY: Math.max(0, minY - padding),
+    maxX: Math.min(MAP_COORD_SIZE, maxX + padding),
+    maxY: Math.min(MAP_COORD_SIZE, maxY + padding),
+  }
+}
+
+/** Room ids sharing an exit edge with the current room (either direction). */
+export function getConnectedRoomIds(currentRoomId: string, rooms: Room[]): Set<string> {
+  const ids = new Set<string>([currentRoomId])
+  const current = rooms.find((r) => r.id === currentRoomId)
+  for (const exit of current?.exits ?? []) {
+    ids.add(exit.targetRoomId)
+  }
+  for (const room of rooms) {
+    for (const exit of room.exits ?? []) {
+      if (exit.targetRoomId === currentRoomId) ids.add(room.id)
+    }
+  }
+  return ids
+}
+
+export function expandBoundsToMinSize(b: ZoneBounds, minSize = 200): ZoneBounds {
+  const w = b.maxX - b.minX
+  const h = b.maxY - b.minY
+  if (w >= minSize && h >= minSize) return b
+  const cx = (b.minX + b.maxX) / 2
+  const cy = (b.minY + b.maxY) / 2
+  const halfW = Math.max(minSize / 2, w / 2)
+  const halfH = Math.max(minSize / 2, h / 2)
+  return {
+    minX: Math.max(0, cx - halfW),
+    minY: Math.max(0, cy - halfH),
+    maxX: Math.min(MAP_COORD_SIZE, cx + halfW),
+    maxY: Math.min(MAP_COORD_SIZE, cy + halfH),
+  }
+}
+
+/** Fit view around the current room and its immediate graph neighbors. */
+export function getNeighborhoodBounds(
+  currentRoomId: string,
+  rooms: Room[],
+  layouts: RoomLayoutsMap,
+  padding = 110,
+): ZoneBounds {
+  const ids = getConnectedRoomIds(currentRoomId, rooms)
+  return expandBoundsToMinSize(getBoundsForRoomIds(ids, layouts, padding))
+}
+
 export interface ZoneBounds {
   minX: number
   minY: number

@@ -8,6 +8,8 @@ import {
   getDiscoveredRoomIds,
   canNavigateToRoom,
   buildMapEdges,
+  getConnectedRoomIds,
+  getNeighborhoodBounds,
 } from '../../map/worldMapUtils'
 
 const rooms: Room[] = [
@@ -85,5 +87,23 @@ describe('worldMapUtils', () => {
     const state = minimalState()
     expect(canNavigateToRoom(state, rooms[0], 'zone_forest_entrance')).toBe(true)
     expect(canNavigateToRoom(state, rooms[0], 'zone_cave_entrance')).toBe(false)
+  })
+
+  it('getConnectedRoomIds includes exit neighbors in both directions', () => {
+    const ids = getConnectedRoomIds('town_hub', rooms)
+    expect(ids.has('town_hub')).toBe(true)
+    expect(ids.has('zone_forest_entrance')).toBe(true)
+    const fromForest = getConnectedRoomIds('zone_forest_entrance', rooms)
+    expect(fromForest.has('town_hub')).toBe(true)
+  })
+
+  it('getNeighborhoodBounds fits connected nodes with padding', () => {
+    const layouts = {
+      town_hub: { x: 100, y: 100 },
+      zone_forest_entrance: { x: 300, y: 100 },
+    }
+    const b = getNeighborhoodBounds('town_hub', rooms, layouts, 50)
+    expect(b.minX).toBeLessThanOrEqual(50)
+    expect(b.maxX).toBeGreaterThanOrEqual(350)
   })
 })

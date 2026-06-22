@@ -35,8 +35,15 @@
         </label>
         <div class="form-grid-3">
           <label class="field-label">
-            Zone ID
-            <input v-model="form.zoneId" type="text" class="field-input" placeholder="zone_forest" />
+            Zone
+            <RefPicker
+              :model-value="form.zoneId ?? ''"
+              :options="refOptions?.zones ?? []"
+              placeholder="Select zone…"
+              allow-empty
+              allow-custom
+              @update:model-value="form.zoneId = $event || undefined"
+            />
           </label>
           <label class="field-label">
             Difficulty
@@ -77,7 +84,7 @@
 
       <section class="form-section">
         <h3 class="section-title">Exits</h3>
-        <RoomExitEditor v-model="form.exits" :room-options="roomOptions" />
+        <RoomExitEditor v-model="form.exits" :ref-options="refOptions" />
       </section>
 
       <section class="form-section">
@@ -87,7 +94,7 @@
 
       <section class="form-section">
         <h3 class="section-title">Gather Nodes</h3>
-        <GatherNodeEditor v-model="form.gatherNodes" />
+        <GatherNodeEditor v-model="form.gatherNodes" :material-options="refOptions?.materials ?? []" />
       </section>
     </div>
   </div>
@@ -112,6 +119,8 @@ import { refreshContentRegistry } from '@/engine/admin/ContentRegistry'
 import RoomExitEditor from './RoomExitEditor.vue'
 import EncounterEditor from './EncounterEditor.vue'
 import GatherNodeEditor from './GatherNodeEditor.vue'
+import RefPicker from './RefPicker.vue'
+import type { AdminRefOptions } from '@/engine/admin/contentIndexes'
 
 const props = defineProps<{
   roomId: string | null
@@ -119,6 +128,7 @@ const props = defineProps<{
   overlayIds: Set<string>
   roomOptions: { id: string; label: string }[]
   allRooms: Room[]
+  refOptions?: Partial<AdminRefOptions>
 }>()
 
 const emit = defineEmits<{

@@ -48,13 +48,22 @@
           </label>
         </div>
         <label class="field-label">
-          Required Skills (comma-separated IDs)
-          <input
-            type="text"
-            class="field-input"
-            :value="form.requires.join(', ')"
-            @input="form.requires = ($event.target as HTMLInputElement).value.split(',').map(s => s.trim()).filter(Boolean)"
-          />
+          Required Skills
+          <RepeatableList
+            :model-value="form.requires"
+            add-label="+ Add required skill"
+            :make-item="() => ''"
+            @update:model-value="form.requires = $event as string[]"
+          >
+            <template #default="{ item, update }">
+              <RefPicker
+                :model-value="item as string"
+                :options="refOptions?.skills ?? []"
+                placeholder="Select skill…"
+                @update:model-value="update($event)"
+              />
+            </template>
+          </RepeatableList>
         </label>
       </section>
 
@@ -277,6 +286,8 @@ import {
 } from '@/engine/admin/ContentOverlayStore'
 import { refreshContentRegistry } from '@/engine/admin/ContentRegistry'
 import RepeatableList from './RepeatableList.vue'
+import RefPicker from './RefPicker.vue'
+import type { AdminRefOptions } from '@/engine/admin/contentIndexes'
 
 const STAT_KEYS: PlayerStatKey[] = ['strength', 'constitution', 'dexterity', 'agility', 'defense']
 
@@ -342,6 +353,7 @@ const props = defineProps<{
   baseIds: Set<string>
   overlayIds: Set<string>
   allSkills: SkillDef[]
+  refOptions?: Partial<AdminRefOptions>
 }>()
 
 const emit = defineEmits<{

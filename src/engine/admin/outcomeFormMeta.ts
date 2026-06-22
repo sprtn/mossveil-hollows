@@ -6,10 +6,18 @@ export type RefEntity =
   | 'items'
   | 'materials'
   | 'quests'
+  | 'questStages'
   | 'npcs'
   | 'skills'
   | 'recipes'
   | 'encounters'
+  | 'rooms'
+  | 'zones'
+  | 'areas'
+  | 'buildings'
+  | 'flags'
+  | 'counters'
+  | 'marketCategories'
 
 export interface FieldDef {
   key: string
@@ -87,7 +95,7 @@ export const OUTCOME_EFFECT_META: Record<OutcomeEffect['kind'], KindMeta> = {
   set_flag: {
     label: 'Set Flag',
     fields: [
-      { key: 'flag', label: 'Flag', type: 'text' },
+      { key: 'flag', label: 'Flag', type: 'ref', refType: 'flags' },
       { key: 'value', label: 'Value', type: 'boolean' },
     ],
   },
@@ -95,7 +103,7 @@ export const OUTCOME_EFFECT_META: Record<OutcomeEffect['kind'], KindMeta> = {
     label: 'Advance Quest',
     fields: [
       { key: 'questId', label: 'Quest', type: 'ref', refType: 'quests' },
-      { key: 'stageId', label: 'Stage ID', type: 'text', optional: true },
+      { key: 'stageId', label: 'Stage', type: 'ref', refType: 'questStages', optional: true },
     ],
   },
   learn_skill: {
@@ -104,7 +112,7 @@ export const OUTCOME_EFFECT_META: Record<OutcomeEffect['kind'], KindMeta> = {
   },
   unlock_area: {
     label: 'Unlock Area',
-    fields: [{ key: 'areaId', label: 'Area ID', type: 'text' }],
+    fields: [{ key: 'areaId', label: 'Area', type: 'ref', refType: 'areas' }],
   },
   clear_wounded: {
     label: 'Clear Wounded',
@@ -133,7 +141,7 @@ export const OUTCOME_EFFECT_META: Record<OutcomeEffect['kind'], KindMeta> = {
   increment_counter: {
     label: 'Increment Counter',
     fields: [
-      { key: 'counter', label: 'Counter', type: 'text' },
+      { key: 'counter', label: 'Counter', type: 'ref', refType: 'counters' },
       { key: 'amount', label: 'Amount', type: 'number', optional: true },
     ],
   },
@@ -192,11 +200,11 @@ export const OUTCOME_REQUIREMENT_META: Record<OutcomeRequirement['kind'], KindMe
   },
   has_flag: {
     label: 'Has Flag',
-    fields: [{ key: 'flag', label: 'Flag', type: 'text' }],
+    fields: [{ key: 'flag', label: 'Flag', type: 'ref', refType: 'flags' }],
   },
   not_has_flag: {
     label: 'Not Has Flag',
-    fields: [{ key: 'flag', label: 'Flag', type: 'text' }],
+    fields: [{ key: 'flag', label: 'Flag', type: 'ref', refType: 'flags' }],
   },
   has_skill: {
     label: 'Has Skill',
@@ -217,7 +225,7 @@ export const OUTCOME_REQUIREMENT_META: Record<OutcomeRequirement['kind'], KindMe
     label: 'Quest Stage',
     fields: [
       { key: 'questId', label: 'Quest', type: 'ref', refType: 'quests' },
-      { key: 'stageId', label: 'Stage ID', type: 'text' },
+      { key: 'stageId', label: 'Stage', type: 'ref', refType: 'questStages' },
     ],
   },
   has_active_quest: {
@@ -235,21 +243,21 @@ export const OUTCOME_REQUIREMENT_META: Record<OutcomeRequirement['kind'], KindMe
   counter_at_least: {
     label: 'Counter At Least',
     fields: [
-      { key: 'counter', label: 'Counter', type: 'text' },
+      { key: 'counter', label: 'Counter', type: 'ref', refType: 'counters' },
       { key: 'value', label: 'Value', type: 'number' },
     ],
   },
   building_level: {
     label: 'Building Level',
     fields: [
-      { key: 'building', label: 'Building', type: 'text' },
+      { key: 'building', label: 'Building', type: 'ref', refType: 'buildings' },
       { key: 'level', label: 'Level', type: 'number' },
     ],
   },
   building_below: {
     label: 'Building Below',
     fields: [
-      { key: 'building', label: 'Building', type: 'text' },
+      { key: 'building', label: 'Building', type: 'ref', refType: 'buildings' },
       { key: 'level', label: 'Level', type: 'number' },
     ],
   },
@@ -267,20 +275,20 @@ export const OUTCOME_REQUIREMENT_META: Record<OutcomeRequirement['kind'], KindMe
   market_supply_at_least: {
     label: 'Market Supply At Least',
     fields: [
-      { key: 'category', label: 'Category', type: 'text' },
+      { key: 'category', label: 'Category', type: 'ref', refType: 'marketCategories' },
       { key: 'value', label: 'Value', type: 'number' },
     ],
   },
   market_supply_below: {
     label: 'Market Supply Below',
     fields: [
-      { key: 'category', label: 'Category', type: 'text' },
+      { key: 'category', label: 'Category', type: 'ref', refType: 'marketCategories' },
       { key: 'value', label: 'Value', type: 'number' },
     ],
   },
   area_unlocked: {
     label: 'Area Unlocked',
-    fields: [{ key: 'areaId', label: 'Area ID', type: 'text' }],
+    fields: [{ key: 'areaId', label: 'Area', type: 'ref', refType: 'areas' }],
   },
   profession_at_least: {
     label: 'Profession At Least',

@@ -49,14 +49,13 @@
 
             <label class="field-label">
               Next Node
-              <select
-                class="field-select"
-                :value="(item as DialogueResponse).next ?? ''"
-                @change="updateResp({ ...(item as DialogueResponse), next: ($event.target as HTMLSelectElement).value || undefined })"
-              >
-                <option value="">— End dialogue —</option>
-                <option v-for="nid in nodeIds" :key="nid" :value="nid">{{ nid }}</option>
-              </select>
+              <RefPicker
+                :model-value="(item as DialogueResponse).next ?? ''"
+                :options="nodeOptions"
+                placeholder="— End dialogue —"
+                allow-empty
+                @update:model-value="updateResp({ ...(item as DialogueResponse), next: $event || undefined })"
+              />
             </label>
 
             <div class="response-sub-section">
@@ -70,6 +69,7 @@
                 <template #default="{ item: req, update: updateReq }">
                   <OutcomeRequirementEditor
                     :model-value="req as OutcomeRequirement"
+                    :ref-options="refOptions"
                     @update:model-value="updateReq($event)"
                   />
                 </template>
@@ -87,6 +87,7 @@
                 <template #default="{ item: eff, update: updateEff }">
                   <OutcomeEffectEditor
                     :model-value="eff as OutcomeEffect"
+                    :ref-options="refOptions"
                     @update:model-value="updateEff($event)"
                   />
                 </template>
@@ -106,11 +107,14 @@ import { makeDefaultEffect, makeDefaultRequirement } from '@/engine/admin/outcom
 import RepeatableList from './RepeatableList.vue'
 import OutcomeEffectEditor from './OutcomeEffectEditor.vue'
 import OutcomeRequirementEditor from './OutcomeRequirementEditor.vue'
+import RefPicker from './RefPicker.vue'
+import type { AdminRefOptions, RefOption } from '@/engine/admin/contentIndexes'
 
 const props = defineProps<{
   modelValue: DialogueNode
   index: number
-  nodeIds: string[]
+  nodeOptions: RefOption[]
+  refOptions?: Partial<AdminRefOptions>
 }>()
 
 const emit = defineEmits<{

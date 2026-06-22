@@ -35,7 +35,14 @@ Key engine modules:
 - `QuestSystem.ts`, `DialogueSystem.ts`, `EventSystem.ts` — narrative/content systems.
 - `saveGame.ts` — versioned localStorage persistence (saves reset on version mismatch).
 
-Content is data-driven via JSON in `src/assets/` (`rooms/`, `items/`, `events/`, `quests/`, `dialogue/`, `recipes/`, `buildings/`, `skills/`, `npcs/`). Schemas are frozen in `ContentSchemas.ts`.
+Content is data-driven via JSON in `src/assets/` (`rooms/`, `items/`, `events/`, `quests/`, `dialogue/`, `recipes/`, `buildings/`, `skills/`, `npcs/`). Room map positions live in `src/assets/map/room_layouts.json`. Schemas are frozen in `ContentSchemas.ts`.
+
+### World map
+
+Players navigate via a **minimap** on the room screen (discovered rooms only; zone view fits the current room and its direct connections, with World toggle).
+In dev, the **Locations** admin tab includes a drag-and-drop map editor for node positions and exits.
+
+See `docs/superpowers/specs/2026-06-18-world-map-design.md` for layout merge rules, canvas variants, and author workflow.
 
 ## Balance tuning
 
@@ -53,7 +60,7 @@ In **dev builds only** (`npm run dev`), a full-surface content editor overlays t
 ### Export / import workflow
 
 1. Edit content in the overlay (create, update, duplicate, delete). Changes persist in localStorage and apply immediately at runtime.
-2. **Export** — downloads `content-overlay-v1-<timestamp>.json` (upserts + explicit `deletedIds` per type).
+2. **Export** — downloads `content-overlay-v1-<timestamp>.json` (upserts, explicit `deletedIds` per type, and optional `roomLayouts`).
 3. **Import** — merges a bundle into the overlay (upserts deep-merge; `deletedIds` union). Use for backup or sharing WIP edits.
 4. **Reset overlay** — clears all overlay state; shipped assets are unchanged.
 5. **Merge to repo** — apply an exported bundle to `src/assets/` with:
@@ -62,7 +69,7 @@ In **dev builds only** (`npm run dev`), a full-surface content editor overlays t
    node scripts/merge-overlay.mjs path/to/content-overlay-v1.json
    ```
 
-   Writes upserts to `{type}/{id}.json`, deletes files listed in `deletedIds`, then commit the asset changes. Re-run `npm run build` to verify.
+   Writes upserts to `{type}/{id}.json`, merges `roomLayouts` into `src/assets/map/room_layouts.json`, deletes files listed in `deletedIds`, then commit the asset changes. Re-run `npm run build` to verify.
 
 Use the **Validation** panel before export; fix errors so references and required fields stay consistent.
 
@@ -70,7 +77,7 @@ Use the **Validation** panel before export; fix errors so references and require
 
 | Tab | Type key | Asset folder |
 |-----|----------|--------------|
-| Locations | `rooms` | `src/assets/rooms/` |
+| Locations | `rooms` | `src/assets/rooms/` (+ map positions in `src/assets/map/room_layouts.json`) |
 | NPCs | `npcs` | `src/assets/npcs/` |
 | Quests | `quests` | `src/assets/quests/` |
 | Questlines | `questlines` | `src/assets/questlines/` |
@@ -82,4 +89,7 @@ Use the **Validation** panel before export; fix errors so references and require
 | Buildings | `buildings` | `src/assets/buildings/` |
 | Skills | `skills` | `src/assets/skills/` |
 
-See `docs/superpowers/specs/2026-06-18-admin-content-overlay-design.md` for bundle format and architecture.
+### Design specs
+
+- `docs/superpowers/specs/2026-06-18-admin-content-overlay-design.md` — overlay bundle format, registry, and admin architecture
+- `docs/superpowers/specs/2026-06-18-world-map-design.md` — shared map canvas, layout storage, player navigation, and map editor

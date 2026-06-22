@@ -20,9 +20,11 @@
 
           <template v-if="field.type === 'ref'">
             <RefPicker
-              :model-value="(draft as Record<string, string>)[field.key] ?? ''"
-              :options="refOptions?.[field.refType!] ?? []"
-              :placeholder="`${field.label}…`"
+              :model-value="String((draft as Record<string, unknown>)[field.key] ?? '')"
+              :options="fieldOptions(field)"
+              :placeholder="`Select ${field.label.toLowerCase()}…`"
+              :allow-empty="field.optional"
+              :allow-custom="allowCustomRef(field)"
               @update:model-value="setField(field.key, $event)"
             />
           </template>
@@ -71,17 +73,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { OutcomeRequirement } from '@/engine/Outcomes'
+import type { AdminRefOptions, QuestStageOption, RefOption } from '@/engine/admin/contentIndexes'
 import {
   OUTCOME_REQUIREMENT_META,
   REQUIREMENT_KIND_OPTIONS,
   makeDefaultRequirement,
+  type FieldDef,
   type RefEntity,
 } from '@/engine/admin/outcomeFormMeta'
 import RefPicker from './RefPicker.vue'
 
 const props = defineProps<{
   modelValue: OutcomeRequirement
-  refOptions?: Partial<Record<RefEntity, { id: string; label: string }[]>>
+  refOptions?: Partial<AdminRefOptions>
 }>()
 
 const emit = defineEmits<{
@@ -97,6 +101,21 @@ function onKindChange(kind: OutcomeRequirement['kind']) {
 
 function setField(key: string, value: unknown) {
   emit('update:modelValue', { ...props.modelValue, [key]: value } as OutcomeRequirement)
+}
+
+function allowCustomRef(field: FieldDef): boolean {
+  return field.refType === 'flags' || field.refType === 'counters'
+}
+
+function fieldOptions(field: FieldDef): RefOption[] {
+  if (!field.refType) return []
+  if (field.refType === 'questStages') {
+    const stages = (props.refOptions?.questStages ?? []) as QuestStageOption[]
+    const questId = (props.modelValue as { questId?: string }).questId
+    if (questId) return stages.filter((s) => s.questId === questId)
+    return stages
+  }
+  return props.refOptions?.[field.refType as RefEntity] ?? []
 }
 </script>
 

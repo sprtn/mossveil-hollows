@@ -1,20 +1,5 @@
 <template>
   <div class="game-sidebar">
-    <div class="sidebar-section sidebar-section--map">
-      <h3 class="sidebar-title">Room Map</h3>
-      <WorldMapCanvas
-        variant="navigation"
-        :rooms="mapRooms"
-        :layouts="roomLayouts"
-        :current-room-id="currentRoomId"
-        :visited-room-ids="visitedRoomIds"
-        :game-state="gameState"
-        view-scope="zone"
-        :show-world-toggle="true"
-        @navigate="handleRoomClick"
-      />
-    </div>
-    
     <div class="sidebar-section">
       <h3 class="sidebar-title">Stats</h3>
       <div class="stats-list">
@@ -66,14 +51,11 @@ import { inject, computed, ref } from 'vue'
 import { Teleport } from 'vue'
 import type { Ref } from 'vue'
 import type { GameState, PlayerStatKey } from '@/engine/GameLoopDesign'
-import { allocateAttributePoint, goToRoom } from '@/engine/GameLoop'
-import { getAllRooms, getAllRoomLayouts } from '@/engine/admin/ContentRegistry'
-import { getDiscoveredRoomIds } from '@/engine/map/worldMapUtils'
+import { allocateAttributePoint } from '@/engine/GameLoop'
 import { getEffectiveStats } from '@/engine/ItemDatabase'
 import { statIcons, statDescriptions, resourceIcons } from '@/utils/icons'
 import { derivedStatText, derivedStatProjection, statLabel } from '@/engine/statDisplay'
 import ResourceList from './ResourceList.vue'
-import WorldMapCanvas from './map/WorldMapCanvas.vue'
 
 const statKeys: PlayerStatKey[] = ['strength', 'constitution', 'dexterity', 'agility', 'defense']
 
@@ -82,8 +64,6 @@ const dispatch = inject<(state: GameState) => void>('dispatch')!
 
 const player = computed(() => gameState.value.player)
 const effectiveStats = computed(() => getEffectiveStats(player.value))
-const currentRoomId = computed(() => gameState.value.currentRoom.id)
-const roomHistory = computed(() => gameState.value.roomHistory || [])
 
 const unallocatedPoints = computed(() => player.value.unallocatedAttributePoints || 0)
 
@@ -152,31 +132,11 @@ function allocatePoint(stat: PlayerStatKey) {
   const newState = allocateAttributePoint(gameState.value, stat)
   dispatch(newState)
 }
-
-// Room map — discovered rooms only (current, visited, reachable exits)
-const discoveredIds = computed(() => getDiscoveredRoomIds(gameState.value))
-const mapRooms = computed(() => getAllRooms().filter((r) => discoveredIds.value.has(r.id)))
-const roomLayouts = computed(() => getAllRoomLayouts())
-const visitedRoomIds = computed(() => [...roomHistory.value, currentRoomId.value])
-
-async function handleRoomClick(roomId: string) {
-  isNavigating.value = true
-  try {
-    const newState = await goToRoom(gameState.value, roomId)
-    dispatch(newState)
-  } catch (error) {
-    console.error('Failed to navigate to room:', error)
-  } finally {
-    isNavigating.value = false
-  }
-}
-
-const isNavigating = ref(false)
 </script>
 
 <style scoped>
 .game-sidebar {
-  width: 260px;
+  width: 220px;
   background-color: var(--color-panel);
   border-right: 1px solid var(--color-border);
   padding: 16px;
@@ -203,85 +163,6 @@ const isNavigating = ref(false)
   letter-spacing: 1px;
   border-bottom: 1px solid var(--color-border);
   padding-bottom: 8px;
-}
-
-.sidebar-section--map {
-  min-height: 220px;
-}
-
-.sidebar-section--map :deep(.world-map) {
-  flex: 1;
-  min-height: 200px;
-}
-
-.room-map {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.room-node {
-  padding: 8px 12px;
-  background-color: var(--color-panel-inset);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  transition: all 0.2s;
-}
-
-.room-node.current {
-  background-color: rgba(107, 155, 90, 0.15);
-  border-color: var(--color-accent);
-  box-shadow: var(--shadow-glow);
-}
-
-.room-node.connected {
-  border-left: 3px solid #666;
-  opacity: 0.8;
-}
-
-.room-node.clickable {
-  cursor: pointer;
-}
-
-.room-node.clickable:hover {
-  background-color: #333;
-  border-color: #666;
-}
-
-.room-node-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.room-node-name {
-  font-size: 12px;
-  color: #aaa;
-  font-weight: 600;
-}
-
-.room-node.current .room-node-name {
-  color: #4caf50;
-  font-weight: 700;
-}
-
-.current-indicator {
-  color: #4caf50;
-  font-size: 12px;
-  font-weight: bold;
-}
-
-.connection-indicator {
-  color: #666;
-  font-size: 12px;
-}
-
-.no-rooms {
-  padding: 12px;
-  text-align: center;
-  color: #666;
-  font-size: 12px;
-  font-style: italic;
 }
 
 .stats-list {

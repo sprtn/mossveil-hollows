@@ -42,6 +42,7 @@
             <QuestStageEditor
               :model-value="item as QuestStage"
               :index="index"
+              :ref-options="refOptions"
               @update:model-value="update($event)"
             />
           </template>
@@ -68,12 +69,14 @@ import {
 import { refreshContentRegistry } from '@/engine/admin/ContentRegistry'
 import RepeatableList from './RepeatableList.vue'
 import QuestStageEditor from './QuestStageEditor.vue'
+import type { AdminRefOptions } from '@/engine/admin/contentIndexes'
 
 const props = defineProps<{
   questId: string | null
   baseIds: Set<string>
   overlayIds: Set<string>
   allQuests: QuestDef[]
+  refOptions?: Partial<AdminRefOptions>
 }>()
 
 const emit = defineEmits<{

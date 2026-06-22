@@ -58,6 +58,7 @@
             rx="12"
           />
           <text
+            v-if="zone.label"
             :x="zone.bounds.minX + 8"
             :y="zone.bounds.minY + 16"
             class="zone-label"
@@ -136,6 +137,8 @@ import {
   directionLabel,
   getReachableTargetIds,
   getRoomZoneKey,
+  getNeighborhoodBounds,
+  getConnectedRoomIds,
   getWorldBounds,
   getZoneBounds,
   groupRoomsByZone,
@@ -200,6 +203,11 @@ const reachableIds = computed(() => {
   return getReachableTargetIds(props.gameState, room)
 })
 
+const neighborhoodIds = computed(() => {
+  if (!props.currentRoomId || isEditor.value) return null
+  return getConnectedRoomIds(props.currentRoomId, props.rooms)
+})
+
 const visitedSet = computed(() => new Set(props.visitedRoomIds ?? []))
 
 interface MapNodeVm {
@@ -218,7 +226,9 @@ const visibleNodes = computed<MapNodeVm[]>(() => {
     const layout = dragPreviewLayouts.value[room.id] ?? props.layouts[room.id] ?? { x: 500, y: 500 }
     const z = getRoomZoneKey(room)
     const dimmed =
-      scope === 'zone' && zoneKey != null && z !== zoneKey && !room.isHub
+      scope === 'zone' && isPlayer.value && neighborhoodIds.value != null
+        ? !neighborhoodIds.value.has(room.id)
+        : scope === 'zone' && zoneKey != null && z !== zoneKey && !room.isHub
     return {
       id: room.id,
       x: layout.x,
@@ -282,7 +292,25 @@ const visibleEdges = computed<EdgeVm[]>(() => {
 })
 
 const zoneRegions = computed(() => {
-  if (isPlayer.value && effectiveScope.value === 'zone' && currentZoneKey.value) {
+  if (isPlayer.value && effectiveScope.value === 'zone' && props.currentRoomId) {
+    const b = getNeighborhoodBounds(props.currentRoomId, props.rooms, props.layouts)
+    return [
+      {
+        key: 'neighborhood',
+        label: '',
+        bounds: b,
+      },
+    ]
+  }
+  if (isEditor.value || effectiveScope.value === 'world') {
+    const groups = groupRoomsByZone(props.rooms)
+    return [...groups.entries()].map(([key, zoneRooms]) => ({
+      key,
+      label: zoneDisplayLabel(key),
+      bounds: getZoneBounds(zoneRooms, props.layouts, key, 70),
+    }))
+  }
+  if (currentZoneKey.value) {
     const b = getZoneBounds(props.rooms, props.layouts, currentZoneKey.value, 100)
     return [
       {
@@ -292,12 +320,7 @@ const zoneRegions = computed(() => {
       },
     ]
   }
-  const groups = groupRoomsByZone(props.rooms)
-  return [...groups.entries()].map(([key, zoneRooms]) => ({
-    key,
-    label: zoneDisplayLabel(key),
-    bounds: getZoneBounds(zoneRooms, props.layouts, key, 70),
-  }))
+  return []
 })
 
 const viewBox = computed(() => viewBoxStr.value)
@@ -313,7 +336,9 @@ function truncateName(name: string): string {
 function fitView() {
   const scope = isEditor.value ? 'world' : effectiveScope.value
   let bounds
-  if (scope === 'zone' && currentZoneKey.value) {
+  if (scope === 'zone' && isPlayer.value && props.currentRoomId) {
+    bounds = getNeighborhoodBounds(props.currentRoomId, props.rooms, props.layouts)
+  } else if (scope === 'zone' && currentZoneKey.value) {
     bounds = getZoneBounds(props.rooms, props.layouts, currentZoneKey.value, 90)
   } else {
     bounds = getWorldBounds(props.rooms, props.layouts, 50)
@@ -322,7 +347,14 @@ function fitView() {
 }
 
 watch(
-  [() => props.rooms, () => props.layouts, effectiveScope, currentZoneKey],
+  [
+    () => props.rooms,
+    () => props.layouts,
+    effectiveScope,
+    currentZoneKey,
+    () => props.currentRoomId,
+    reachableIds,
+  ],
   () => fitView(),
   { deep: true },
 )

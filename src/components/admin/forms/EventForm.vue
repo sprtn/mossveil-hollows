@@ -36,7 +36,12 @@
         <div class="form-grid-2">
           <label class="field-label">
             Zone
-            <input v-model="form.zone" type="text" class="field-input" placeholder="zone_forest" />
+            <RefPicker
+              v-model="form.zone"
+              :options="refOptions?.zones ?? []"
+              placeholder="Select zone…"
+              allow-custom
+            />
           </label>
           <label class="field-label">
             Weight
@@ -97,6 +102,7 @@
                   <template #default="{ item: req, update: updReq }">
                     <OutcomeRequirementEditor
                       :model-value="req as OutcomeRequirement"
+                      :ref-options="refOptions"
                       @update:model-value="updReq($event)"
                     />
                   </template>
@@ -114,6 +120,7 @@
                   <template #default="{ item: eff, update: updEff }">
                     <OutcomeEffectEditor
                       :model-value="eff as OutcomeEffect"
+                      :ref-options="refOptions"
                       @update:model-value="updEff($event)"
                     />
                   </template>
@@ -147,12 +154,15 @@ import { refreshContentRegistry } from '@/engine/admin/ContentRegistry'
 import RepeatableList from './RepeatableList.vue'
 import OutcomeEffectEditor from './OutcomeEffectEditor.vue'
 import OutcomeRequirementEditor from './OutcomeRequirementEditor.vue'
+import RefPicker from './RefPicker.vue'
+import type { AdminRefOptions } from '@/engine/admin/contentIndexes'
 
 const props = defineProps<{
   eventId: string | null
   baseIds: Set<string>
   overlayIds: Set<string>
   allEvents: EventCard[]
+  refOptions?: Partial<AdminRefOptions>
 }>()
 
 const emit = defineEmits<{

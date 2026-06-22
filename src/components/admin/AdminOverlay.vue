@@ -74,6 +74,7 @@
                 :overlay-ids="roomOverlayIds"
                 :room-options="roomOptions"
                 :all-rooms="allRooms"
+                :ref-options="adminRefOptions"
                 @saved="onEntitySaved"
                 @deleted="onEntityDeleted"
               />
@@ -97,6 +98,7 @@
                 :base-ids="questBaseIds"
                 :overlay-ids="questOverlayIds"
                 :all-quests="allQuests"
+                :ref-options="adminRefOptions"
                 @saved="onEntitySaved"
                 @deleted="onEntityDeleted"
               />
@@ -108,6 +110,7 @@
                 :overlay-ids="questlineOverlayIds"
                 :all-questlines="allQuestlines"
                 :quest-options="questOptions"
+                :ref-options="adminRefOptions"
                 @saved="onEntitySaved"
                 @deleted="onEntityDeleted"
               />
@@ -120,6 +123,7 @@
                 :overlay-ids="dialogueOverlayIds"
                 :all-dialogues="allDialogues"
                 :all-npcs="allNpcs"
+                :ref-options="adminRefOptions"
                 @saved="onEntitySaved"
                 @deleted="onEntityDeleted"
               />
@@ -153,6 +157,7 @@
                 :base-ids="eventBaseIds"
                 :overlay-ids="eventOverlayIds"
                 :all-events="allEvents"
+                :ref-options="adminRefOptions"
                 @saved="onEntitySaved"
                 @deleted="onEntityDeleted"
               />
@@ -164,6 +169,7 @@
                 :base-ids="recipeBaseIds"
                 :overlay-ids="recipeOverlayIds"
                 :all-recipes="allRecipes"
+                :ref-options="adminRefOptions"
                 @saved="onEntitySaved"
                 @deleted="onEntityDeleted"
               />
@@ -175,6 +181,7 @@
                 :base-ids="buildingBaseIds"
                 :overlay-ids="buildingOverlayIds"
                 :all-buildings="allBuildings"
+                :ref-options="adminRefOptions"
                 @saved="onEntitySaved"
                 @deleted="onEntityDeleted"
               />
@@ -186,6 +193,7 @@
                 :base-ids="skillBaseIds"
                 :overlay-ids="skillOverlayIds"
                 :all-skills="allSkills"
+                :ref-options="adminRefOptions"
                 @saved="onEntitySaved"
                 @deleted="onEntityDeleted"
               />
@@ -230,6 +238,7 @@ import {
 } from '@/engine/admin/ContentRegistry'
 import type { Room } from '@/engine/RoomSystem'
 import type { RoomLayoutsMap } from '@/engine/map/RoomLayout'
+import { buildAdminRefOptions, type AdminRefOptions } from '@/engine/admin/contentIndexes'
 import type { NpcDef, QuestDef, QuestlineDef, DialogueDef, EventCard, RecipeDef, BuildingDef, SkillDef } from '@/engine/ContentSchemas'
 import type { ItemTemplate } from '@/engine/GameLoopDesign'
 import AdminEntityList from './AdminEntityList.vue'
@@ -253,6 +262,7 @@ const open = defineModel<boolean>('open', { default: false })
 const selectedType = ref<ContentType | null>(null)
 const selectedEntityId = ref<string | null>(null)
 const roomLayouts = ref<RoomLayoutsMap>({})
+const adminRefOptions = ref<Partial<AdminRefOptions>>(buildAdminRefOptions())
 const importInput = useTemplateRef<HTMLInputElement>('importInput')
 const dirtyTick = ref(0)
 const entityList = useTemplateRef<InstanceType<typeof AdminEntityList>>('entityList')
@@ -343,6 +353,10 @@ function computeIdSets(
     if (!overlayUpsertIds.has(e.id)) baseIds.add(e.id)
   }
   return { baseIds, overlayIds: overlayUpsertIds }
+}
+
+function refreshRefOptions() {
+  adminRefOptions.value = buildAdminRefOptions()
 }
 
 function syncRoomData() {
@@ -482,6 +496,7 @@ function syncDataForType(type: ContentType | null) {
   else if (type === 'recipes') syncRecipeData()
   else if (type === 'buildings') syncBuildingData()
   else if (type === 'skills') syncSkillData()
+  refreshRefOptions()
 }
 
 function onSelectEntity(id: string) {

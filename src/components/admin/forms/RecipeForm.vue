@@ -50,8 +50,14 @@
           </label>
         </div>
         <label class="field-label">
-          NPC ID <span class="optional">(opt)</span>
-          <input v-model="form.npcId" type="text" class="field-input" placeholder="npc_smith" />
+          NPC <span class="optional">(opt)</span>
+          <RefPicker
+            :model-value="form.npcId ?? ''"
+            :options="refOptions?.npcs ?? []"
+            placeholder="Select NPC…"
+            allow-empty
+            @update:model-value="form.npcId = $event || undefined"
+          />
         </label>
         <label class="field-label">
           Purchase Gold <span class="optional">(opt)</span>
@@ -63,8 +69,12 @@
         <h3 class="section-title">Output</h3>
         <div class="form-grid-2">
           <label class="field-label">
-            Item ID
-            <input v-model="form.output.itemId" type="text" class="field-input" placeholder="item_iron_sword" />
+            Output Item
+            <RefPicker
+              v-model="form.output.itemId"
+              :options="refOptions?.items ?? []"
+              placeholder="Select item…"
+            />
           </label>
           <label class="field-label">
             Quantity
@@ -81,27 +91,11 @@
         </label>
         <div class="field-label">
           Materials
-          <div class="map-editor">
-            <div v-for="(entry, i) in materialEntries" :key="i" class="map-row">
-              <input
-                type="text"
-                class="field-input map-key"
-                placeholder="material_id"
-                :value="entry.key"
-                @input="updateMaterialKey(i, ($event.target as HTMLInputElement).value)"
-              />
-              <input
-                type="number"
-                class="field-input map-val"
-                placeholder="qty"
-                min="1"
-                :value="entry.val"
-                @input="updateMaterialVal(i, Number(($event.target as HTMLInputElement).value))"
-              />
-              <button type="button" class="btn-icon btn-danger-icon" @click="removeMaterial(i)">✕</button>
-            </div>
-            <button type="button" class="btn btn-secondary btn-sm" @click="addMaterial">+ Add Material</button>
-          </div>
+          <MaterialMapEditor
+            :materials="form.requires.materials"
+            :material-options="refOptions?.materials ?? []"
+            @update="form.requires.materials = $event"
+          />
         </div>
       </section>
 
@@ -110,20 +104,23 @@
         <div class="form-grid-3">
           <label class="field-label">
             Flag
-            <input
-              type="text"
-              class="field-input"
-              :value="form.unlockedBy?.flag ?? ''"
-              @input="setUnlockedBy('flag', ($event.target as HTMLInputElement).value)"
+            <RefPicker
+              :model-value="form.unlockedBy?.flag ?? ''"
+              :options="refOptions?.flags ?? []"
+              placeholder="Select flag…"
+              allow-empty
+              allow-custom
+              @update:model-value="setUnlockedBy('flag', $event)"
             />
           </label>
           <label class="field-label">
             Building
-            <input
-              type="text"
-              class="field-input"
-              :value="form.unlockedBy?.building ?? ''"
-              @input="setUnlockedBy('building', ($event.target as HTMLInputElement).value)"
+            <RefPicker
+              :model-value="form.unlockedBy?.building ?? ''"
+              :options="refOptions?.buildings ?? []"
+              placeholder="Select building…"
+              allow-empty
+              @update:model-value="setUnlockedBy('building', $event)"
             />
           </label>
           <label class="field-label">
@@ -158,12 +155,16 @@ import {
   removeUpsert,
 } from '@/engine/admin/ContentOverlayStore'
 import { refreshContentRegistry } from '@/engine/admin/ContentRegistry'
+import type { AdminRefOptions } from '@/engine/admin/contentIndexes'
+import MaterialMapEditor from './MaterialMapEditor.vue'
+import RefPicker from './RefPicker.vue'
 
 const props = defineProps<{
   recipeId: string | null
   baseIds: Set<string>
   overlayIds: Set<string>
   allRecipes: RecipeDef[]
+  refOptions?: Partial<AdminRefOptions>
 }>()
 
 const emit = defineEmits<{
@@ -180,11 +181,6 @@ const isNew = computed(() => !!form.value && !props.baseIds.has(form.value.id) &
 const isOverlayOnly = computed(() => !!form.value && !props.baseIds.has(form.value.id) && props.overlayIds.has(form.value.id))
 const isModified = computed(() => !!form.value && props.baseIds.has(form.value.id) && props.overlayIds.has(form.value.id))
 
-const materialEntries = computed(() => {
-  const mats = form.value?.requires.materials ?? {}
-  return Object.entries(mats).map(([key, val]) => ({ key, val }))
-})
-
 watch(
   () => props.recipeId,
   (id) => {
@@ -195,37 +191,6 @@ watch(
   },
   { immediate: true }
 )
-
-function addMaterial() {
-  if (!form.value) return
-  form.value.requires.materials[''] = 1
-}
-
-function removeMaterial(i: number) {
-  if (!form.value) return
-  const entries = Object.entries(form.value.requires.materials)
-  entries.splice(i, 1)
-  form.value.requires.materials = Object.fromEntries(entries)
-}
-
-function updateMaterialKey(i: number, newKey: string) {
-  if (!form.value) return
-  const entries = Object.entries(form.value.requires.materials)
-  const entry = entries[i]
-  if (!entry) return
-  const val = entry[1]
-  entries.splice(i, 1, [newKey, val])
-  form.value.requires.materials = Object.fromEntries(entries)
-}
-
-function updateMaterialVal(i: number, val: number) {
-  if (!form.value) return
-  const entries = Object.entries(form.value.requires.materials)
-  const entry = entries[i]
-  if (!entry) return
-  entry[1] = val
-  form.value.requires.materials = Object.fromEntries(entries)
-}
 
 function setUnlockedBy(key: 'flag' | 'building' | 'buildingLevel', value: string | number) {
   if (!form.value) return

@@ -18,7 +18,12 @@
         </label>
         <label class="field-label">
           Resource
-          <input v-model="node.resource" type="text" class="field-input" placeholder="oak_wood" />
+          <RefPicker
+            v-model="node.resource"
+            :options="materialOptions"
+            placeholder="Select material…"
+            allow-custom
+          />
         </label>
         <label class="field-label">
           Base Yield
@@ -44,6 +49,11 @@
 
 <script setup lang="ts">
 import type { GatherNode, GatheringProfessionId } from '@/engine/GatherNodes'
+import RefPicker from './RefPicker.vue'
+
+defineProps<{
+  materialOptions: { id: string; label: string }[]
+}>()
 
 const nodes = defineModel<GatherNode[]>({ default: () => [] })
 

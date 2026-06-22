@@ -34,7 +34,14 @@
         </label>
         <label class="field-label">
           Start Flag
-          <input v-model="form.startFlag" type="text" class="field-input" placeholder="flag_id (optional)" />
+          <RefPicker
+            :model-value="form.startFlag ?? ''"
+            :options="refOptions?.flags ?? []"
+            placeholder="Select flag…"
+            allow-empty
+            allow-custom
+            @update:model-value="form.startFlag = $event || undefined"
+          />
         </label>
       </section>
 
@@ -93,12 +100,14 @@ import {
 import { refreshContentRegistry } from '@/engine/admin/ContentRegistry'
 import RepeatableList from './RepeatableList.vue'
 import RefPicker from './RefPicker.vue'
+import type { AdminRefOptions } from '@/engine/admin/contentIndexes'
 
 const props = defineProps<{
   questlineId: string | null
   overlayIds: Set<string>
   allQuestlines: QuestlineDef[]
   questOptions: { id: string; label: string }[]
+  refOptions?: Partial<AdminRefOptions>
 }>()
 
 const emit = defineEmits<{

@@ -39,12 +39,14 @@
         <h3 class="section-title">Production <span class="optional">(opt)</span></h3>
         <div class="form-grid-2">
           <label class="field-label">
-            Output Material ID
-            <input
-              type="text"
-              class="field-input"
-              :value="form.production?.outputMaterialId ?? ''"
-              @input="setProd('outputMaterialId', ($event.target as HTMLInputElement).value)"
+            Output Material
+            <RefPicker
+              :model-value="form.production?.outputMaterialId ?? ''"
+              :options="refOptions?.materials ?? []"
+              placeholder="Select material…"
+              allow-empty
+              allow-custom
+              @update:model-value="setProd('outputMaterialId', $event)"
             />
           </label>
           <label class="field-label">
@@ -137,6 +139,7 @@
                 Materials Cost
                 <MaterialMapEditor
                   :materials="(item as BuildingLevelDef).cost.materials"
+                  :material-options="refOptions?.materials ?? []"
                   @update="update({ ...(item as BuildingLevelDef), cost: { ...(item as BuildingLevelDef).cost, materials: $event } })"
                 />
               </div>
@@ -151,6 +154,7 @@
                   <template #default="{ item: eff, update: updEff }">
                     <OutcomeEffectEditor
                       :model-value="eff as OutcomeEffect"
+                      :ref-options="refOptions"
                       @update:model-value="updEff($event)"
                     />
                   </template>
@@ -183,54 +187,16 @@ import {
 import { refreshContentRegistry } from '@/engine/admin/ContentRegistry'
 import RepeatableList from './RepeatableList.vue'
 import OutcomeEffectEditor from './OutcomeEffectEditor.vue'
-
-/** Inline material map editor as a helper component (no separate file needed). */
-const MaterialMapEditor = {
-  props: {
-    materials: { type: Object as () => Record<string, number>, required: true },
-  },
-  emits: ['update'],
-  setup(props: { materials: Record<string, number> }, { emit }: { emit: (e: string, v: unknown) => void }) {
-    const entries = () => Object.entries(props.materials)
-
-    function add() {
-      const next = { ...props.materials, '': 1 }
-      emit('update', next)
-    }
-    function remove(key: string) {
-      const next = { ...props.materials }
-      delete next[key]
-      emit('update', next)
-    }
-    function updateKey(oldKey: string, newKey: string) {
-      const next: Record<string, number> = {}
-      for (const [k, v] of Object.entries(props.materials)) {
-        next[k === oldKey ? newKey : k] = v
-      }
-      emit('update', next)
-    }
-    function updateVal(key: string, val: number) {
-      emit('update', { ...props.materials, [key]: val })
-    }
-    return { entries, add, remove, updateKey, updateVal }
-  },
-  template: `
-    <div class="map-editor">
-      <div v-for="[k, v] in entries()" :key="k" class="map-row">
-        <input type="text" class="field-input map-key" placeholder="material_id" :value="k" @input="updateKey(k, $event.target.value)" />
-        <input type="number" class="field-input map-val" min="1" :value="v" @input="updateVal(k, Number($event.target.value))" />
-        <button type="button" class="btn-icon btn-danger-icon" @click="remove(k)">✕</button>
-      </div>
-      <button type="button" class="btn btn-secondary btn-sm" @click="add">+ Add Material</button>
-    </div>
-  `,
-}
+import MaterialMapEditor from './MaterialMapEditor.vue'
+import RefPicker from './RefPicker.vue'
+import type { AdminRefOptions } from '@/engine/admin/contentIndexes'
 
 const props = defineProps<{
   buildingId: string | null
   baseIds: Set<string>
   overlayIds: Set<string>
   allBuildings: BuildingDef[]
+  refOptions?: Partial<AdminRefOptions>
 }>()
 
 const emit = defineEmits<{
