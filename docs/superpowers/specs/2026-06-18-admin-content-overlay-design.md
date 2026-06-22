@@ -20,7 +20,7 @@ There is **no admin screen today**. Content is hand-authored JSON with manual re
 |-------|----------|
 | Persistence | Dev overlay on shipped assets (Option A) |
 | Scope | Full surface — all asset types + questlines (Option C) |
-| Access | `DEV_ADMIN_ENABLED` + **Ctrl+Shift+A** hotkey (Option A) |
+| Access | `DEV_ADMIN_ENABLED` + **Ctrl+Shift+Q** hotkey (Option A) |
 | Export | Single overlay bundle with explicit deletes (Option A) |
 | Import | Export + import merge into overlay (Option B) |
 | Editor UX | Structured forms + reference pickers (Option A) |
@@ -39,7 +39,7 @@ Game systems (RoomManager, QuestSystem, DialogueSystem, …)
         ↑
 ContentOverlayStore (localStorage)
         ↑
-AdminOverlay.vue (Ctrl+Shift+A when DEV_ADMIN_ENABLED)
+AdminOverlay.vue (Ctrl+Shift+Q when DEV_ADMIN_ENABLED)
 ```
 
 ### Merge semantics
@@ -191,7 +191,7 @@ Internal shape mirrors bundle `upserts` + `deletedIds` (empty maps/arrays by def
 
 - Component: `src/components/admin/AdminOverlay.vue`
 - Full-screen modal; dim scrim; game input blocked while open
-- Toggle: **Ctrl+Shift+A** when `DEV_ADMIN_ENABLED`
+- Toggle: **Ctrl+Shift+Q** when `DEV_ADMIN_ENABLED`
 - Registered in `App.vue` global hotkey listener
 
 ### Layout

@@ -4,7 +4,7 @@
 
 **Goal:** Build an in-game dev admin overlay with full CRUD over all game content types, persisting edits in localStorage and supporting single-bundle export/import.
 
-**Architecture:** Central `ContentRegistry` merges shipped JSON (glob-loaded) with a `ContentOverlayStore` in localStorage. `AdminOverlay.vue` provides structured forms with reference pickers. `DEV_ADMIN_ENABLED` + Ctrl+Shift+A toggles access.
+**Architecture:** Central `ContentRegistry` merges shipped JSON (glob-loaded) with a `ContentOverlayStore` in localStorage. `AdminOverlay.vue` provides structured forms with reference pickers. `DEV_ADMIN_ENABLED` + Ctrl+Shift+Q toggles access.
 
 **Tech Stack:** Vue 3, TypeScript, Vite, Vitest, existing `ContentSchemas.ts` types
 
@@ -324,7 +324,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
 - [ ] **Step 3: Manual verify in dev**
 
-Run `npm run dev`, Ctrl+Shift+A toggles overlay.
+Run `npm run dev`, Ctrl+Shift+Q toggles overlay.
 
 - [ ] **Step 4: Commit**
 
@@ -575,7 +575,7 @@ Replace manual import arrays with registry delegation. Item map built from `getA
 - Modify: `README.md` — document dev admin usage
 - Create: `scripts/merge-overlay.mjs` (optional stub with usage comment)
 
-- [ ] **Step 1: README section — Ctrl+Shift+A, export/import workflow**
+- [ ] **Step 1: README section — Ctrl+Shift+Q, export/import workflow**
 
 - [ ] **Step 2: Full test suite + build**
 

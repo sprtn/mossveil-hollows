@@ -57,7 +57,7 @@ const adminOpen = ref(false)
 
 function onKeydown(e: KeyboardEvent) {
   if (!DEV_ADMIN_ENABLED) return
-  if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'a') {
+  if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'q') {
     e.preventDefault()
     adminOpen.value = !adminOpen.value
   }

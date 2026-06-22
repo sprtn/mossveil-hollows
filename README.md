@@ -55,7 +55,7 @@ In **dev builds only** (`npm run dev`), a full-surface content editor overlays t
 ### Access
 
 - Enabled when `DEV_ADMIN_ENABLED` is true (`import.meta.env.DEV` in `src/engine/gameConfig.ts`).
-- **Ctrl+Shift+A** toggles the admin overlay (`AdminOverlay.vue`).
+- **Ctrl+Shift+Q** toggles the admin overlay (`AdminOverlay.vue`).
 
 ### Export / import workflow
 
