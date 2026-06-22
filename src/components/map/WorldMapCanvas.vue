@@ -104,6 +104,11 @@
             @pointerdown.stop="onNodePointerDown($event, node)"
             @click.stop="onNodeClick(node)"
           >
+            <circle
+              v-if="node.id === props.currentRoomId && isPlayer"
+              :r="NODE_R + (isMinimap ? 12 : 8)"
+              class="map-node__halo"
+            />
             <circle :r="NODE_R" class="map-node__circle" />
             <text y="4" class="map-node__name">{{ node.shortName }}</text>
             <circle
@@ -178,6 +183,7 @@ const emit = defineEmits<{
 
 const NODE_R = 26
 const isEditor = computed(() => props.variant === 'editor')
+const isMinimap = computed(() => props.variant === 'minimap')
 const isPlayer = computed(() => props.variant === 'navigation' || props.variant === 'minimap')
 
 const effectiveScope = ref<'zone' | 'world'>(props.viewScope)
@@ -335,13 +341,22 @@ function truncateName(name: string): string {
 
 function fitView() {
   const scope = isEditor.value ? 'world' : effectiveScope.value
+  const neighborhoodPadding = isMinimap.value ? 32 : 110
+  const neighborhoodMinSize = isMinimap.value ? 85 : 200
   let bounds
   if (scope === 'zone' && isPlayer.value && props.currentRoomId) {
-    bounds = getNeighborhoodBounds(props.currentRoomId, props.rooms, props.layouts)
+    bounds = getNeighborhoodBounds(
+      props.currentRoomId,
+      props.rooms,
+      props.layouts,
+      neighborhoodPadding,
+      neighborhoodMinSize,
+    )
   } else if (scope === 'zone' && currentZoneKey.value) {
-    bounds = getZoneBounds(props.rooms, props.layouts, currentZoneKey.value, 90)
+    const zonePadding = isMinimap.value ? 50 : 90
+    bounds = getZoneBounds(props.rooms, props.layouts, currentZoneKey.value, zonePadding)
   } else {
-    bounds = getWorldBounds(props.rooms, props.layouts, 50)
+    bounds = getWorldBounds(props.rooms, props.layouts, isMinimap.value ? 40 : 50)
   }
   viewBoxStr.value = boundsToViewBox(bounds)
 }
@@ -549,7 +564,17 @@ function onEdgeClick(edge: EdgeVm) {
 }
 
 .world-map--minimap .world-map__viewport {
-  height: 180px;
+  height: 210px;
+}
+
+.world-map--minimap .world-map__toolbar {
+  padding: 4px 6px;
+  gap: 4px;
+}
+
+.world-map--minimap .scope-btn {
+  font-size: 10px;
+  padding: 2px 6px;
 }
 
 .world-map__toolbar {
@@ -668,6 +693,48 @@ function onEdgeClick(edge: EdgeVm) {
 .map-node--current .map-node__circle {
   fill: rgba(95, 143, 80, 0.25);
   stroke-width: 3;
+}
+
+.world-map--minimap .map-node__name {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.world-map--minimap .map-node--current .map-node__circle {
+  fill: rgba(95, 143, 80, 0.55);
+  stroke: #b8e6a8;
+  stroke-width: 4;
+  filter: drop-shadow(0 0 6px rgba(184, 230, 168, 0.85));
+}
+
+.world-map--minimap .map-node--current .map-node__name {
+  font-size: 12px;
+  font-weight: 700;
+  fill: #fff;
+}
+
+.map-node__halo {
+  fill: rgba(95, 143, 80, 0.12);
+  stroke: var(--color-accent-bright, #9fd98a);
+  stroke-width: 2;
+  pointer-events: none;
+}
+
+.world-map--minimap .map-node--current .map-node__halo {
+  fill: rgba(95, 143, 80, 0.18);
+  stroke: #c8f0b8;
+  stroke-width: 3;
+  animation: map-node-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes map-node-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .map-node--selected .map-node__circle {

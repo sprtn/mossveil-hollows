@@ -223,9 +223,10 @@ export function getNeighborhoodBounds(
   rooms: Room[],
   layouts: RoomLayoutsMap,
   padding = 110,
+  minSize = 200,
 ): ZoneBounds {
   const ids = getConnectedRoomIds(currentRoomId, rooms)
-  return expandBoundsToMinSize(getBoundsForRoomIds(ids, layouts, padding))
+  return expandBoundsToMinSize(getBoundsForRoomIds(ids, layouts, padding), minSize)
 }
 
 export interface ZoneBounds {

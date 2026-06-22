@@ -1,5 +1,20 @@
 <template>
   <div class="game-sidebar">
+    <div v-if="showMinimap" class="sidebar-section sidebar-map">
+      <h3 class="sidebar-title">Map</h3>
+      <WorldMapCanvas
+        variant="minimap"
+        :rooms="mapRooms"
+        :layouts="roomLayouts"
+        :current-room-id="gameState.currentRoom.id"
+        :visited-room-ids="visitedRoomIds"
+        :game-state="gameState"
+        view-scope="zone"
+        :show-world-toggle="true"
+        @navigate="handleMapNavigate"
+      />
+    </div>
+
     <div class="sidebar-section">
       <h3 class="sidebar-title">Stats</h3>
       <div class="stats-list">
@@ -51,11 +66,14 @@ import { inject, computed, ref } from 'vue'
 import { Teleport } from 'vue'
 import type { Ref } from 'vue'
 import type { GameState, PlayerStatKey } from '@/engine/GameLoopDesign'
-import { allocateAttributePoint } from '@/engine/GameLoop'
+import { allocateAttributePoint, goToRoom } from '@/engine/GameLoop'
 import { getEffectiveStats } from '@/engine/ItemDatabase'
 import { statIcons, statDescriptions, resourceIcons } from '@/utils/icons'
 import { derivedStatText, derivedStatProjection, statLabel } from '@/engine/statDisplay'
+import { getAllRooms, getAllRoomLayouts } from '@/engine/admin/ContentRegistry'
+import { getDiscoveredRoomIds } from '@/engine/map/worldMapUtils'
 import ResourceList from './ResourceList.vue'
+import WorldMapCanvas from './map/WorldMapCanvas.vue'
 
 const statKeys: PlayerStatKey[] = ['strength', 'constitution', 'dexterity', 'agility', 'defense']
 
@@ -64,6 +82,31 @@ const dispatch = inject<(state: GameState) => void>('dispatch')!
 
 const player = computed(() => gameState.value.player)
 const effectiveStats = computed(() => getEffectiveStats(player.value))
+
+const showMinimap = computed(
+  () =>
+    gameState.value.phase === 'room_exploring' || gameState.value.phase === 'room_enter',
+)
+
+const discoveredIds = computed(() => getDiscoveredRoomIds(gameState.value))
+const mapRooms = computed(() => getAllRooms().filter((r) => discoveredIds.value.has(r.id)))
+const roomLayouts = computed(() => getAllRoomLayouts())
+const visitedRoomIds = computed(() => [
+  ...(gameState.value.roomHistory ?? []),
+  gameState.value.currentRoom.id,
+])
+
+const mapNavigating = ref(false)
+
+async function handleMapNavigate(targetRoomId: string) {
+  if (mapNavigating.value || gameState.value.phase !== 'room_exploring') return
+  mapNavigating.value = true
+  try {
+    dispatch(await goToRoom(gameState.value, targetRoomId))
+  } finally {
+    mapNavigating.value = false
+  }
+}
 
 const unallocatedPoints = computed(() => player.value.unallocatedAttributePoints || 0)
 
@@ -151,6 +194,14 @@ function allocatePoint(stat: PlayerStatKey) {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.sidebar-map {
+  flex-shrink: 0;
+}
+
+.sidebar-map :deep(.world-map--minimap) {
+  width: 100%;
 }
 
 .sidebar-title {
