@@ -1,4 +1,5 @@
 /** Game-wide constants */
+/** @deprecated Use adminAuth.ADMIN_SKIP_LOGIN — dev skips login; prod requires credentials. */
 export const DEV_ADMIN_ENABLED = import.meta.env.DEV
 
 export const GAME_TITLE = 'Mossveil Hollow: Shards of the Shadow'

@@ -6,7 +6,8 @@
       <GameScreen />
     </div>
     <PlayerScreen v-if="playerScreenOpen" />
-    <AdminOverlay v-if="DEV_ADMIN_ENABLED" v-model:open="adminOpen" />
+    <AdminLoginModal v-if="loginOpen" @success="onAdminLoginSuccess" @cancel="loginOpen = false" />
+    <AdminOverlay v-if="adminAccessGranted" v-model:open="adminOpen" />
   </div>
 </template>
 
@@ -17,8 +18,10 @@ import type { GameState } from './engine/GameLoopDesign'
 import { createDefaultPlayer } from './engine/CombatEngine'
 import { loadRoom } from './engine/RoomManager'
 import { roomFromAsset } from './engine/GameLoop'
-import { DEV_ADMIN_ENABLED, START_ROOM_ID } from './engine/gameConfig'
+import { START_ROOM_ID } from './engine/gameConfig'
+import { canAccessAdmin } from './engine/admin/adminAuth'
 import AdminOverlay from './components/admin/AdminOverlay.vue'
+import AdminLoginModal from './components/admin/AdminLoginModal.vue'
 import { getDefaultGameMeta } from './engine/Outcomes'
 import { audioManager } from './engine/AudioManager'
 import GameHeader from './components/GameHeader.vue'
@@ -54,12 +57,27 @@ const gameState = ref<GameState>({
 
 const playerScreenOpen = ref(false)
 const adminOpen = ref(false)
+const loginOpen = ref(false)
+const adminAccessGranted = ref(canAccessAdmin())
+
+function toggleAdmin() {
+  if (adminAccessGranted.value) {
+    adminOpen.value = !adminOpen.value
+    return
+  }
+  loginOpen.value = true
+}
+
+function onAdminLoginSuccess() {
+  adminAccessGranted.value = true
+  loginOpen.value = false
+  adminOpen.value = true
+}
 
 function onKeydown(e: KeyboardEvent) {
-  if (!DEV_ADMIN_ENABLED) return
   if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'q') {
     e.preventDefault()
-    adminOpen.value = !adminOpen.value
+    toggleAdmin()
   }
 }
 
